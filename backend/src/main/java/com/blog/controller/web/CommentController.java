@@ -46,13 +46,13 @@ public class CommentController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         
-        // 获取顶级评论
+        // 获取顶级评论 (parentId 为 null 或 0)
         Page<Comment> pageResult = commentService.page(
                 new Page<>(page, pageSize),
                 new LambdaQueryWrapper<Comment>()
                         .eq(Comment::getArticleId, articleId)
                         .eq(Comment::getStatus, 1)
-                        .isNull(Comment::getParentId)
+                        .and(w -> w.isNull(Comment::getParentId).or().eq(Comment::getParentId, 0L))
                         .orderByDesc(Comment::getCreateTime)
         );
         
@@ -63,13 +63,16 @@ public class CommentController {
         
         // 获取所有评论的子评论
         List<Long> parentIds = comments.stream().map(Comment::getId).collect(Collectors.toList());
-        List<Comment> replies = commentService.list(
-                new LambdaQueryWrapper<Comment>()
-                        .eq(Comment::getArticleId, articleId)
-                        .eq(Comment::getStatus, 1)
-                        .in(Comment::getParentId, parentIds)
-                        .orderByAsc(Comment::getCreateTime)
-        );
+        List<Comment> replies = new ArrayList<>();
+        if (!parentIds.isEmpty()) {
+            replies = commentService.list(
+                    new LambdaQueryWrapper<Comment>()
+                            .eq(Comment::getArticleId, articleId)
+                            .eq(Comment::getStatus, 1)
+                            .in(Comment::getParentId, parentIds)
+                            .orderByAsc(Comment::getCreateTime)
+            );
+        }
         
         // 收集所有用户ID
         Set<Long> userIds = comments.stream().map(Comment::getUserId).collect(Collectors.toSet());

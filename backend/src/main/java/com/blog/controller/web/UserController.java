@@ -71,14 +71,24 @@ public class UserController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof SecurityUser) {
             SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
-            return Result.success(securityUser.getUser());
+            // 从数据库获取最新的用户信息
+            User user = userService.getById(securityUser.getUser().getId());
+            if (user != null) {
+                // 不返回密码
+                user.setPassword(null);
+                return Result.success(user);
+            }
         }
         return Result.error(ResultCode.UNAUTHORIZED);
     }
 
     @Operation(summary = "退出登录")
     @PostMapping("/logout")
-    public Result<?> logout() {
+    public Result<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            jwtTokenProvider.invalidateToken(token);
+        }
         return Result.success("退出成功");
     }
 }

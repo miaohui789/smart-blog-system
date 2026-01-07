@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
+import com.blog.dto.response.TagVO;
 import com.blog.entity.Article;
+import com.blog.entity.ArticleTag;
 import com.blog.service.ArticleService;
 import com.blog.service.ArticleTagService;
 import com.blog.service.TagService;
@@ -14,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Tag(name = "标签接口")
 @RestController
@@ -28,7 +32,25 @@ public class TagController {
     @Operation(summary = "标签列表")
     @GetMapping
     public Result<?> list() {
-        return Result.success(tagService.list());
+        // 获取所有标签
+        List<com.blog.entity.Tag> tags = tagService.list();
+        
+        // 统计每个标签的文章数量
+        List<ArticleTag> allArticleTags = articleTagService.list();
+        Map<Long, Long> tagArticleCountMap = allArticleTags.stream()
+                .collect(Collectors.groupingBy(ArticleTag::getTagId, Collectors.counting()));
+        
+        // 转换为 VO 并设置真实的文章数量
+        List<TagVO> tagVOs = tags.stream().map(tag -> {
+            TagVO vo = new TagVO();
+            vo.setId(tag.getId());
+            vo.setName(tag.getName());
+            vo.setColor(tag.getColor());
+            vo.setArticleCount(tagArticleCountMap.getOrDefault(tag.getId(), 0L).intValue());
+            return vo;
+        }).collect(Collectors.toList());
+        
+        return Result.success(tagVOs);
     }
 
     @Operation(summary = "标签下的文章")

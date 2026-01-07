@@ -1,32 +1,32 @@
-// 主题色 - 紫色渐变
-$primary-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-$primary-color: #a855f7;
-$primary-light: #c084fc;
-$primary-dark: #9333ea;
+// 主题色 - 简洁灰蓝色系（适配暗色主题）
+$primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+$primary-color: #3b82f6;
+$primary-light: #60a5fa;
+$primary-dark: #2563eb;
 
 // 背景色 - 深色系
-$bg-dark: #0a0a0f;
-$bg-darker: #050508;
-$bg-card: rgba(26, 26, 35, 0.7);
-$bg-card-solid: #1a1a23;
-$bg-card-hover: rgba(38, 38, 50, 0.8);
-$bg-input: rgba(31, 31, 40, 0.8);
+$bg-dark: #18181b;
+$bg-darker: #09090b;
+$bg-card: #27272a;
+$bg-card-solid: #27272a;
+$bg-card-hover: #3f3f46;
+$bg-input: #27272a;
 
 // 磨砂玻璃效果
-$glass-bg: rgba(20, 20, 30, 0.6);
-$glass-border: rgba(255, 255, 255, 0.08);
+$glass-bg: rgba(39, 39, 42, 0.8);
+$glass-border: rgba(255, 255, 255, 0.06);
 $glass-blur: blur(20px);
-$glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+$glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 
 // 文字色
 $text-primary: #ffffff;
-$text-secondary: #b4b4c0;
-$text-muted: #71717a;
-$text-disabled: #52525b;
+$text-secondary: #dfdfd6;
+$text-muted: #a1a1aa;
+$text-disabled: #71717a;
 
 // 边框色
-$border-color: rgba(255, 255, 255, 0.08);
-$border-light: rgba(255, 255, 255, 0.12);
+$border-color: rgba(255, 255, 255, 0.06);
+$border-light: rgba(255, 255, 255, 0.1);
 
 // 功能色
 $success-color: #22c55e;
@@ -35,10 +35,10 @@ $error-color: #ef4444;
 $info-color: #3b82f6;
 
 // 阴影
-$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-$shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-$shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
-$shadow-glow: 0 0 30px rgba(168, 85, 247, 0.25);
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+$shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+$shadow-glow: 0 0 16px rgba(59, 130, 246, 0.1);
 
 // 圆角
 $radius-sm: 6px;

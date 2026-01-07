@@ -82,8 +82,26 @@ const routes = [
             name: 'UserSettings',
             component: () => import('@/views/User/Settings.vue'),
             meta: { title: '设置', requiresAuth: true }
+          },
+          {
+            path: 'articles',
+            name: 'UserArticles',
+            component: () => import('@/views/User/Articles.vue'),
+            meta: { title: '我的文章', requiresAuth: true }
           }
         ]
+      },
+      {
+        path: 'write',
+        name: 'WriteArticle',
+        component: () => import('@/views/Write/index.vue'),
+        meta: { title: '写文章', requiresAuth: true }
+      },
+      {
+        path: 'write/:id',
+        name: 'EditArticle',
+        component: () => import('@/views/Write/index.vue'),
+        meta: { title: '编辑文章', requiresAuth: true }
       }
     ]
   },

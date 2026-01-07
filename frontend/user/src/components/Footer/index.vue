@@ -23,12 +23,11 @@ const currentYear = new Date().getFullYear()
 @import '@/assets/styles/variables.scss';
 
 .footer {
-  background: $glass-bg;
-  backdrop-filter: $glass-blur;
-  -webkit-backdrop-filter: $glass-blur;
-  border-top: 1px solid $glass-border;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
   padding: $spacing-xl 0;
   margin-top: auto;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .footer-content {
@@ -65,8 +64,9 @@ const currentYear = new Date().getFullYear()
 }
 
 .copyright {
-  color: $text-muted;
+  color: var(--text-muted);
   font-size: 14px;
+  transition: color 0.3s;
 }
 
 .footer-links {
@@ -74,7 +74,7 @@ const currentYear = new Date().getFullYear()
   gap: $spacing-lg;
 
   a {
-    color: $text-secondary;
+    color: var(--text-secondary);
     font-size: 14px;
     text-decoration: none;
     transition: color 0.3s;

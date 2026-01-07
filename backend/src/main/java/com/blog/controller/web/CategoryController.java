@@ -24,7 +24,18 @@ public class CategoryController {
     @Operation(summary = "分类列表")
     @GetMapping
     public Result<?> list() {
-        return Result.success(categoryService.list());
+        // 获取所有分类
+        var categories = categoryService.list();
+        // 动态计算每个分类的文章数量
+        categories.forEach(category -> {
+            long count = articleService.count(
+                new LambdaQueryWrapper<Article>()
+                    .eq(Article::getStatus, 1)
+                    .eq(Article::getCategoryId, category.getId())
+            );
+            category.setArticleCount((int) count);
+        });
+        return Result.success(categories);
     }
 
     @Operation(summary = "分类下的文章")

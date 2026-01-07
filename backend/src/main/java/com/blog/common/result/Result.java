@@ -43,6 +43,13 @@ public class Result<T> {
         return result;
     }
 
+    public static <T> Result<T> error(ResultCode resultCode, String message) {
+        Result<T> result = new Result<>();
+        result.setCode(resultCode.getCode());
+        result.setMessage(message);
+        return result;
+    }
+
     public static <T> Result<T> error(Integer code, String message) {
         Result<T> result = new Result<>();
         result.setCode(code);

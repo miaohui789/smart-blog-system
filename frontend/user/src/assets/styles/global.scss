@@ -1,24 +1,48 @@
 @import './variables.scss';
 
-// CSS变量
-:root {
+// View Transition 动画样式
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+// 暗色主题（默认）
+:root,
+:root[data-theme="dark"] {
   --primary-color: #{$primary-color};
   --primary-light: #{$primary-light};
   --primary-dark: #{$primary-dark};
   --bg-dark: #{$bg-dark};
+  --bg-darker: #09090b;
   --bg-card: #{$bg-card};
+  --bg-card-solid: #{$bg-card-solid};
   --bg-card-hover: #{$bg-card-hover};
+  --bg-input: #{$bg-input};
   --text-primary: #{$text-primary};
   --text-secondary: #{$text-secondary};
   --text-muted: #{$text-muted};
+  --text-disabled: #71717a;
   --border-color: #{$border-color};
+  --border-light: #{$border-light};
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --header-bg: #18181b;
+  --search-overlay-bg: rgba(0, 0, 0, 0.75);
 
   // Element Plus 主题覆盖
   --el-color-primary: #{$primary-color};
   --el-color-primary-light-3: #{$primary-light};
-  --el-color-primary-light-5: #d8b4fe;
-  --el-color-primary-light-7: #e9d5ff;
-  --el-color-primary-light-9: #f3e8ff;
+  --el-color-primary-light-5: #93c5fd;
+  --el-color-primary-light-7: #bfdbfe;
+  --el-color-primary-light-9: #dbeafe;
   --el-color-primary-dark-2: #{$primary-dark};
 
   --el-bg-color: #{$bg-card-solid};
@@ -32,9 +56,54 @@
 
   --el-border-color: #{$border-color};
   --el-border-color-light: #{$border-light};
-  --el-border-color-lighter: rgba(255, 255, 255, 0.05);
+  --el-border-color-lighter: rgba(255, 255, 255, 0.04);
 
   --el-fill-color-blank: #{$bg-input};
+}
+
+// 亮色主题
+:root[data-theme="light"] {
+  --primary-color: #{$primary-color};
+  --primary-light: #{$primary-light};
+  --primary-dark: #{$primary-dark};
+  --bg-dark: #f4f4f5;
+  --bg-darker: #e4e4e7;
+  --bg-card: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-card-hover: #f4f4f5;
+  --bg-input: #ffffff;
+  --text-primary: #18181b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --text-disabled: #a1a1aa;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.12);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --header-bg: #ffffff;
+  --search-overlay-bg: rgba(0, 0, 0, 0.5);
+
+  // Element Plus 主题覆盖
+  --el-color-primary: #{$primary-color};
+  --el-color-primary-light-3: #{$primary-light};
+  --el-color-primary-light-5: #93c5fd;
+  --el-color-primary-light-7: #bfdbfe;
+  --el-color-primary-light-9: #dbeafe;
+  --el-color-primary-dark-2: #{$primary-dark};
+
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #f4f4f5;
+  --el-bg-color-page: #f4f4f5;
+
+  --el-text-color-primary: #18181b;
+  --el-text-color-regular: #3f3f46;
+  --el-text-color-secondary: #71717a;
+  --el-text-color-placeholder: #a1a1aa;
+
+  --el-border-color: rgba(0, 0, 0, 0.08);
+  --el-border-color-light: rgba(0, 0, 0, 0.06);
+  --el-border-color-lighter: rgba(0, 0, 0, 0.04);
+
+  --el-fill-color-blank: #ffffff;
 }
 
 // 重置样式
@@ -45,37 +114,23 @@
 }
 
 html, body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
   line-height: 1.6;
-  color: $text-primary;
-  background: $bg-dark;
+  color: var(--text-secondary);
+  background: var(--bg-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-// 背景装饰
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(ellipse 80% 50% at 20% -20%, rgba(168, 85, 247, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(236, 72, 153, 0.1), transparent);
-  pointer-events: none;
-  z-index: -1;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 a {
-  color: $primary-color;
+  color: var(--text-secondary);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: color 0.2s;
 
   &:hover {
-    color: $primary-light;
+    color: var(--text-primary);
   }
 }
 
@@ -88,10 +143,52 @@ img {
   height: auto;
 }
 
-// 滚动条样式
+// 滚动条样式 - 暗色主题
+:root[data-theme="dark"] {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+}
+
+// 滚动条样式 - 亮色主题
+:root[data-theme="light"] {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+  }
+}
+
+// 默认滚动条样式
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -99,11 +196,11 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.15);
   }
 }
 
@@ -121,95 +218,109 @@ img {
   background-clip: text;
 }
 
-// 磨砂玻璃卡片
+// 卡片样式
 .glass-card {
-  background: $glass-bg;
-  backdrop-filter: $glass-blur;
-  -webkit-backdrop-filter: $glass-blur;
-  border: 1px solid $glass-border;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: $radius-lg;
-  box-shadow: $glass-shadow;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 // Element Plus 组件覆盖
 .el-button {
-  border-radius: $radius-md;
+  border-radius: 6px;
   font-weight: 500;
 }
 
 .el-button--primary {
-  background: $primary-gradient;
-  border: none;
+  background: $primary-color;
+  border-color: $primary-color;
   
   &:hover {
-    opacity: 0.9;
+    background: $primary-light;
+    border-color: $primary-light;
   }
 }
 
 .el-input__wrapper {
-  background: $bg-input !important;
-  border-radius: $radius-md !important;
+  background: var(--bg-input) !important;
+  border-radius: 6px !important;
   box-shadow: none !important;
-  border: 1px solid $border-color !important;
+  border: 1px solid var(--border-color) !important;
+  transition: background-color 0.3s, border-color 0.3s !important;
   
   &:hover, &.is-focus {
-    border-color: $primary-color !important;
+    border-color: var(--border-light) !important;
   }
 }
 
 .el-textarea__inner {
-  background: $bg-input !important;
-  border-radius: $radius-md !important;
-  border: 1px solid $border-color !important;
+  background: var(--bg-input) !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary);
+  transition: background-color 0.3s, border-color 0.3s, color 0.3s !important;
   
   &:hover, &:focus {
-    border-color: $primary-color !important;
+    border-color: var(--border-light) !important;
   }
 }
 
 .el-card {
-  background: $glass-bg;
-  backdrop-filter: $glass-blur;
-  border: 1px solid $glass-border;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: $radius-lg;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .el-dropdown-menu {
-  background: $glass-bg !important;
-  backdrop-filter: $glass-blur !important;
-  border: 1px solid $glass-border !important;
-  border-radius: $radius-md !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
 }
 
 .el-dropdown-menu__item {
-  color: $text-secondary !important;
+  color: var(--text-muted) !important;
+  border-radius: 4px;
   
   &:hover {
-    background: rgba(168, 85, 247, 0.1) !important;
-    color: $primary-light !important;
+    background: var(--bg-card-hover) !important;
+    color: var(--text-secondary) !important;
   }
 }
 
 .el-pagination {
   --el-pagination-bg-color: transparent;
-  --el-pagination-button-bg-color: #{$glass-bg};
+  --el-pagination-button-bg-color: var(--bg-card);
   
   .el-pager li {
-    background: $glass-bg !important;
-    border: 1px solid $glass-border;
-    border-radius: $radius-sm;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-muted);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
     
     &.is-active {
-      background: $primary-gradient !important;
-      border-color: transparent;
+      background: $primary-color !important;
+      border-color: $primary-color;
+      color: #fff;
+    }
+    
+    &:hover:not(.is-active) {
+      color: var(--text-secondary);
     }
   }
 }
 
 .el-avatar {
-  border: 2px solid $glass-border;
+  border: 1px solid var(--border-color);
 }
 
 .el-form-item__label {
-  color: $text-secondary !important;
+  color: var(--text-muted) !important;
+}
+
+.el-tag {
+  border-radius: 4px;
 }
