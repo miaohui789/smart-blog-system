@@ -1,0 +1,55 @@
+// 主题色 - 紫色渐变
+$primary-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+$primary-color: #a855f7;
+$primary-light: #c084fc;
+$primary-dark: #9333ea;
+
+// 背景色 - 深色系
+$bg-dark: #0a0a0f;
+$bg-darker: #050508;
+$bg-card: rgba(26, 26, 35, 0.7);
+$bg-card-solid: #1a1a23;
+$bg-card-hover: rgba(38, 38, 50, 0.8);
+$bg-input: rgba(31, 31, 40, 0.8);
+
+// 磨砂玻璃效果
+$glass-bg: rgba(20, 20, 30, 0.6);
+$glass-border: rgba(255, 255, 255, 0.08);
+$glass-blur: blur(20px);
+$glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+// 文字色
+$text-primary: #ffffff;
+$text-secondary: #b4b4c0;
+$text-muted: #71717a;
+$text-disabled: #52525b;
+
+// 边框色
+$border-color: rgba(255, 255, 255, 0.08);
+$border-light: rgba(255, 255, 255, 0.12);
+
+// 功能色
+$success-color: #22c55e;
+$warning-color: #f59e0b;
+$error-color: #ef4444;
+$info-color: #3b82f6;
+
+// 阴影
+$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+$shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
+$shadow-glow: 0 0 30px rgba(168, 85, 247, 0.25);
+
+// 圆角
+$radius-sm: 6px;
+$radius-md: 10px;
+$radius-lg: 16px;
+$radius-xl: 20px;
+
+// 间距
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-2xl: 48px;

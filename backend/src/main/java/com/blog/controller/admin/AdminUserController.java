@@ -1,0 +1,78 @@
+package com.blog.controller.admin;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.common.result.PageResult;
+import com.blog.common.result.Result;
+import com.blog.entity.User;
+import com.blog.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@Tag(name = "用户管理")
+@RestController
+@RequestMapping("/api/admin/users")
+@RequiredArgsConstructor
+public class AdminUserController {
+
+    private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Operation(summary = "用户列表")
+    @GetMapping
+    public Result<PageResult<User>> list(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(keyword)) {
+            wrapper.like(User::getUsername, keyword).or().like(User::getNickname, keyword);
+        }
+        wrapper.orderByDesc(User::getCreateTime);
+
+        Page<User> pageResult = userService.page(new Page<>(page, pageSize), wrapper);
+        pageResult.getRecords().forEach(u -> u.setPassword(null));
+        return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
+    }
+
+    @Operation(summary = "创建用户")
+    @PostMapping
+    public Result<?> create(@RequestBody User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setStatus(1);
+        userService.save(user);
+        return Result.success("创建成功");
+    }
+
+    @Operation(summary = "更新用户")
+    @PutMapping("/{id}")
+    public Result<?> update(@PathVariable Long id, @RequestBody User user) {
+        user.setId(id);
+        user.setPassword(null);
+        userService.updateById(user);
+        return Result.success("更新成功");
+    }
+
+    @Operation(summary = "删除用户")
+    @DeleteMapping("/{id}")
+    public Result<?> delete(@PathVariable Long id) {
+        userService.removeById(id);
+        return Result.success("删除成功");
+    }
+
+    @Operation(summary = "更新状态")
+    @PutMapping("/{id}/status")
+    public Result<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        User user = new User();
+        user.setId(id);
+        user.setStatus(body.get("status"));
+        userService.updateById(user);
+        return Result.success("更新成功");
+    }
+}
