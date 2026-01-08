@@ -1,0 +1,111 @@
+@import './variables.scss';
+
+// 卡片样式
+@mixin card {
+  background: $bg-card;
+  border: 1px solid $border-color;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: $bg-card-hover;
+    border-color: $primary-color;
+    box-shadow: $shadow-glow;
+  }
+}
+
+// 渐变按钮
+@mixin btn-primary {
+  background: $primary-gradient;
+  color: $text-primary;
+  border: none;
+  border-radius: $radius-md;
+  padding: 10px 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-glow;
+  }
+}
+
+// 边框按钮
+@mixin btn-outline {
+  background: transparent;
+  color: $text-primary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: $primary-color;
+    color: $primary-color;
+  }
+}
+
+// 输入框
+@mixin input {
+  background: $bg-input;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 12px 16px;
+  color: $text-primary;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: $primary-color;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+  }
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
+// 标签
+@mixin tag {
+  display: inline-block;
+  background: rgba(168, 85, 247, 0.1);
+  color: $primary-light;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(168, 85, 247, 0.2);
+  }
+}
+
+// 文字省略
+@mixin ellipsis($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+// Flex布局
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
