@@ -2,6 +2,7 @@
   <el-upload
     class="image-uploader"
     :action="uploadUrl"
+    :headers="headers"
     :show-file-list="false"
     :on-success="handleSuccess"
     :before-upload="beforeUpload"
@@ -12,9 +13,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getToken } from '@/utils/auth'
 
 const props = defineProps({
   modelValue: { type: String, default: '' }
@@ -24,6 +26,10 @@ const emit = defineEmits(['update:modelValue'])
 
 const uploadUrl = '/api/admin/upload/image'
 const imageUrl = ref(props.modelValue)
+
+const headers = computed(() => ({
+  Authorization: `Bearer ${getToken()}`
+}))
 
 watch(() => props.modelValue, (val) => {
   imageUrl.value = val
@@ -48,7 +54,7 @@ function handleSuccess(res) {
 <style lang="scss" scoped>
 .image-uploader {
   :deep(.el-upload) {
-    border: 1px dashed #333;
+    border: 1px dashed var(--border-color);
     border-radius: 8px;
     cursor: pointer;
     width: 150px;
@@ -56,9 +62,11 @@ function handleSuccess(res) {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg-darker);
+    transition: all 0.3s;
 
     &:hover {
-      border-color: #a855f7;
+      border-color: var(--primary-color);
     }
   }
 }
@@ -67,10 +75,11 @@ function handleSuccess(res) {
   width: 150px;
   height: 150px;
   object-fit: cover;
+  border-radius: 8px;
 }
 
 .uploader-icon {
   font-size: 28px;
-  color: #666;
+  color: var(--text-muted);
 }
 </style>

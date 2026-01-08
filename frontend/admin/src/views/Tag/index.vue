@@ -128,6 +128,10 @@ onMounted(fetchList)
 <style lang="scss" scoped>
 @import '@/assets/styles/variables.scss';
 
+.tag-page {
+  padding: 20px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -138,7 +142,7 @@ onMounted(fetchList)
     font-size: 20px;
     font-weight: 600;
     color: var(--text-primary);
-    transition: color 0.3s;
+    margin: 0;
   }
 }
 
@@ -147,7 +151,6 @@ onMounted(fetchList)
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   padding: $spacing-lg;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .tag-preview {
@@ -182,6 +185,57 @@ onMounted(fetchList)
     font-size: 13px;
     color: var(--text-muted);
     font-family: monospace;
+  }
+}
+
+:deep(.el-table) {
+  background: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-darker);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+}
+
+:deep(.el-dialog) {
+  --el-dialog-bg-color: var(--bg-card);
+  border-radius: $radius-lg;
+  
+  .el-dialog__header {
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 20px;
+  }
+  
+  .el-dialog__title {
+    color: var(--text-primary);
+  }
+  
+  .el-dialog__body {
+    padding: 20px;
+  }
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-input__wrapper) {
+  background: var(--bg-darker);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  
+  &:hover, &:focus {
+    border-color: var(--primary-color);
+  }
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+  
+  &::placeholder {
+    color: var(--text-muted);
   }
 }
 </style>

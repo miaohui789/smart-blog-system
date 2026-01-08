@@ -79,13 +79,44 @@ onMounted(async () => {
 <style lang="scss" scoped>
 @import '@/assets/styles/variables.scss';
 
+.article-create {
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: $radius-lg;
+}
+
 .page-title {
   font-size: 20px;
-  color: $text-primary;
-  margin-bottom: $spacing-xl;
+  color: var(--text-primary);
+  margin: 0 0 $spacing-xl 0;
 }
 
 :deep(.el-form) {
   max-width: 900px;
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper),
+:deep(.el-textarea__inner) {
+  background: var(--bg-darker);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  
+  &:hover, &:focus {
+    border-color: var(--primary-color);
+  }
+}
+
+:deep(.el-input__inner),
+:deep(.el-textarea__inner) {
+  color: var(--text-primary);
+  
+  &::placeholder {
+    color: var(--text-muted);
+  }
 }
 </style>

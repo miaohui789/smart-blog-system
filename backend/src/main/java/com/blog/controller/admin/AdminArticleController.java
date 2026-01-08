@@ -6,7 +6,9 @@ import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
 import com.blog.dto.request.ArticleRequest;
 import com.blog.entity.Article;
+import com.blog.entity.Category;
 import com.blog.service.ArticleService;
+import com.blog.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Tag(name = "文章管理")
 @RestController
@@ -23,6 +27,7 @@ import java.time.LocalDateTime;
 public class AdminArticleController {
 
     private final ArticleService articleService;
+    private final CategoryService categoryService;
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -30,17 +35,32 @@ public class AdminArticleController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Integer status) {
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
             wrapper.like(Article::getTitle, keyword);
         }
+        if (categoryId != null) {
+            wrapper.eq(Article::getCategoryId, categoryId);
+        }
         if (status != null) {
             wrapper.eq(Article::getStatus, status);
         }
-        wrapper.orderByDesc(Article::getCreateTime);
+        wrapper.orderByDesc(Article::getIsTop).orderByDesc(Article::getCreateTime);
 
         Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
+        
+        // 填充分类名称
+        pageResult.getRecords().forEach(article -> {
+            if (article.getCategoryId() != null) {
+                Category category = categoryService.getById(article.getCategoryId());
+                if (category != null) {
+                    article.setCategoryName(category.getName());
+                }
+            }
+        });
+        
         return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
     }
 
@@ -100,5 +120,55 @@ public class AdminArticleController {
     public Result<?> delete(@PathVariable Long id) {
         articleService.removeById(id);
         return Result.success("删除成功");
+    }
+
+    @Operation(summary = "批量删除文章")
+    @DeleteMapping("/batch")
+    public Result<?> batchDelete(@RequestBody Map<String, List<Long>> body) {
+        List<Long> ids = body.get("ids");
+        if (ids != null && !ids.isEmpty()) {
+            articleService.removeByIds(ids);
+        }
+        return Result.success("删除成功");
+    }
+
+    @Operation(summary = "更新文章状态")
+    @PutMapping("/{id}/status")
+    public Result<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Article article = articleService.getById(id);
+        if (article == null) {
+            return Result.error("文章不存在");
+        }
+        Integer status = body.get("status");
+        article.setStatus(status);
+        if (status == 1 && article.getPublishTime() == null) {
+            article.setPublishTime(LocalDateTime.now());
+        }
+        articleService.updateById(article);
+        return Result.success("更新成功");
+    }
+
+    @Operation(summary = "设置置顶")
+    @PutMapping("/{id}/top")
+    public Result<?> updateTop(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Article article = articleService.getById(id);
+        if (article == null) {
+            return Result.error("文章不存在");
+        }
+        article.setIsTop(body.get("isTop"));
+        articleService.updateById(article);
+        return Result.success("更新成功");
+    }
+
+    @Operation(summary = "设置推荐")
+    @PutMapping("/{id}/recommend")
+    public Result<?> updateRecommend(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Article article = articleService.getById(id);
+        if (article == null) {
+            return Result.error("文章不存在");
+        }
+        article.setIsRecommend(body.get("isRecommend"));
+        articleService.updateById(article);
+        return Result.success("更新成功");
     }
 }

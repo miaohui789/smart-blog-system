@@ -44,6 +44,7 @@ public class SecurityConfig {
             .authorizeRequests()
             .antMatchers(
                 "/api/auth/**",
+                "/api/admin/auth/**",
                 "/api/articles/**",
                 "/api/categories/**",
                 "/api/tags/**",

@@ -30,4 +30,8 @@ public class Article {
     private LocalDateTime updateTime;
     @TableLogic
     private Integer isDeleted;
+    
+    // 非数据库字段
+    @TableField(exist = false)
+    private String categoryName;
 }

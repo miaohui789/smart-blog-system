@@ -1,16 +1,17 @@
 <template>
   <aside class="sidebar" :class="{ collapsed: settingsStore.sidebarCollapsed }">
     <div class="logo">
-      <span v-if="!settingsStore.sidebarCollapsed">博客管理</span>
-      <span v-else>B</span>
+      <span class="logo-icon">✦</span>
+      <span v-if="!settingsStore.sidebarCollapsed" class="logo-text">博客管理</span>
     </div>
     <el-menu
       :default-active="$route.path"
       :collapse="settingsStore.sidebarCollapsed"
-      background-color="#1a1a1a"
-      text-color="#a1a1aa"
-      active-text-color="#a855f7"
+      :background-color="'transparent'"
+      :text-color="'var(--text-secondary)'"
+      :active-text-color="'var(--primary-color)'"
       router
+      class="sidebar-menu"
     >
       <el-menu-item index="/dashboard">
         <el-icon><Odometer /></el-icon>
@@ -70,10 +71,12 @@ const settingsStore = useSettingsStore()
   top: 0;
   bottom: 0;
   width: $sidebar-width;
-  background: $bg-card;
-  border-right: 1px solid $border-color;
-  transition: width 0.3s;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.3s, background-color 0.3s, border-color 0.3s;
   z-index: 100;
+  display: flex;
+  flex-direction: column;
 
   &.collapsed {
     width: $sidebar-collapsed-width;
@@ -85,13 +88,50 @@ const settingsStore = useSettingsStore()
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: $primary-color;
-  border-bottom: 1px solid $border-color;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  transition: border-color 0.3s;
+  flex-shrink: 0;
+  
+  .logo-icon {
+    font-size: 20px;
+    color: #ef4444;
+  }
+  
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    transition: color 0.3s;
+  }
 }
 
-:deep(.el-menu) {
-  border-right: none;
+.sidebar-menu {
+  flex: 1;
+  border-right: none !important;
+  overflow-y: auto;
+  
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
+    color: var(--text-secondary);
+    transition: color 0.3s, background-color 0.3s;
+    
+    &:hover {
+      background: var(--bg-card-hover);
+    }
+  }
+  
+  :deep(.el-menu-item.is-active) {
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--primary-color);
+  }
+  
+  :deep(.el-sub-menu .el-menu) {
+    background: transparent !important;
+  }
+  
+  :deep(.el-sub-menu .el-menu-item) {
+    padding-left: 50px !important;
+  }
 }
 </style>

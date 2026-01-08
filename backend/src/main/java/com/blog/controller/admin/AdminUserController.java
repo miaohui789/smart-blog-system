@@ -29,10 +29,16 @@ public class AdminUserController {
     public Result<PageResult<User>> list(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
-            wrapper.like(User::getUsername, keyword).or().like(User::getNickname, keyword);
+            wrapper.and(w -> w.like(User::getUsername, keyword)
+                    .or().like(User::getNickname, keyword)
+                    .or().like(User::getEmail, keyword));
+        }
+        if (status != null) {
+            wrapper.eq(User::getStatus, status);
         }
         wrapper.orderByDesc(User::getCreateTime);
 
@@ -41,9 +47,23 @@ public class AdminUserController {
         return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
     }
 
+    @Operation(summary = "用户详情")
+    @GetMapping("/{id}")
+    public Result<User> detail(@PathVariable Long id) {
+        User user = userService.getById(id);
+        if (user != null) {
+            user.setPassword(null);
+        }
+        return Result.success(user);
+    }
+
     @Operation(summary = "创建用户")
     @PostMapping
     public Result<?> create(@RequestBody User user) {
+        // 检查用户名是否存在
+        if (userService.getByUsername(user.getUsername()) != null) {
+            return Result.error("用户名已存在");
+        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setStatus(1);
         userService.save(user);
@@ -54,7 +74,7 @@ public class AdminUserController {
     @PutMapping("/{id}")
     public Result<?> update(@PathVariable Long id, @RequestBody User user) {
         user.setId(id);
-        user.setPassword(null);
+        user.setPassword(null); // 不更新密码
         userService.updateById(user);
         return Result.success("更新成功");
     }
@@ -74,5 +94,17 @@ public class AdminUserController {
         user.setStatus(body.get("status"));
         userService.updateById(user);
         return Result.success("更新成功");
+    }
+
+    @Operation(summary = "重置密码")
+    @PutMapping("/{id}/password")
+    public Result<?> resetPassword(@PathVariable Long id) {
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        user.setPassword(passwordEncoder.encode("123456"));
+        userService.updateById(user);
+        return Result.success("密码已重置为 123456");
     }
 }

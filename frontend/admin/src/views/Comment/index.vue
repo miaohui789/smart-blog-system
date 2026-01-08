@@ -112,6 +112,10 @@ onMounted(fetchList)
 <style lang="scss" scoped>
 @import '@/assets/styles/variables.scss';
 
+.comment-page {
+  padding: 20px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -122,7 +126,7 @@ onMounted(fetchList)
     font-size: 20px;
     font-weight: 600;
     color: var(--text-primary);
-    transition: color 0.3s;
+    margin: 0;
   }
 }
 
@@ -135,7 +139,6 @@ onMounted(fetchList)
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   margin-bottom: $spacing-lg;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .table-card {
@@ -143,7 +146,6 @@ onMounted(fetchList)
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   padding: $spacing-lg;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .user-cell {
@@ -157,8 +159,58 @@ onMounted(fetchList)
   }
 }
 
+:deep(.el-table) {
+  background: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-darker);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper) {
+  background: var(--bg-darker);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  
+  &:hover, &:focus {
+    border-color: var(--primary-color);
+  }
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+  
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
 :deep(.el-pagination) {
   margin-top: $spacing-lg;
   justify-content: flex-end;
+  
+  .el-pagination__total,
+  .el-pagination__jump {
+    color: var(--text-secondary);
+  }
+  
+  .el-pager li {
+    background: var(--bg-darker);
+    color: var(--text-primary);
+    
+    &.is-active {
+      background: var(--primary-color);
+      color: #fff;
+    }
+  }
+  
+  .btn-prev, .btn-next {
+    background: var(--bg-darker);
+    color: var(--text-primary);
+  }
 }
 </style>

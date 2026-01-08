@@ -89,14 +89,71 @@ onMounted(fetchLogs)
 <style lang="scss" scoped>
 @import '@/assets/styles/variables.scss';
 
+.log-page {
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: $radius-lg;
+}
+
 .page-title {
   font-size: 20px;
-  color: $text-primary;
-  margin-bottom: $spacing-xl;
+  color: var(--text-primary);
+  margin: 0 0 $spacing-xl 0;
+}
+
+:deep(.el-tabs__item) {
+  color: var(--text-secondary);
+  
+  &.is-active {
+    color: var(--primary-color);
+  }
+  
+  &:hover {
+    color: var(--primary-color);
+  }
+}
+
+:deep(.el-tabs__active-bar) {
+  background-color: var(--primary-color);
+}
+
+:deep(.el-tabs__nav-wrap::after) {
+  background-color: var(--border-color);
+}
+
+:deep(.el-table) {
+  background: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-darker);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
 }
 
 :deep(.el-pagination) {
   margin-top: $spacing-lg;
   justify-content: flex-end;
+  
+  .el-pagination__total,
+  .el-pagination__jump {
+    color: var(--text-secondary);
+  }
+  
+  .el-pager li {
+    background: var(--bg-darker);
+    color: var(--text-primary);
+    
+    &.is-active {
+      background: var(--primary-color);
+      color: #fff;
+    }
+  }
+  
+  .btn-prev, .btn-next {
+    background: var(--bg-darker);
+    color: var(--text-primary);
+  }
 }
 </style>

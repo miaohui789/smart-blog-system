@@ -131,6 +131,12 @@ onMounted(fetchList)
 <style lang="scss" scoped>
 @import '@/assets/styles/variables.scss';
 
+.menu-page {
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: $radius-lg;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -139,7 +145,73 @@ onMounted(fetchList)
 
   h2 {
     font-size: 20px;
-    color: $text-primary;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+:deep(.el-table) {
+  background: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-darker);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+}
+
+:deep(.el-dialog) {
+  --el-dialog-bg-color: var(--bg-card);
+  --el-dialog-title-font-size: 18px;
+  border-radius: $radius-lg;
+  
+  .el-dialog__header {
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 20px;
+  }
+  
+  .el-dialog__title {
+    color: var(--text-primary);
+  }
+  
+  .el-dialog__body {
+    padding: 20px;
+  }
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper),
+:deep(.el-textarea__inner) {
+  background: var(--bg-darker);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  
+  &:hover, &:focus {
+    border-color: var(--primary-color);
+  }
+}
+
+:deep(.el-input__inner),
+:deep(.el-textarea__inner) {
+  color: var(--text-primary);
+  
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
+:deep(.el-radio__label) {
+  color: var(--text-primary);
+}
+
+:deep(.el-input-number) {
+  .el-input__wrapper {
+    background: var(--bg-darker);
   }
 }
 </style>

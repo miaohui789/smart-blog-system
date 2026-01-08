@@ -9,8 +9,7 @@ import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps({
   data: { type: Object, required: true },
-  smooth: { type: Boolean, default: true },
-  showArea: { type: Boolean, default: true }
+  horizontal: { type: Boolean, default: false }
 })
 
 const themeStore = useThemeStore()
@@ -31,42 +30,45 @@ function updateChart() {
   const textColor = isDark ? '#a1a1aa' : '#71717a'
   const gridColor = isDark ? '#333' : '#e5e7eb'
   
+  const xAxisConfig = {
+    type: props.horizontal ? 'value' : 'category',
+    data: props.horizontal ? undefined : (props.data.xAxis || []),
+    axisLine: { lineStyle: { color: gridColor } },
+    axisLabel: { color: textColor },
+    splitLine: { lineStyle: { color: gridColor } }
+  }
+  
+  const yAxisConfig = {
+    type: props.horizontal ? 'category' : 'value',
+    data: props.horizontal ? (props.data.xAxis || []) : undefined,
+    axisLine: { lineStyle: { color: gridColor } },
+    axisLabel: { color: textColor },
+    splitLine: { lineStyle: { color: gridColor } }
+  }
+  
   const option = {
     backgroundColor: 'transparent',
-    tooltip: { 
-      trigger: 'axis',
-      backgroundColor: isDark ? '#27272a' : '#ffffff',
-      borderColor: isDark ? '#3f3f46' : '#e5e7eb',
-      textStyle: { color: isDark ? '#fafafa' : '#18181b' }
-    },
+    tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: props.data.xAxis || [],
-      axisLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor },
-      boundaryGap: false
-    },
-    yAxis: {
-      type: 'value',
-      axisLine: { lineStyle: { color: gridColor } },
-      axisLabel: { color: textColor },
-      splitLine: { lineStyle: { color: gridColor } }
-    },
+    xAxis: xAxisConfig,
+    yAxis: yAxisConfig,
     series: [{
       data: props.data.series || [],
-      type: 'line',
-      smooth: props.smooth,
-      areaStyle: props.showArea ? {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(168, 85, 247, 0.3)' },
-          { offset: 1, color: 'rgba(168, 85, 247, 0)' }
-        ])
-      } : undefined,
-      lineStyle: { color: '#a855f7', width: 2 },
-      itemStyle: { color: '#a855f7' },
-      symbol: 'circle',
-      symbolSize: 6
+      type: 'bar',
+      barWidth: '60%',
+      itemStyle: {
+        borderRadius: props.horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0],
+        color: new echarts.graphic.LinearGradient(
+          props.horizontal ? 0 : 0,
+          props.horizontal ? 0 : 1,
+          props.horizontal ? 1 : 0,
+          props.horizontal ? 0 : 0,
+          [
+            { offset: 0, color: '#a855f7' },
+            { offset: 1, color: '#ec4899' }
+          ]
+        )
+      }
     }]
   }
   chart.setOption(option)
@@ -104,6 +106,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .chart-container {
   width: 100%;
-  height: 300px;
+  height: 280px;
 }
 </style>
