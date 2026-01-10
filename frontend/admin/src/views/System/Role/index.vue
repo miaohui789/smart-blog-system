@@ -2,11 +2,21 @@
   <div class="role-page">
     <div class="page-header">
       <h2>角色管理</h2>
-      <el-button type="primary" @click="handleAdd">
+      <el-button type="primary" @click="handleAdd" :disabled="!canManageRoles">
         <el-icon><Plus /></el-icon>
         添加角色
       </el-button>
     </div>
+
+    <!-- 无权限提示 -->
+    <el-alert
+      v-if="!canManageRoles"
+      title="您当前角色没有角色管理权限，仅可查看角色列表"
+      type="warning"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px"
+    />
 
     <div class="table-card">
       <el-table :data="list" v-loading="loading">
@@ -27,8 +37,18 @@
         <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
         <el-table-column label="操作" width="160">
           <template #default="{ row }">
-            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
-            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
+            <button 
+              class="action-btn edit-btn" 
+              :class="{ disabled: !canManageRoles }"
+              :disabled="!canManageRoles"
+              @click="handleEdit(row)"
+            >编辑</button>
+            <button 
+              class="action-btn delete-btn"
+              :class="{ disabled: !canManageRoles }"
+              :disabled="!canManageRoles"
+              @click="handleDelete(row.id)"
+            >删除</button>
           </template>
         </el-table-column>
       </el-table>
@@ -58,10 +78,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getRoleList, createRole, updateRole, deleteRole } from '@/api/role'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// 判断是否有角色管理权限
+const canManageRoles = computed(() => {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  // 检查是否有全部权限
+  if (permissions.includes('*:*:*')) {
+    return true
+  }
+  
+  // 检查角色
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === 'ADMIN' ||
+    role === 'super_admin'
+  )
+})
 
 const list = ref([])
 const loading = ref(false)
@@ -148,6 +190,45 @@ onMounted(fetchList)
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   padding: $spacing-lg;
+}
+
+/* 操作按钮样式 */
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 8px;
+  
+  &:last-child {
+    margin-right: 0;
+  }
+  
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.edit-btn {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  
+  &:hover:not(.disabled) {
+    background: rgba(59, 130, 246, 0.3);
+  }
+}
+
+.delete-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  
+  &:hover:not(.disabled) {
+    background: rgba(239, 68, 68, 0.3);
+  }
 }
 
 :deep(.el-table) {

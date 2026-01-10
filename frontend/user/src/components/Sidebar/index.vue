@@ -4,9 +4,10 @@
       <h3 class="card-title">
         <el-icon><TrendCharts /></el-icon>
         热门文章
+        <router-link to="/archive" class="more-link">更多</router-link>
       </h3>
       <ul class="hot-list">
-        <li v-for="(article, index) in hotArticles" :key="article.id" class="hot-item">
+        <li v-for="(article, index) in displayedArticles" :key="article.id" class="hot-item">
           <span class="hot-rank" :class="getRankClass(index)">{{ index + 1 }}</span>
           <router-link :to="`/article/${article.id}`" class="hot-title">
             {{ article.title }}
@@ -20,19 +21,25 @@
       <h3 class="card-title">
         <el-icon><PriceTag /></el-icon>
         标签云
+        <router-link to="/tag" class="more-link">更多</router-link>
       </h3>
-      <TagCloud />
+      <TagCloud :limit="20" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { TrendCharts, PriceTag } from '@element-plus/icons-vue'
 import { getHotArticles } from '@/api/article'
 import TagCloud from '@/components/TagCloud/index.vue'
 
 const hotArticles = ref([])
+
+// 限制最多显示8篇热门文章
+const displayedArticles = computed(() => {
+  return hotArticles.value.slice(0, 8)
+})
 
 function getRankClass(index) {
   if (index === 0) return 'gold'
@@ -87,6 +94,19 @@ onMounted(async () => {
   
   .el-icon {
     color: $primary-color;
+  }
+  
+  .more-link {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    
+    &:hover {
+      color: $primary-color;
+    }
   }
 }
 

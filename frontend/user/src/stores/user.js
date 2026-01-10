@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as loginApi, logout as logoutApi, getUserInfo } from '@/api/user'
 import { getToken, setToken, removeToken, getUser, setUser, removeUser } from '@/utils/auth'
+import { initWebSocket, closeWebSocket } from '@/utils/websocket'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(getToken() || '')
-  const userInfo = ref(getUser()) // 从 localStorage 恢复用户信息
+  const userInfo = ref(getUser())
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -14,6 +15,10 @@ export const useUserStore = defineStore('user', () => {
     token.value = res.data.token
     setToken(res.data.token)
     await fetchUserInfo()
+    // 登录成功后建立WebSocket连接
+    if (userInfo.value?.id) {
+      initWebSocket(userInfo.value.id)
+    }
     return res
   }
 
@@ -33,6 +38,7 @@ export const useUserStore = defineStore('user', () => {
     try {
       await logoutApi()
     } finally {
+      closeWebSocket()
       token.value = ''
       userInfo.value = null
       removeToken()
@@ -41,6 +47,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function resetState() {
+    closeWebSocket()
     token.value = ''
     userInfo.value = null
     removeToken()
@@ -54,9 +61,15 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // 初始化时，如果有 token 但没有用户信息，尝试获取
-  if (token.value && !userInfo.value) {
-    fetchUserInfo()
+  // 初始化时，如果有token和用户信息，建立WebSocket连接
+  if (token.value && userInfo.value?.id) {
+    initWebSocket(userInfo.value.id)
+  } else if (token.value && !userInfo.value) {
+    fetchUserInfo().then(user => {
+      if (user?.id) {
+        initWebSocket(user.id)
+      }
+    })
   }
 
   return {

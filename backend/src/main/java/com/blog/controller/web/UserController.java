@@ -1,12 +1,17 @@
 package com.blog.controller.web;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.Result;
 import com.blog.dto.request.LoginRequest;
 import com.blog.dto.request.RegisterRequest;
+import com.blog.entity.Role;
 import com.blog.entity.User;
+import com.blog.entity.UserRole;
 import com.blog.security.JwtTokenProvider;
 import com.blog.security.SecurityUser;
+import com.blog.service.RoleService;
+import com.blog.service.UserRoleService;
 import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "认证接口")
@@ -31,6 +37,8 @@ public class UserController {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserService userService;
+    private final UserRoleService userRoleService;
+    private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
 
     @Operation(summary = "用户登录")
@@ -40,11 +48,41 @@ public class UserController {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
         SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
-        String token = jwtTokenProvider.generateToken(securityUser.getUser().getId(), securityUser.getUsername());
+        User user = securityUser.getUser();
+        
+        // 检查用户是否有普通用户权限且角色未被禁用
+        if (!hasValidUserRole(user.getId())) {
+            return Result.error(ResultCode.NO_PERMISSION_OR_FROZEN);
+        }
+        
+        String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
 
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
         return Result.success(data);
+    }
+    
+    /**
+     * 检查用户是否有有效的普通用户角色
+     * 规则：
+     * 1. 用户必须拥有"普通用户"角色（roleKey = 'user'）
+     * 2. 该角色必须是启用状态（status = 1）
+     * 超级管理员如果没有普通用户角色，则不能登录用户端
+     */
+    private boolean hasValidUserRole(Long userId) {
+        List<Map<String, Object>> roles = userRoleService.getRolesWithStatusByUserId(userId);
+        
+        for (Map<String, Object> role : roles) {
+            String roleKey = (String) role.get("role_key");
+            Object statusObj = role.get("status");
+            int status = statusObj instanceof Number ? ((Number) statusObj).intValue() : 0;
+            
+            // 检查是否有普通用户角色且角色状态为启用
+            if ("user".equals(roleKey) && status == 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Operation(summary = "用户注册")
@@ -62,7 +100,28 @@ public class UserController {
         user.setStatus(1);
         userService.save(user);
 
+        // 为新用户分配"普通用户"角色
+        assignDefaultRole(user.getId());
+
         return Result.success("注册成功");
+    }
+
+    /**
+     * 为用户分配默认角色（普通用户）
+     */
+    private void assignDefaultRole(Long userId) {
+        // 查找"普通用户"角色（roleKey = 'user'）
+        LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Role::getRoleKey, "user").eq(Role::getStatus, 1);
+        Role userRole = roleService.getOne(wrapper);
+        
+        if (userRole != null) {
+            // 创建用户角色关联
+            UserRole ur = new UserRole();
+            ur.setUserId(userId);
+            ur.setRoleId(userRole.getId());
+            userRoleService.save(ur);
+        }
     }
 
     @Operation(summary = "获取用户信息")

@@ -6,7 +6,7 @@
         <!-- 置顶/推荐文章 - 大卡片 -->
         <div v-if="featuredArticle" class="featured-article" @click="goArticle(featuredArticle.id)">
           <div class="featured-cover">
-            <img v-if="featuredArticle.cover" :src="featuredArticle.cover" :alt="featuredArticle.title" />
+            <img :src="getFeaturedCover" :alt="featuredArticle.title" @error="handleFeaturedImageError" />
             <div class="featured-overlay"></div>
           </div>
           <div class="featured-content">
@@ -17,8 +17,10 @@
             <p class="featured-summary">{{ featuredArticle.summary }}</p>
             <div class="featured-meta">
               <span><el-icon><Calendar /></el-icon>{{ formatDate(featuredArticle.publishTime) }}</span>
-              <span><el-icon><View /></el-icon>{{ featuredArticle.viewCount }}</span>
-              <span><el-icon><ChatDotRound /></el-icon>{{ featuredArticle.commentCount }}</span>
+              <span><el-icon><View /></el-icon>{{ featuredArticle.viewCount || 0 }}</span>
+              <span class="like"><el-icon><Star /></el-icon>{{ featuredArticle.likeCount || 0 }}</span>
+              <span class="favorite"><el-icon><CollectionTag /></el-icon>{{ featuredArticle.favoriteCount || 0 }}</span>
+              <span><el-icon><ChatDotRound /></el-icon>{{ featuredArticle.commentCount || 0 }}</span>
             </div>
           </div>
         </div>
@@ -53,7 +55,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Calendar, View, ChatDotRound } from '@element-plus/icons-vue'
+import { Calendar, View, ChatDotRound, Star, CollectionTag } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
 import { formatDate } from '@/utils/format'
 import ArticleCard from '@/components/ArticleCard/index.vue'
@@ -65,6 +67,10 @@ const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const featuredImageError = ref(false)
+
+// 默认封面图
+const defaultCover = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="400"%3E%3Cdefs%3E%3ClinearGradient id="g" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%23a855f7"/%3E%3Cstop offset="100%25" stop-color="%23ec4899"/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="800" height="400" fill="url(%23g)"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="48" fill="white" text-anchor="middle" dy=".3em"%3E📝 Blog%3C/text%3E%3C/svg%3E'
 
 // 置顶/推荐文章（第一篇）
 const featuredArticle = computed(() => {
@@ -81,6 +87,18 @@ const normalArticles = computed(() => {
   }
   return articles.value
 })
+
+// 置顶文章封面
+const getFeaturedCover = computed(() => {
+  if (featuredImageError.value || !featuredArticle.value?.cover) {
+    return defaultCover
+  }
+  return featuredArticle.value.cover
+})
+
+function handleFeaturedImageError() {
+  featuredImageError.value = true
+}
 
 function goArticle(id) {
   router.push(`/article/${id}`)
@@ -104,6 +122,7 @@ async function fetchArticles() {
 
 function handlePageChange(page) {
   currentPage.value = page
+  featuredImageError.value = false
   fetchArticles()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -219,6 +238,14 @@ onMounted(() => {
     gap: 6px;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.5);
+    
+    &.like {
+      color: #f87171;
+    }
+    
+    &.favorite {
+      color: #fbbf24;
+    }
   }
 }
 

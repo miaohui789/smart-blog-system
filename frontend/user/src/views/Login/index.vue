@@ -116,7 +116,8 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
-    console.error(e)
+    // 错误已由 request.js 拦截器统一处理并显示
+    // 这里不需要额外处理，避免重复提示
   } finally {
     loading.value = false
   }

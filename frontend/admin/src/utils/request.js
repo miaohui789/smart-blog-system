@@ -25,6 +25,7 @@ service.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
+        ElMessage.warning('登录已失效，请重新登录')
         removeToken()
         router.push('/login')
       }
@@ -33,7 +34,14 @@ service.interceptors.response.use(
     return res
   },
   error => {
-    ElMessage.error(error.message || '网络错误')
+    // 处理401错误（可能是被挤下线）
+    if (error.response && error.response.status === 401) {
+      ElMessage.warning('账号已在其他设备登录，请重新登录')
+      removeToken()
+      router.push('/login')
+    } else {
+      ElMessage.error(error.message || '网络错误')
+    }
     return Promise.reject(error)
   }
 )

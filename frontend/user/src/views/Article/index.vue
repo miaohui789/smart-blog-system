@@ -5,10 +5,24 @@
 
     <!-- 文章内容 -->
     <template v-else-if="article">
+      <!-- 返回导航 -->
+      <div class="back-nav">
+        <button class="back-btn" @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+          <span>返回</span>
+        </button>
+      </div>
+      
       <article class="article-card glass-card">
         <!-- 文章头部 -->
         <header class="article-header">
-          <h1 class="article-title">{{ article.title }}</h1>
+          <div class="title-row">
+            <h1 class="article-title">{{ article.title }}</h1>
+            <button class="go-comment-btn" @click="scrollToComment">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>评论</span>
+            </button>
+          </div>
           <div class="article-info">
             <div class="author-info" v-if="article.author">
               <el-avatar :size="36" :src="article.author.avatar">
@@ -104,7 +118,7 @@
       </article>
 
       <!-- 评论区 -->
-      <section class="comment-section glass-card">
+      <section id="comment-section" class="comment-section glass-card">
         <h3 class="section-title">
           <el-icon><ChatDotRound /></el-icon>
           评论区 <span class="comment-count">({{ totalComments }})</span>
@@ -206,8 +220,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getArticleDetail, likeArticle, unlikeArticle, favoriteArticle, unfavoriteArticle } from '@/api/article'
 import { getCommentList, createComment, likeComment } from '@/api/comment'
@@ -218,6 +232,7 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/atom-one-dark.css'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 
 const article = ref(null)
@@ -228,16 +243,37 @@ const submitting = ref(false)
 const commentContent = ref('')
 const replyTo = ref(null)
 
+// 滚动到评论区
+function scrollToComment() {
+  const commentSection = document.getElementById('comment-section')
+  if (commentSection) {
+    commentSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+// 返回上一页
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
+
 // 代码高亮并添加复制按钮
 function highlightCode() {
   nextTick(() => {
     document.querySelectorAll('.article-body pre code').forEach((block) => {
-      // 执行代码高亮
-      hljs.highlightElement(block)
-      
       // 获取 pre 元素
       const pre = block.parentElement
-      if (!pre || pre.querySelector('.copy-btn')) return // 避免重复添加
+      if (!pre) return
+      
+      // 检查是否已经处理过（通过自定义属性标记）
+      if (pre.dataset.highlighted === 'true') return
+      pre.dataset.highlighted = 'true'
+      
+      // 执行代码高亮
+      hljs.highlightElement(block)
       
       // 设置 pre 为相对定位
       pre.style.position = 'relative'
@@ -368,8 +404,6 @@ async function fetchArticle() {
     const res = await getArticleDetail(route.params.id)
     if (res && res.data) {
       article.value = res.data
-      // 文章加载完成后执行代码高亮
-      highlightCode()
     }
   } catch (e) {
     console.error('获取文章失败:', e)
@@ -515,6 +549,35 @@ onMounted(() => {
   padding: 20px;
 }
 
+/* 返回导航 */
+.back-nav {
+  margin-bottom: 16px;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  .el-icon {
+    font-size: 16px;
+  }
+  
+  &:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.05);
+  }
+}
+
 .loading-container {
   padding: 40px;
   background: var(--bg-card);
@@ -538,13 +601,82 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .article-title {
+  flex: 1;
   font-size: 32px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.4;
-  margin-bottom: 20px;
   transition: color 0.3s;
+}
+
+/* 评论按钮 */
+.go-comment-btn {
+  --color: #560bad;
+  flex-shrink: 0;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 8em;
+  height: 2.6em;
+  line-height: 2.5em;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid var(--color);
+  transition: color 0.5s;
+  z-index: 1;
+  font-size: 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  color: var(--color);
+  background: transparent;
+  
+  .el-icon {
+    font-size: 16px;
+    transition: color 0.5s;
+  }
+  
+  &:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    background: var(--color);
+    height: 150px;
+    width: 200px;
+    border-radius: 50%;
+    top: 100%;
+    left: 100%;
+    transition: all 0.7s;
+  }
+  
+  &:hover {
+    color: #fff;
+    
+    .el-icon {
+      color: #fff;
+    }
+    
+    &:before {
+      top: -30px;
+      left: -30px;
+    }
+  }
+  
+  &:active:before {
+    background: #3a0ca3;
+    transition: background 0s;
+  }
 }
 
 .article-info {

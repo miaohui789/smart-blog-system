@@ -2,11 +2,21 @@
   <div class="user-page">
     <div class="page-header">
       <h2>用户管理</h2>
-      <el-button type="primary" @click="handleAdd">
+      <el-button type="primary" @click="handleAdd" :disabled="!canManageUsers">
         <el-icon><Plus /></el-icon>
         添加用户
       </el-button>
     </div>
+
+    <!-- 无权限提示 -->
+    <el-alert
+      v-if="!canManageUsers"
+      title="您当前角色没有用户管理权限，仅可查看用户列表"
+      type="warning"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px"
+    />
 
     <div class="filter-card">
       <el-input v-model="query.keyword" placeholder="搜索用户名/昵称/邮箱" clearable style="width: 240px" @keyup.enter="fetchList">
@@ -41,7 +51,7 @@
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column label="角色" width="120">
           <template #default="{ row }">
-            <el-tag v-for="role in row.roles" :key="role" size="small" style="margin-right: 4px">
+            <el-tag v-for="role in row.roles" :key="role" size="small" :type="getRoleTagType(role)" style="margin-right: 4px">
               {{ role }}
             </el-tag>
             <span v-if="!row.roles?.length" class="text-muted">-</span>
@@ -57,10 +67,32 @@
         <el-table-column prop="createTime" label="注册时间" width="160" />
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
-            <button v-if="row.status === 1" class="action-btn disable-btn" @click="handleToggleStatus(row)">禁用</button>
-            <button v-else class="action-btn enable-btn" @click="handleToggleStatus(row)">启用</button>
-            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
+            <button 
+              class="action-btn edit-btn" 
+              :class="{ disabled: !canManageUsers }"
+              :disabled="!canManageUsers"
+              @click="handleEdit(row)"
+            >编辑</button>
+            <button 
+              v-if="row.status === 1" 
+              class="action-btn disable-btn"
+              :class="{ disabled: !canManageUsers }"
+              :disabled="!canManageUsers"
+              @click="handleToggleStatus(row)"
+            >禁用</button>
+            <button 
+              v-else 
+              class="action-btn enable-btn"
+              :class="{ disabled: !canManageUsers }"
+              :disabled="!canManageUsers"
+              @click="handleToggleStatus(row)"
+            >启用</button>
+            <button 
+              class="action-btn delete-btn"
+              :class="{ disabled: !canManageUsers }"
+              :disabled="!canManageUsers"
+              @click="handleDelete(row.id)"
+            >删除</button>
           </template>
         </el-table-column>
       </el-table>
@@ -105,11 +137,42 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
 import { getAllRoles } from '@/api/role'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// 判断是否有用户管理权限
+// 超级管理员有所有权限，内容编辑只能管理内容
+const canManageUsers = computed(() => {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  // 检查是否有全部权限
+  if (permissions.includes('*:*:*')) {
+    return true
+  }
+  
+  // 检查角色
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === 'ADMIN' ||
+    role === 'super_admin'
+  )
+})
+
+// 根据角色返回不同的标签颜色
+function getRoleTagType(role) {
+  if (role === '超级管理员' || role === 'admin') return 'danger'
+  if (role === '内容编辑' || role === 'editor') return 'warning'
+  if (role === '普通用户' || role === 'user') return 'info'
+  return ''
+}
 
 const list = ref([])
 const roles = ref([])
@@ -263,6 +326,63 @@ onMounted(() => {
 
 .text-muted {
   color: var(--text-muted);
+}
+
+/* 操作按钮样式 */
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 8px;
+  
+  &:last-child {
+    margin-right: 0;
+  }
+  
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.edit-btn {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  
+  &:hover:not(.disabled) {
+    background: rgba(59, 130, 246, 0.3);
+  }
+}
+
+.disable-btn {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  
+  &:hover:not(.disabled) {
+    background: rgba(245, 158, 11, 0.3);
+  }
+}
+
+.enable-btn {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  
+  &:hover:not(.disabled) {
+    background: rgba(34, 197, 94, 0.3);
+  }
+}
+
+.delete-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  
+  &:hover:not(.disabled) {
+    background: rgba(239, 68, 68, 0.3);
+  }
 }
 
 :deep(.el-table) {

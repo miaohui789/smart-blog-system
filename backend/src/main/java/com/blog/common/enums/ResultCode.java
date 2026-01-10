@@ -14,7 +14,8 @@ public enum ResultCode {
     EMAIL_EXIST(1002, "邮箱已存在"),
     USER_NOT_FOUND(1003, "用户不存在"),
     PASSWORD_ERROR(1004, "密码错误"),
-    USER_DISABLED(1005, "用户已被禁用");
+    USER_DISABLED(1005, "用户已被禁用"),
+    NO_PERMISSION_OR_FROZEN(1006, "没有权限或账号已被冻结");
 
     private final Integer code;
     private final String message;

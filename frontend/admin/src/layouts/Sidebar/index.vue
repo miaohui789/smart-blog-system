@@ -13,11 +13,14 @@
       router
       class="sidebar-menu"
     >
+      <!-- 仪表盘 - 所有角色可见 -->
       <el-menu-item index="/dashboard">
         <el-icon><Odometer /></el-icon>
         <span>仪表盘</span>
       </el-menu-item>
-      <el-sub-menu index="/article">
+      
+      <!-- 文章管理 - 超级管理员和内容编辑可见 -->
+      <el-sub-menu index="/article" v-if="canManageContent">
         <template #title>
           <el-icon><Document /></el-icon>
           <span>文章管理</span>
@@ -25,23 +28,33 @@
         <el-menu-item index="/article/list">文章列表</el-menu-item>
         <el-menu-item index="/article/create">创建文章</el-menu-item>
       </el-sub-menu>
-      <el-menu-item index="/category">
+      
+      <!-- 分类管理 - 超级管理员和内容编辑可见 -->
+      <el-menu-item index="/category" v-if="canManageContent">
         <el-icon><Folder /></el-icon>
         <span>分类管理</span>
       </el-menu-item>
-      <el-menu-item index="/tag">
+      
+      <!-- 标签管理 - 超级管理员和内容编辑可见 -->
+      <el-menu-item index="/tag" v-if="canManageContent">
         <el-icon><PriceTag /></el-icon>
         <span>标签管理</span>
       </el-menu-item>
-      <el-menu-item index="/comment">
+      
+      <!-- 评论管理 - 超级管理员和内容编辑可见 -->
+      <el-menu-item index="/comment" v-if="canManageContent">
         <el-icon><ChatDotRound /></el-icon>
         <span>评论管理</span>
       </el-menu-item>
-      <el-menu-item index="/user">
+      
+      <!-- 用户管理 - 仅超级管理员可见 -->
+      <el-menu-item index="/user" v-if="isAdmin">
         <el-icon><User /></el-icon>
         <span>用户管理</span>
       </el-menu-item>
-      <el-sub-menu index="/system">
+      
+      <!-- 系统管理 - 仅超级管理员可见 -->
+      <el-sub-menu index="/system" v-if="isAdmin">
         <template #title>
           <el-icon><Setting /></el-icon>
           <span>系统管理</span>
@@ -56,10 +69,56 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useUserStore } from '@/stores/user'
 import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting } from '@element-plus/icons-vue'
 
 const settingsStore = useSettingsStore()
+const userStore = useUserStore()
+
+// 判断是否是超级管理员
+const isAdmin = computed(() => {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  // 检查是否有全部权限
+  if (permissions.includes('*:*:*')) {
+    return true
+  }
+  
+  // 检查角色
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === 'ADMIN' ||
+    role === 'super_admin'
+  )
+})
+
+// 判断是否可以管理内容（超级管理员或内容编辑）
+const canManageContent = computed(() => {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  // 超级管理员有所有权限
+  if (permissions.includes('*:*:*')) {
+    return true
+  }
+  
+  // 检查是否有内容管理权限
+  if (permissions.some(p => p.startsWith('article:'))) {
+    return true
+  }
+  
+  // 检查角色
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === '内容编辑' ||
+    role === 'editor'
+  )
+})
 </script>
 
 <style lang="scss" scoped>

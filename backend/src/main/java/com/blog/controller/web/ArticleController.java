@@ -73,26 +73,9 @@ public class ArticleController {
             return Result.error(ResultCode.NOT_FOUND);
         }
         
-        // 使用 Redis 记录浏览量，避免频繁更新数据库
-        try {
-            String viewKey = CACHE_ARTICLE_VIEW + id;
-            Long viewCount = redisService.increment(viewKey);
-            
-            // 每增加10次浏览量，同步到数据库
-            if (viewCount != null && viewCount % 10 == 0) {
-                article.setViewCount(article.getViewCount() + 10);
-                articleService.updateById(article);
-            }
-            
-            // 设置实时浏览量（数据库 + Redis增量）
-            if (viewCount != null) {
-                article.setViewCount(article.getViewCount() + viewCount.intValue() % 10);
-            }
-        } catch (Exception e) {
-            // Redis 不可用时，直接更新数据库
-            article.setViewCount(article.getViewCount() + 1);
-            articleService.updateById(article);
-        }
+        // 直接更新数据库浏览量，保证数据一致性
+        article.setViewCount((article.getViewCount() == null ? 0 : article.getViewCount()) + 1);
+        articleService.updateById(article);
         
         // 转换为VO
         ArticleVO vo = new ArticleVO();

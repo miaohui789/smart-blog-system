@@ -1,7 +1,7 @@
 <template>
   <div class="tag-cloud">
     <router-link
-      v-for="tag in tags"
+      v-for="tag in displayedTags"
       :key="tag.id"
       :to="`/tag/${tag.id}`"
       class="tag-item"
@@ -14,10 +14,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getTagList } from '@/api/tag'
 
+const props = defineProps({
+  limit: {
+    type: Number,
+    default: 0  // 0 表示不限制
+  }
+})
+
 const tags = ref([])
+
+// 根据 limit 限制显示数量
+const displayedTags = computed(() => {
+  if (props.limit > 0) {
+    return tags.value.slice(0, props.limit)
+  }
+  return tags.value
+})
 
 const colors = [
   'rgba(59, 130, 246, 0.15)',

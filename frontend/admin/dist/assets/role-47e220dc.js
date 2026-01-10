@@ -1,0 +1,1 @@
+import{t}from"./index-6646b8cf.js";function l(e){return t({url:"/roles",method:"get",params:e})}function u(){return t({url:"/roles/all",method:"get"})}function n(e){return t({url:"/roles",method:"post",data:e})}function s(e,r){return t({url:`/roles/${e}`,method:"put",data:r})}function a(e){return t({url:`/roles/${e}`,method:"delete"})}export{l as a,n as c,a as d,u as g,s as u};

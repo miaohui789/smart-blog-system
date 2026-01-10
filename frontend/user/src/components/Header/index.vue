@@ -465,6 +465,9 @@ function handleCommand(command) {
 
 /* 主题切换按钮 - 太阳月亮动画 */
 .theme-switch {
+  /* 将按钮从 View Transition 中排除，保持自身动画 */
+  view-transition-name: theme-switch;
+  
   --toggle-size: 10px;
   --container-width: 5.625em;
   --container-height: 2.5em;

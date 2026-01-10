@@ -2,22 +2,32 @@
   <div class="config-page">
     <h2 class="page-title">系统配置</h2>
 
+    <!-- 无权限提示 -->
+    <el-alert
+      v-if="!canManageConfig"
+      title="您当前角色没有系统配置权限，仅可查看配置信息"
+      type="warning"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px"
+    />
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="网站设置" name="site">
         <el-form :model="siteConfig" label-width="120px" class="config-form">
           <el-form-item label="网站名称">
-            <el-input v-model="siteConfig.siteName" />
+            <el-input v-model="siteConfig.siteName" :disabled="!canManageConfig" />
           </el-form-item>
           <el-form-item label="网站描述">
-            <el-input v-model="siteConfig.siteDescription" type="textarea" :rows="3" />
+            <el-input v-model="siteConfig.siteDescription" type="textarea" :rows="3" :disabled="!canManageConfig" />
           </el-form-item>
           <el-form-item label="网站Logo">
-            <ImageUpload v-model="siteConfig.siteLogo" />
+            <ImageUpload v-model="siteConfig.siteLogo" :disabled="!canManageConfig" />
           </el-form-item>
           <el-form-item label="备案号">
-            <el-input v-model="siteConfig.icp" />
+            <el-input v-model="siteConfig.icp" :disabled="!canManageConfig" />
           </el-form-item>
-          <el-form-item>
+          <el-form-item v-if="canManageConfig">
             <el-button type="primary" @click="handleSave">保存配置</el-button>
             <el-button @click="handleResetSite">恢复默认</el-button>
           </el-form-item>
@@ -27,12 +37,12 @@
       <el-tab-pane label="其他设置" name="other">
         <el-form :model="otherConfig" label-width="120px" class="config-form">
           <el-form-item label="评论审核">
-            <el-switch v-model="otherConfig.commentAudit" />
+            <el-switch v-model="otherConfig.commentAudit" :disabled="!canManageConfig" />
           </el-form-item>
           <el-form-item label="开放注册">
-            <el-switch v-model="otherConfig.registerEnabled" />
+            <el-switch v-model="otherConfig.registerEnabled" :disabled="!canManageConfig" />
           </el-form-item>
-          <el-form-item>
+          <el-form-item v-if="canManageConfig">
             <el-button type="primary" @click="handleSave">保存配置</el-button>
             <el-button @click="handleResetOther">恢复默认</el-button>
           </el-form-item>
@@ -43,10 +53,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getConfigs, updateConfigs, resetConfigs } from '@/api/system'
 import ImageUpload from '@/components/ImageUpload/index.vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// 判断是否有系统配置权限
+const canManageConfig = computed(() => {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  // 检查是否有全部权限
+  if (permissions.includes('*:*:*')) {
+    return true
+  }
+  
+  // 检查角色
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === 'ADMIN' ||
+    role === 'super_admin'
+  )
+})
 
 const activeTab = ref('site')
 const siteConfig = ref({ siteName: '', siteDescription: '', siteLogo: '', icp: '' })

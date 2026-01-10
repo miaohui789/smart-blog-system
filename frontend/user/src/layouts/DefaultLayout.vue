@@ -14,6 +14,9 @@
       </div>
     </main>
     <Footer />
+    
+    <!-- 回到顶部按钮 -->
+    <BackToTop />
   </div>
 </template>
 
@@ -21,6 +24,7 @@
 import Header from '@/components/Header/index.vue'
 import Footer from '@/components/Footer/index.vue'
 import Sidebar from '@/components/Sidebar/index.vue'
+import BackToTop from '@/components/BackToTop/index.vue'
 </script>
 
 <style lang="scss" scoped>

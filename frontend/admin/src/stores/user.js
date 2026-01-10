@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as loginApi, getAdminInfo, getMenus } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
+import { initWebSocket, closeWebSocket } from '@/utils/websocket'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(getToken() || '')
@@ -24,6 +25,10 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = res.data
     roles.value = res.data.roles || []
     permissions.value = res.data.permissions || []
+    // 获取用户信息后建立WebSocket连接
+    if (userInfo.value?.id) {
+      initWebSocket(userInfo.value.id)
+    }
   }
 
   async function fetchMenus() {
@@ -44,6 +49,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function logout() {
+    closeWebSocket()
     token.value = ''
     userInfo.value = null
     menus.value = []

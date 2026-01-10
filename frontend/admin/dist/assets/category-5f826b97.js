@@ -1,0 +1,1 @@
+import{t}from"./index-6646b8cf.js";function a(e){return t({url:"/categories",method:"get",params:e})}function u(e){return t({url:"/categories",method:"post",data:e})}function n(e,r){return t({url:`/categories/${e}`,method:"put",data:r})}function s(e){return t({url:`/categories/${e}`,method:"delete"})}export{u as c,s as d,a as g,n as u};

@@ -1,18 +1,39 @@
 @import './variables.scss';
 
-// View Transition 动画样式
+// View Transition 动画样式（圆形扩散效果）
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 
-::view-transition-old(root) {
+// 暗色模式切换时，新视图在上层
+:root[data-theme="dark"]::view-transition-old(root) {
   z-index: 1;
 }
 
-::view-transition-new(root) {
+:root[data-theme="dark"]::view-transition-new(root) {
   z-index: 9999;
+}
+
+// 亮色模式切换时，旧视图在上层（反向效果）
+:root[data-theme="light"]::view-transition-old(root) {
+  z-index: 9999;
+}
+
+:root[data-theme="light"]::view-transition-new(root) {
+  z-index: 1;
+}
+
+// 主题切换按钮保持自身动画，不参与页面过渡
+::view-transition-old(theme-switch),
+::view-transition-new(theme-switch) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(theme-switch) {
+  z-index: 10000;
 }
 
 // 暗色主题（默认）

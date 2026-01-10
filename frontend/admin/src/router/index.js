@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { useUserStore } from '@/stores/user'
+import { getToken } from '@/utils/auth'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   {
@@ -29,47 +32,47 @@ const routes = [
         path: 'article',
         name: 'Article',
         redirect: '/article/list',
-        meta: { title: '文章管理', icon: 'Document' },
+        meta: { title: '文章管理', icon: 'Document', requiresContent: true },
         children: [
-          { path: 'list', name: 'ArticleList', component: () => import('@/views/Article/List.vue'), meta: { title: '文章列表' } },
-          { path: 'create', name: 'ArticleCreate', component: () => import('@/views/Article/Create.vue'), meta: { title: '创建文章' } },
-          { path: 'edit/:id', name: 'ArticleEdit', component: () => import('@/views/Article/Edit.vue'), meta: { title: '编辑文章' } }
+          { path: 'list', name: 'ArticleList', component: () => import('@/views/Article/List.vue'), meta: { title: '文章列表', requiresContent: true } },
+          { path: 'create', name: 'ArticleCreate', component: () => import('@/views/Article/Create.vue'), meta: { title: '创建文章', requiresContent: true } },
+          { path: 'edit/:id', name: 'ArticleEdit', component: () => import('@/views/Article/Edit.vue'), meta: { title: '编辑文章', requiresContent: true } }
         ]
       },
       {
         path: 'category',
         name: 'Category',
         component: () => import('@/views/Category/index.vue'),
-        meta: { title: '分类管理', icon: 'Folder' }
+        meta: { title: '分类管理', icon: 'Folder', requiresContent: true }
       },
       {
         path: 'tag',
         name: 'Tag',
         component: () => import('@/views/Tag/index.vue'),
-        meta: { title: '标签管理', icon: 'PriceTag' }
+        meta: { title: '标签管理', icon: 'PriceTag', requiresContent: true }
       },
       {
         path: 'comment',
         name: 'Comment',
         component: () => import('@/views/Comment/index.vue'),
-        meta: { title: '评论管理', icon: 'ChatDotRound' }
+        meta: { title: '评论管理', icon: 'ChatDotRound', requiresContent: true }
       },
       {
         path: 'user',
         name: 'User',
         component: () => import('@/views/User/index.vue'),
-        meta: { title: '用户管理', icon: 'User' }
+        meta: { title: '用户管理', icon: 'User', requiresAdmin: true }
       },
       {
         path: 'system',
         name: 'System',
         redirect: '/system/role',
-        meta: { title: '系统管理', icon: 'Setting' },
+        meta: { title: '系统管理', icon: 'Setting', requiresAdmin: true },
         children: [
-          { path: 'role', name: 'Role', component: () => import('@/views/System/Role/index.vue'), meta: { title: '角色管理' } },
-          { path: 'menu', name: 'Menu', component: () => import('@/views/System/Menu/index.vue'), meta: { title: '菜单管理' } },
-          { path: 'config', name: 'Config', component: () => import('@/views/System/Config/index.vue'), meta: { title: '系统配置' } },
-          { path: 'log', name: 'Log', component: () => import('@/views/System/Log/index.vue'), meta: { title: '操作日志' } }
+          { path: 'role', name: 'Role', component: () => import('@/views/System/Role/index.vue'), meta: { title: '角色管理', requiresAdmin: true } },
+          { path: 'menu', name: 'Menu', component: () => import('@/views/System/Menu/index.vue'), meta: { title: '菜单管理', requiresAdmin: true } },
+          { path: 'config', name: 'Config', component: () => import('@/views/System/Config/index.vue'), meta: { title: '系统配置', requiresAdmin: true } },
+          { path: 'log', name: 'Log', component: () => import('@/views/System/Log/index.vue'), meta: { title: '操作日志', requiresAdmin: true } }
         ]
       }
     ]
@@ -86,8 +89,82 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+// 检查是否是管理员
+function isAdmin(userStore) {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  if (permissions.includes('*:*:*')) return true
+  
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === 'ADMIN' ||
+    role === 'super_admin'
+  )
+}
+
+// 检查是否可以管理内容
+function canManageContent(userStore) {
+  const roles = userStore.roles || []
+  const permissions = userStore.permissions || []
+  
+  if (permissions.includes('*:*:*')) return true
+  if (permissions.some(p => p.startsWith('article:'))) return true
+  
+  return roles.some(role => 
+    role === '超级管理员' || 
+    role === 'admin' || 
+    role === '内容编辑' ||
+    role === 'editor'
+  )
+}
+
+router.beforeEach(async (to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 博客管理系统` : '博客管理系统'
+  
+  const token = getToken()
+  
+  // 如果是登录页
+  if (to.path === '/login') {
+    if (token) {
+      next('/dashboard')
+    } else {
+      next()
+    }
+    return
+  }
+  
+  // 如果没有token，跳转到登录页
+  if (!token) {
+    next('/login')
+    return
+  }
+  
+  // 获取用户信息
+  const userStore = useUserStore()
+  if (!userStore.userInfo) {
+    try {
+      await userStore.fetchUserInfo()
+    } catch (e) {
+      next('/login')
+      return
+    }
+  }
+  
+  // 检查权限
+  if (to.meta.requiresAdmin && !isAdmin(userStore)) {
+    ElMessage.error('您没有权限访问该页面')
+    next('/dashboard')
+    return
+  }
+  
+  if (to.meta.requiresContent && !canManageContent(userStore)) {
+    ElMessage.error('您没有权限访问该页面')
+    next('/dashboard')
+    return
+  }
+  
   next()
 })
 
