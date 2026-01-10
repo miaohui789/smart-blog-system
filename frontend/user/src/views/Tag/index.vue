@@ -8,9 +8,7 @@
       <p class="page-desc">共 {{ tags.length }} 个标签</p>
     </div>
 
-    <div v-if="loading" class="loading-wrapper">
-      <el-skeleton :rows="3" animated />
-    </div>
+    <Loading v-if="loading" />
 
     <div v-else class="tag-grid">
       <router-link
@@ -41,6 +39,7 @@
 import { ref, onMounted } from 'vue'
 import { PriceTag, ArrowRight } from '@element-plus/icons-vue'
 import { getTagList } from '@/api/tag'
+import Loading from '@/components/Loading/index.vue'
 
 const tags = ref([])
 const loading = ref(false)

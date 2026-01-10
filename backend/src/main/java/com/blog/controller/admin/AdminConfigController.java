@@ -19,6 +19,19 @@ import java.util.Map;
 public class AdminConfigController {
 
     private final JdbcTemplate jdbcTemplate;
+    
+    // 默认配置值
+    private static final Map<String, String> DEFAULT_SITE_CONFIG = Map.of(
+        "site_name", "我的博客",
+        "site_description", "一个专注于技术分享的博客网站",
+        "site_logo", "",
+        "site_icp", ""
+    );
+    
+    private static final Map<String, String> DEFAULT_OTHER_CONFIG = Map.of(
+        "comment_audit", "0",
+        "register_enabled", "1"
+    );
 
     @Operation(summary = "获取配置")
     @GetMapping
@@ -37,10 +50,14 @@ public class AdminConfigController {
             
             if ("site".equals(type)) {
                 // 转换key格式 site_name -> siteName
-                String camelKey = toCamelCase(key.replace("site_", ""));
-                site.put(camelKey, value);
+                if ("site_icp".equals(key)) {
+                    site.put("icp", value);
+                } else {
+                    // site_name -> siteName, site_description -> siteDescription
+                    String camelKey = toCamelCase(key);
+                    site.put(camelKey, value);
+                }
             } else if ("comment".equals(type) || "user".equals(type)) {
-                String camelKey = toCamelCase(key);
                 if ("comment_audit".equals(key)) {
                     other.put("commentAudit", "1".equals(value));
                 } else if ("register_enabled".equals(key)) {
@@ -83,6 +100,22 @@ public class AdminConfigController {
         }
         
         return Result.success("保存成功");
+    }
+    
+    @Operation(summary = "恢复默认配置")
+    @PostMapping("/reset/{type}")
+    public Result<?> resetConfigs(@PathVariable String type) {
+        if ("site".equals(type)) {
+            for (Map.Entry<String, String> entry : DEFAULT_SITE_CONFIG.entrySet()) {
+                updateConfig(entry.getKey(), entry.getValue(), "site");
+            }
+        } else if ("other".equals(type)) {
+            for (Map.Entry<String, String> entry : DEFAULT_OTHER_CONFIG.entrySet()) {
+                String configType = entry.getKey().startsWith("comment") ? "comment" : "user";
+                updateConfig(entry.getKey(), entry.getValue(), configType);
+            }
+        }
+        return Result.success("已恢复默认配置");
     }
 
     private void updateConfig(String key, String value, String type) {

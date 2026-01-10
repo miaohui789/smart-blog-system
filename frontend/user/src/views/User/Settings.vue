@@ -87,11 +87,10 @@ async function handleChangePassword() {
 }
 
 .page-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: $spacing-xl;
-  transition: color 0.3s;
 }
 
 .settings-card {
@@ -99,7 +98,6 @@ async function handleChangePassword() {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .card-title {
@@ -112,7 +110,6 @@ async function handleChangePassword() {
   margin-bottom: $spacing-xl;
   padding-bottom: $spacing-md;
   border-bottom: 1px solid var(--border-color);
-  transition: color 0.3s, border-color 0.3s;
 
   .el-icon {
     color: $primary-color;
@@ -122,5 +119,33 @@ async function handleChangePassword() {
 :deep(.el-form-item__label) {
   font-weight: 500;
   color: var(--text-primary) !important;
+}
+
+:deep(.el-input__wrapper) {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: none;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: var(--border-light);
+  }
+  
+  &.is-focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+  }
+}
+
+:deep(.el-button--primary) {
+  background: $primary-color;
+  border-color: $primary-color;
+  border-radius: 10px;
+  
+  &:hover {
+    background: $primary-dark;
+    border-color: $primary-dark;
+  }
 }
 </style>

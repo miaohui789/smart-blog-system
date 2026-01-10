@@ -19,50 +19,10 @@ export const useThemeStore = defineStore('theme', () => {
     localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
   }
 
-  // 切换主题（带动画）
-  async function toggleTheme(event) {
-    // 检查浏览器是否支持 View Transitions API
-    if (!document.startViewTransition) {
-      isDark.value = !isDark.value
-      applyTheme()
-      return
-    }
-
-    // 获取点击位置
-    const x = event?.clientX ?? window.innerWidth / 2
-    const y = event?.clientY ?? window.innerHeight / 2
-    
-    // 计算最大半径
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    )
-
-    // 使用 View Transitions API 实现圆形扩散动画
-    const transition = document.startViewTransition(async () => {
-      isDark.value = !isDark.value
-      applyTheme()
-    })
-
-    transition.ready.then(() => {
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`
-      ]
-      
-      // 切换到暗色：旧视图（亮色）从全屏收缩到点击位置消失
-      // 切换到亮色：新视图（亮色）从点击位置扩散到全屏
-      document.documentElement.animate(
-        { clipPath: isDark.value ? [...clipPath].reverse() : clipPath },
-        {
-          duration: 600,
-          easing: 'ease-in-out',
-          pseudoElement: isDark.value 
-            ? '::view-transition-old(root)' 
-            : '::view-transition-new(root)'
-        }
-      )
-    })
+  // 切换主题（简单切换，让按钮自己的 CSS 动画生效）
+  function toggleTheme(event) {
+    isDark.value = !isDark.value
+    applyTheme()
   }
 
   // 初始化时应用主题

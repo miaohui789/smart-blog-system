@@ -131,8 +131,9 @@ onMounted(fetchArticles)
     rgba(#6366f1, 0.15) 50%,
     rgba($primary-color, 0.1) 100%);
   backdrop-filter: blur(20px);
-  border: 1px solid $border-color;
+  border: 1px solid var(--border-color);
   border-radius: $radius-lg;
+  transition: border-color 0.3s;
   
   &::before {
     content: '';
@@ -175,14 +176,16 @@ onMounted(fetchArticles)
 .page-title {
   font-size: 28px;
   font-weight: 700;
-  color: $text-primary;
+  color: var(--text-primary);
   margin-bottom: $spacing-xs;
+  transition: color 0.3s;
 }
 
 .page-desc {
-  color: $text-secondary;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-bottom: $spacing-lg;
+  transition: color 0.3s;
 }
 
 .stats-bar {
@@ -190,10 +193,11 @@ onMounted(fetchArticles)
   align-items: center;
   gap: $spacing-md;
   padding: $spacing-sm $spacing-lg;
-  background: rgba(white, 0.05);
-  border: 1px solid rgba(white, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 50px;
   backdrop-filter: blur(10px);
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .stat-item {
@@ -210,21 +214,24 @@ onMounted(fetchArticles)
 
 .stat-label {
   font-size: 13px;
-  color: $text-muted;
+  color: var(--text-muted);
+  transition: color 0.3s;
 }
 
 .stat-divider {
   width: 1px;
   height: 20px;
-  background: rgba(white, 0.15);
+  background: var(--border-color);
+  transition: background-color 0.3s;
 }
 
 // 内容区域
 .content-section {
-  background: rgba(white, 0.02);
-  border: 1px solid $border-color;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   padding: $spacing-lg;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .section-header {
@@ -233,7 +240,8 @@ onMounted(fetchArticles)
   justify-content: space-between;
   margin-bottom: $spacing-lg;
   padding-bottom: $spacing-md;
-  border-bottom: 1px solid $border-color;
+  border-bottom: 1px solid var(--border-color);
+  transition: border-color 0.3s;
 }
 
 .section-title {
@@ -242,7 +250,8 @@ onMounted(fetchArticles)
   gap: $spacing-sm;
   font-size: 18px;
   font-weight: 600;
-  color: $text-primary;
+  color: var(--text-primary);
+  transition: color 0.3s;
   
   .el-icon {
     color: $primary-color;
@@ -251,10 +260,11 @@ onMounted(fetchArticles)
 
 .article-count {
   font-size: 13px;
-  color: $text-muted;
+  color: var(--text-muted);
   padding: 4px 12px;
   background: rgba($primary-color, 0.1);
   border-radius: 20px;
+  transition: color 0.3s;
 }
 
 .article-grid {
@@ -268,7 +278,8 @@ onMounted(fetchArticles)
   justify-content: center;
   padding-top: $spacing-lg;
   margin-top: $spacing-lg;
-  border-top: 1px solid $border-color;
+  border-top: 1px solid var(--border-color);
+  transition: border-color 0.3s;
 }
 
 :deep(.el-pagination) {

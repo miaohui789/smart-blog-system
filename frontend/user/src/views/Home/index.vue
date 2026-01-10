@@ -34,9 +34,7 @@
       </template>
     </div>
 
-    <div v-if="loading" class="loading-wrapper">
-      <el-skeleton :rows="5" animated />
-    </div>
+    <Loading v-if="loading" />
 
     <el-empty v-if="!loading && !articles.length" description="暂无文章" />
 
@@ -59,6 +57,7 @@ import { Calendar, View, ChatDotRound } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
 import { formatDate } from '@/utils/format'
 import ArticleCard from '@/components/ArticleCard/index.vue'
+import Loading from '@/components/Loading/index.vue'
 
 const router = useRouter()
 const articles = ref([])
@@ -115,6 +114,8 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@import '@/assets/styles/variables.scss';
+
 .home-page {
   display: flex;
   flex-direction: column;
@@ -135,15 +136,15 @@ onMounted(() => {
   cursor: pointer;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  transition: all 0.4s ease;
+  transition: all 0.3s ease;
 
   &:hover {
-    border-color: rgba(74, 158, 255, 0.3);
+    border-color: rgba($primary-color, 0.3);
     transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(74, 158, 255, 0.1);
+    box-shadow: 0 16px 32px var(--shadow-color);
 
     .featured-cover img {
-      transform: scale(1.05);
+      transform: scale(1.03);
     }
   }
 }
@@ -181,8 +182,8 @@ onMounted(() => {
   span {
     display: inline-block;
     padding: 4px 12px;
-    background: linear-gradient(135deg, #4a9eff, #6366f1);
-    border-radius: 20px;
+    background: $primary-color;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
     color: #fff;

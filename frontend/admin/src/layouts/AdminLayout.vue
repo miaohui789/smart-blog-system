@@ -26,6 +26,7 @@ const settingsStore = useSettingsStore()
 .admin-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
 }
 
 .main-container {
@@ -33,18 +34,22 @@ const settingsStore = useSettingsStore()
   display: flex;
   flex-direction: column;
   margin-left: $sidebar-width;
-  transition: margin-left 0.3s;
+  width: calc(100% - #{$sidebar-width});
+  min-width: 0;
+  transition: margin-left 0.3s, width 0.3s;
 }
 
 .admin-layout.collapsed .main-container {
   margin-left: $sidebar-collapsed-width;
+  width: calc(100% - #{$sidebar-collapsed-width});
 }
 
 .app-main {
   flex: 1;
   padding: $spacing-lg;
   background: var(--bg-dark);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   transition: background-color 0.3s;
 }
 </style>

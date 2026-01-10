@@ -1,8 +1,6 @@
 <template>
   <div class="comment-list">
-    <div v-if="loading" class="loading-state">
-      <el-skeleton :rows="3" animated />
-    </div>
+    <Loading v-if="loading" mini />
     <template v-else>
       <div v-for="comment in comments" :key="comment.id" class="comment-item">
         <el-avatar :src="comment.user?.avatar" :size="44">
@@ -47,6 +45,7 @@
 <script setup>
 import { Star, ChatDotRound } from '@element-plus/icons-vue'
 import { formatRelativeTime } from '@/utils/format'
+import Loading from '@/components/Loading/index.vue'
 
 defineProps({
   comments: { type: Array, default: () => [] },

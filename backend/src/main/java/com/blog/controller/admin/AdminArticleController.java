@@ -7,11 +7,15 @@ import com.blog.common.result.Result;
 import com.blog.dto.request.ArticleRequest;
 import com.blog.entity.Article;
 import com.blog.entity.Category;
+import com.blog.security.SecurityUser;
 import com.blog.service.ArticleService;
 import com.blog.service.CategoryService;
+import com.blog.service.RedisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +32,9 @@ public class AdminArticleController {
 
     private final ArticleService articleService;
     private final CategoryService categoryService;
+    private final RedisService redisService;
+    
+    private static final String CACHE_HOT_ARTICLES = "blog:hot:articles";
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -73,7 +80,13 @@ public class AdminArticleController {
     @Operation(summary = "创建文章")
     @PostMapping
     public Result<?> create(@Validated @RequestBody ArticleRequest request) {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            return Result.error("请先登录");
+        }
+        
         Article article = new Article();
+        article.setUserId(userId);
         article.setTitle(request.getTitle());
         article.setCategoryId(request.getCategoryId());
         article.setCover(request.getCover());
@@ -145,6 +158,14 @@ public class AdminArticleController {
             article.setPublishTime(LocalDateTime.now());
         }
         articleService.updateById(article);
+        
+        // 清除热门文章缓存
+        try {
+            redisService.delete(CACHE_HOT_ARTICLES);
+        } catch (Exception e) {
+            // Redis 不可用，忽略
+        }
+        
         return Result.success("更新成功");
     }
 
@@ -170,5 +191,14 @@ public class AdminArticleController {
         article.setIsRecommend(body.get("isRecommend"));
         articleService.updateById(article);
         return Result.success("更新成功");
+    }
+    
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof SecurityUser) {
+            SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+            return securityUser.getUser().getId();
+        }
+        return null;
     }
 }

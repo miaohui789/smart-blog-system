@@ -25,10 +25,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="160">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>

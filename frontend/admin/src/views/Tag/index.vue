@@ -31,10 +31,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="160">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>

@@ -142,11 +142,10 @@ onMounted(fetchProfile)
 }
 
 .page-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: $spacing-xl;
-  transition: color 0.3s;
 }
 
 .profile-form {
@@ -154,7 +153,6 @@ onMounted(fetchProfile)
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .avatar-section {
@@ -193,7 +191,7 @@ onMounted(fetchProfile)
   color: white;
   font-size: 12px;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
 
   .el-icon {
     font-size: 24px;
@@ -203,11 +201,40 @@ onMounted(fetchProfile)
 .avatar-tip {
   font-size: 12px;
   color: var(--text-muted);
-  transition: color 0.3s;
 }
 
 :deep(.el-form-item__label) {
   font-weight: 500;
   color: var(--text-primary) !important;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-textarea__inner) {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: none;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: var(--border-light);
+  }
+  
+  &:focus,
+  &.is-focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+  }
+}
+
+:deep(.el-button--primary) {
+  background: $primary-color;
+  border-color: $primary-color;
+  border-radius: 10px;
+  
+  &:hover {
+    background: $primary-dark;
+    border-color: $primary-dark;
+  }
 }
 </style>

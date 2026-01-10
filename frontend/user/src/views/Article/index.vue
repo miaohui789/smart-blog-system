@@ -1,9 +1,7 @@
 <template>
   <div class="article-detail-page">
     <!-- 加载状态 -->
-    <div v-if="loading" class="loading-container">
-      <el-skeleton :rows="10" animated />
-    </div>
+    <Loading v-if="loading" />
 
     <!-- 文章内容 -->
     <template v-else-if="article">
@@ -63,22 +61,44 @@
         <!-- 文章底部操作 -->
         <footer class="article-footer">
           <div class="action-buttons">
-            <el-button 
-              :class="['action-btn', { active: article.isLiked }]"
-              @click="handleLike"
-            >
-              <el-icon><Star /></el-icon>
-              <span>{{ article.isLiked ? '已点赞' : '点赞' }}</span>
-              <em>{{ article.likeCount || 0 }}</em>
-            </el-button>
-            <el-button 
-              :class="['action-btn', { active: article.isFavorited }]"
-              @click="handleFavorite"
-            >
-              <el-icon><Collection /></el-icon>
-              <span>{{ article.isFavorited ? '已收藏' : '收藏' }}</span>
-              <em>{{ article.favoriteCount || 0 }}</em>
-            </el-button>
+            <!-- 点赞按钮 - 爱心动画 -->
+            <div class="action-btn-wrapper" @click="handleLike">
+              <div class="heart-container" :class="{ checked: article.isLiked }">
+                <div class="svg-container">
+                  <svg viewBox="0 0 24 24" class="svg-outline" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"></path>
+                  </svg>
+                  <svg viewBox="0 0 24 24" class="svg-filled" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Z"></path>
+                  </svg>
+                  <svg class="svg-celebrate" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="10,10 20,20"></polygon>
+                    <polygon points="10,50 20,50"></polygon>
+                    <polygon points="20,80 30,70"></polygon>
+                    <polygon points="90,10 80,20"></polygon>
+                    <polygon points="90,50 80,50"></polygon>
+                    <polygon points="80,80 70,70"></polygon>
+                  </svg>
+                </div>
+              </div>
+              <span class="action-text">{{ article.isLiked ? '已点赞' : '点赞' }}</span>
+              <em class="action-count">{{ article.likeCount || 0 }}</em>
+            </div>
+
+            <!-- 收藏按钮 - 书签动画 -->
+            <div class="action-btn-wrapper" @click="handleFavorite">
+              <label class="ui-bookmark" :class="{ checked: article.isFavorited }">
+                <div class="bookmark">
+                  <svg viewBox="0 0 32 32">
+                    <g>
+                      <path d="M27 4v27a1 1 0 0 1-1.625.781L16 24.281l-9.375 7.5A1 1 0 0 1 5 31V4a4 4 0 0 1 4-4h14a4 4 0 0 1 4 4z"></path>
+                    </g>
+                  </svg>
+                </div>
+              </label>
+              <span class="action-text">{{ article.isFavorited ? '已收藏' : '收藏' }}</span>
+              <em class="action-count">{{ article.favoriteCount || 0 }}</em>
+            </div>
           </div>
         </footer>
       </article>
@@ -109,14 +129,27 @@
                 回复 @{{ replyTo.user?.nickname }}
                 <el-icon @click="cancelReply" class="close-icon"><Close /></el-icon>
               </span>
-              <el-button 
-                type="primary" 
-                :disabled="!userStore.isLoggedIn || !commentContent.trim()" 
-                :loading="submitting"
+              <button 
+                class="submit-comment-btn"
+                :disabled="!userStore.isLoggedIn || !commentContent.trim() || submitting"
                 @click="submitComment"
               >
-                发表评论
-              </el-button>
+                {{ submitting ? '发送中...' : '发表评论' }}
+                <div class="icon">
+                  <svg
+                    height="24"
+                    width="24"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M0 0h24v24H0z" fill="none"></path>
+                    <path
+                      d="M16.172 11l-5.364-5.364 1.414-1.414L20 12l-7.778 7.778-1.414-1.414L16.172 13H4v-2z"
+                      fill="currentColor"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -172,14 +205,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, Collection, Close, PriceTag, Document } from '@element-plus/icons-vue'
+import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getArticleDetail, likeArticle, unlikeArticle, favoriteArticle, unfavoriteArticle } from '@/api/article'
 import { getCommentList, createComment, likeComment } from '@/api/comment'
 import { formatDate, formatRelativeTime } from '@/utils/format'
 import { useUserStore } from '@/stores/user'
+import Loading from '@/components/Loading/index.vue'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/atom-one-dark.css'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -192,6 +228,66 @@ const submitting = ref(false)
 const commentContent = ref('')
 const replyTo = ref(null)
 
+// 代码高亮并添加复制按钮
+function highlightCode() {
+  nextTick(() => {
+    document.querySelectorAll('.article-body pre code').forEach((block) => {
+      // 执行代码高亮
+      hljs.highlightElement(block)
+      
+      // 获取 pre 元素
+      const pre = block.parentElement
+      if (!pre || pre.querySelector('.copy-btn')) return // 避免重复添加
+      
+      // 设置 pre 为相对定位
+      pre.style.position = 'relative'
+      
+      // 创建复制按钮
+      const copyBtn = document.createElement('button')
+      copyBtn.className = 'copy-btn'
+      copyBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span>复制</span>
+      `
+      
+      // 点击复制
+      copyBtn.addEventListener('click', async () => {
+        const code = block.textContent || ''
+        try {
+          await navigator.clipboard.writeText(code)
+          copyBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>已复制</span>
+          `
+          copyBtn.classList.add('copied')
+          ElMessage.success('复制成功')
+          
+          // 2秒后恢复
+          setTimeout(() => {
+            copyBtn.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>复制</span>
+            `
+            copyBtn.classList.remove('copied')
+          }, 2000)
+        } catch (err) {
+          ElMessage.error('复制失败')
+        }
+      })
+      
+      pre.appendChild(copyBtn)
+    })
+  })
+}
+
 // 计算属性：处理文章内容
 const articleContent = computed(() => {
   if (!article.value) return ''
@@ -201,7 +297,11 @@ const articleContent = computed(() => {
   
   // 优先使用 contentHtml
   if (contentHtml && contentHtml.trim()) {
-    return contentHtml
+    // 如果 contentHtml 中还有未解析的 Markdown 图片语法，也进行处理
+    let html = contentHtml
+    // 处理可能遗留的 Markdown 图片语法
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-img" />')
+    return html
   }
   
   // 否则解析 markdown content
@@ -236,7 +336,10 @@ function parseMarkdown(text) {
   content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   content = content.replace(/\*([^*]+)\*/g, '<em>$1</em>')
   
-  // 处理链接
+  // 处理图片 ![alt](url) - 必须在链接之前处理
+  content = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-img" />')
+  
+  // 处理链接 [text](url)
   content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
   
   // 处理段落和换行
@@ -244,7 +347,7 @@ function parseMarkdown(text) {
   content = paragraphs.map(p => {
     p = p.trim()
     if (!p) return ''
-    if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol')) {
+    if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<img')) {
       return p
     }
     return `<p>${p.replace(/\n/g, '<br>')}</p>`
@@ -265,6 +368,8 @@ async function fetchArticle() {
     const res = await getArticleDetail(route.params.id)
     if (res && res.data) {
       article.value = res.data
+      // 文章加载完成后执行代码高亮
+      highlightCode()
     }
   } catch (e) {
     console.error('获取文章失败:', e)
@@ -391,6 +496,11 @@ watch(() => route.params.id, (newId) => {
   if (newId) {
     fetchArticle()
   }
+})
+
+// 监听文章内容变化，执行代码高亮
+watch(articleContent, () => {
+  highlightCode()
 })
 
 onMounted(() => {
@@ -547,17 +657,83 @@ onMounted(() => {
   :deep(h3) { font-size: 18px; }
   :deep(p) { margin-bottom: 16px; }
   :deep(.code-block) {
-    background: var(--bg-darker);
+    background: #282c34;
     padding: 16px;
     border-radius: 8px;
     overflow-x: auto;
     margin: 16px 0;
     code {
-      font-family: 'Fira Code', 'Consolas', monospace;
+      font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
       font-size: 14px;
-      color: var(--text-secondary);
+      line-height: 1.6;
       white-space: pre;
     }
+  }
+  
+  // highlight.js 代码块样式
+  :deep(pre) {
+    background: #282c34;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 16px 0;
+    position: relative;
+    
+    code {
+      font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      background: transparent;
+      padding: 0;
+    }
+    
+    &.hljs {
+      padding: 16px;
+    }
+    
+    // 复制按钮样式
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      cursor: pointer;
+      opacity: 0;
+      transition: all 0.2s ease;
+      
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+      }
+      
+      &.copied {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #22c55e;
+      }
+    }
+    
+    &:hover .copy-btn {
+      opacity: 1;
+    }
+  }
+  
+  :deep(code.hljs) {
+    padding: 16px;
+    border-radius: 8px;
   }
   :deep(.inline-code) {
     background: rgba(59, 130, 246, 0.15);
@@ -574,6 +750,17 @@ onMounted(() => {
   :deep(strong) {
     color: var(--text-primary);
   }
+  
+  // 文章内图片样式
+  :deep(.article-img),
+  :deep(img:not(.el-avatar img)) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 16px 0;
+    display: block;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 }
 
 .article-footer {
@@ -585,36 +772,217 @@ onMounted(() => {
 .action-buttons {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 40px;
 }
 
-.action-btn {
+/* 按钮包装器 */
+.action-btn-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 28px;
+  gap: 10px;
+  padding: 10px 20px;
   background: var(--bg-card-hover);
   border: 1px solid var(--border-color);
   border-radius: 25px;
-  color: var(--text-muted);
-  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s;
-  em {
-    font-style: normal;
-    color: var(--text-disabled);
-  }
+  
   &:hover {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: var(--primary-color);
+    background: var(--bg-card);
+    border-color: var(--border-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
-  &.active {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    em { color: var(--primary-color); }
+  
+  .action-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: color 0.3s;
   }
+  
+  .action-count {
+    font-style: normal;
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: color 0.3s;
+  }
+}
+
+/* 爱心点赞按钮 */
+.heart-container {
+  --heart-color: var(--text-muted);
+  position: relative;
+  width: 28px;
+  height: 28px;
+  transition: 0.3s;
+  
+  .svg-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .svg-outline,
+  .svg-filled {
+    fill: var(--heart-color);
+    position: absolute;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .svg-filled {
+    display: none;
+  }
+  
+  .svg-celebrate {
+    position: absolute;
+    display: none;
+    stroke: var(--heart-color);
+    fill: var(--heart-color);
+    stroke-width: 2px;
+    width: 60px;
+    height: 60px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  
+  &.checked {
+    --heart-color: #ff5b89;
+    
+    .svg-filled {
+      display: block;
+      animation: keyframes-svg-filled 1s;
+    }
+    
+    .svg-outline {
+      display: none;
+    }
+    
+    .svg-celebrate {
+      display: block;
+      animation: keyframes-svg-celebrate 0.5s forwards;
+    }
+  }
+}
+
+.action-btn-wrapper:hover .heart-container {
+  --heart-color: #ff5b89;
+}
+
+@keyframes keyframes-svg-filled {
+  0% { transform: scale(0); }
+  25% { transform: scale(1.2); }
+  50% { transform: scale(1); filter: brightness(1.5); }
+}
+
+@keyframes keyframes-svg-celebrate {
+  0% { transform: translate(-50%, -50%) scale(0); }
+  50% { opacity: 1; filter: brightness(1.5); }
+  100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+}
+
+/* 书签收藏按钮 */
+.ui-bookmark {
+  --icon-size: 24px;
+  --icon-secondary-color: var(--text-muted);
+  --icon-hover-color: var(--text-secondary);
+  --icon-primary-color: #f59e0b;
+  --icon-circle-border: 1px solid var(--icon-primary-color);
+  --icon-circle-size: 35px;
+  --icon-anmt-duration: 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  
+  .bookmark {
+    width: var(--icon-size);
+    height: auto;
+    fill: var(--icon-secondary-color);
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    transform-origin: top;
+    
+    svg {
+      width: var(--icon-size);
+      height: var(--icon-size);
+    }
+    
+    &::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      box-shadow: 
+        0 30px 0 -4px var(--icon-primary-color),
+        30px 0 0 -4px var(--icon-primary-color),
+        0 -30px 0 -4px var(--icon-primary-color),
+        -30px 0 0 -4px var(--icon-primary-color),
+        -22px 22px 0 -4px var(--icon-primary-color),
+        -22px -22px 0 -4px var(--icon-primary-color),
+        22px -22px 0 -4px var(--icon-primary-color),
+        22px 22px 0 -4px var(--icon-primary-color);
+      border-radius: 50%;
+      transform: scale(0);
+    }
+    
+    &::before {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      border: var(--icon-circle-border);
+      opacity: 0;
+    }
+  }
+  
+  &.checked .bookmark {
+    fill: var(--icon-primary-color);
+    animation: bookmark var(--icon-anmt-duration) forwards;
+    
+    &::after {
+      animation: circles var(--icon-anmt-duration) cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: var(--icon-anmt-duration);
+    }
+    
+    &::before {
+      animation: circle var(--icon-anmt-duration) cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: var(--icon-anmt-duration);
+    }
+  }
+}
+
+.action-btn-wrapper:hover .ui-bookmark .bookmark {
+  fill: var(--icon-hover-color);
+}
+
+.action-btn-wrapper:hover .ui-bookmark.checked .bookmark {
+  fill: var(--icon-primary-color);
+}
+
+@keyframes bookmark {
+  50% { transform: scaleY(0.6); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes circle {
+  from { width: 0; height: 0; opacity: 0; }
+  90% { width: var(--icon-circle-size); height: var(--icon-circle-size); opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes circles {
+  from { transform: scale(0); }
+  40% { opacity: 1; }
+  to { transform: scale(0.8); opacity: 0; }
 }
 
 .comment-section {
@@ -661,6 +1029,68 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-top: 12px;
+}
+
+.submit-comment-btn {
+  background: var(--primary-color);
+  color: white;
+  font-family: inherit;
+  padding: 0.35em;
+  padding-left: 1.2em;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 0.9em;
+  border: none;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 0 1.6em -0.6em var(--primary-dark);
+  overflow: hidden;
+  position: relative;
+  height: 2.6em;
+  padding-right: 3.3em;
+  cursor: pointer;
+  transition: all 0.3s;
+  
+  .icon {
+    background: white;
+    margin-left: 1em;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2em;
+    width: 2em;
+    border-radius: 0.7em;
+    box-shadow: 0.1em 0.1em 0.6em 0.2em var(--primary-dark);
+    right: 0.3em;
+    transition: all 0.3s;
+    
+    svg {
+      width: 1.1em;
+      transition: transform 0.3s;
+      color: var(--primary-color);
+    }
+  }
+  
+  &:hover:not(:disabled) {
+    .icon {
+      width: calc(100% - 0.6em);
+    }
+    
+    .icon svg {
+      transform: translateX(0.1em);
+    }
+  }
+  
+  &:active:not(:disabled) .icon {
+    transform: scale(0.95);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
 .reply-info {

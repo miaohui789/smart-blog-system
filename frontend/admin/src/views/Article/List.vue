@@ -52,10 +52,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="publishTime" label="发布时间" width="160" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="$router.push(`/article/edit/${row.id}`)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button v-if="row.status !== 1" class="action-btn publish-btn" @click="handlePublish(row)">发布</button>
+            <button v-if="row.status === 1" class="action-btn offline-btn" @click="handleOffline(row)">下架</button>
+            <button class="action-btn edit-btn" @click="$router.push(`/article/edit/${row.id}`)">编辑</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>
@@ -77,7 +79,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Plus, Search, View, ChatDotRound } from '@element-plus/icons-vue'
-import { getArticleList, deleteArticle, updateArticleTop } from '@/api/article'
+import { getArticleList, deleteArticle, updateArticleTop, updateArticleStatus } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 
 const list = ref([])
@@ -120,6 +122,20 @@ async function handleDelete(id) {
   await ElMessageBox.confirm('确定删除该文章吗？', '提示', { type: 'warning' })
   await deleteArticle(id)
   ElMessage.success('删除成功')
+  fetchList()
+}
+
+async function handlePublish(row) {
+  await ElMessageBox.confirm('确定发布该文章吗？', '提示', { type: 'info' })
+  await updateArticleStatus(row.id, 1)
+  ElMessage.success('发布成功')
+  fetchList()
+}
+
+async function handleOffline(row) {
+  await ElMessageBox.confirm('确定下架该文章吗？', '提示', { type: 'warning' })
+  await updateArticleStatus(row.id, 2)
+  ElMessage.success('已下架')
   fetchList()
 }
 

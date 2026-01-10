@@ -2,10 +2,16 @@
   <footer class="footer">
     <div class="container footer-content">
       <div class="footer-brand">
-        <span class="logo-icon">✦</span>
-        <span class="logo-text">My Blog</span>
+        <img v-if="configStore.siteLogo" :src="configStore.siteLogo" alt="logo" class="logo-img" />
+        <span v-else class="logo-icon">✦</span>
+        <span class="logo-text">{{ configStore.siteName }}</span>
       </div>
-      <p class="copyright">© {{ currentYear }} My Blog. All rights reserved.</p>
+      <div class="footer-info">
+        <p class="copyright">{{ configStore.siteFooter || `© ${currentYear} ${configStore.siteName}. All rights reserved.` }}</p>
+        <p v-if="configStore.icp" class="icp">
+          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ configStore.icp }}</a>
+        </p>
+      </div>
       <div class="footer-links">
         <router-link to="/about">关于</router-link>
         <a href="#">隐私政策</a>
@@ -16,6 +22,9 @@
 </template>
 
 <script setup>
+import { useConfigStore } from '@/stores/config'
+
+const configStore = useConfigStore()
 const currentYear = new Date().getFullYear()
 </script>
 
@@ -48,25 +57,46 @@ const currentYear = new Date().getFullYear()
   gap: $spacing-sm;
 }
 
+.logo-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .logo-icon {
   font-size: 18px;
-  background: $primary-gradient;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: $primary-color;
 }
 
 .logo-text {
   font-size: 16px;
   font-weight: 600;
-  background: $primary-gradient;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+}
+
+.footer-info {
+  text-align: center;
 }
 
 .copyright {
   color: var(--text-muted);
   font-size: 14px;
   transition: color 0.3s;
+}
+
+.icp {
+  margin-top: 4px;
+  font-size: 13px;
+  
+  a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.3s;
+    
+    &:hover {
+      color: $primary-color;
+    }
+  }
 }
 
 .footer-links {

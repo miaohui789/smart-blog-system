@@ -31,10 +31,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="160">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>
@@ -51,7 +51,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="图标">
-          <el-input v-model="form.icon" placeholder="Element Plus 图标名称" />
+          <IconSelect v-model="form.icon" />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
@@ -70,6 +70,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getCategoryList, createCategory, updateCategory, deleteCategory } from '@/api/category'
+import IconSelect from '@/components/IconSelect/index.vue'
 
 const list = ref([])
 const loading = ref(false)

@@ -55,13 +55,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="注册时间" width="160" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link :type="row.status === 1 ? 'warning' : 'success'" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? '禁用' : '启用' }}
-            </el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
+            <button v-if="row.status === 1" class="action-btn disable-btn" @click="handleToggleStatus(row)">禁用</button>
+            <button v-else class="action-btn enable-btn" @click="handleToggleStatus(row)">启用</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>

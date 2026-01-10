@@ -13,10 +13,17 @@
           <el-icon><Document /></el-icon>
           保存草稿
         </el-button>
-        <el-button type="primary" @click="handleSave(1)" :loading="saving">
-          <el-icon><Promotion /></el-icon>
-          发布文章
-        </el-button>
+        <button class="publish-btn" @click="handleSave(1)" :disabled="saving">
+          <div class="svg-wrapper-1">
+            <div class="svg-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="none" d="M0 0h24v24H0z"></path>
+                <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
+              </svg>
+            </div>
+          </div>
+          <span>{{ saving ? '发布中...' : '发布文章' }}</span>
+        </button>
       </div>
     </div>
 
@@ -135,7 +142,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Promotion, Setting, Plus, FullScreen, Close } from '@element-plus/icons-vue'
+import { Document, Setting, Plus, FullScreen, Close } from '@element-plus/icons-vue'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
@@ -360,6 +367,82 @@ onMounted(async () => {
 .header-actions {
   display: flex;
   gap: $spacing-sm;
+}
+
+/* 发布文章按钮 - 和写文章按钮一样的样式 */
+.publish-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.6em 1em;
+  padding-left: 0.8em;
+  background: $primary-color;
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  
+  .svg-wrapper-1 {
+    display: flex;
+    align-items: center;
+  }
+  
+  .svg-wrapper {
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  svg {
+    display: block;
+    transform-origin: center center;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  span {
+    display: block;
+    margin-left: 0.3em;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  &:hover:not(:disabled) {
+    background: $primary-dark;
+    box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+    
+    .svg-wrapper {
+      animation: fly-1 0.6s ease-in-out infinite alternate;
+    }
+    
+    svg {
+      transform: translateX(1.2em) rotate(45deg) scale(1.1);
+    }
+    
+    span {
+      transform: translateX(4em);
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes fly-1 {
+  from {
+    transform: translateY(0.1em);
+  }
+  to {
+    transform: translateY(-0.1em);
+  }
 }
 
 .write-body {

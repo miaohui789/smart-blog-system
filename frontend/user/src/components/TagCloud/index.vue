@@ -21,18 +21,18 @@ const tags = ref([])
 
 const colors = [
   'rgba(59, 130, 246, 0.15)',
-  'rgba(139, 92, 246, 0.15)',
   'rgba(34, 197, 94, 0.15)',
   'rgba(245, 158, 11, 0.15)',
-  'rgba(239, 68, 68, 0.15)'
+  'rgba(239, 68, 68, 0.15)',
+  'rgba(14, 165, 233, 0.15)'
 ]
 
 const textColors = [
   '#60a5fa',
-  '#a78bfa',
   '#4ade80',
   '#fbbf24',
-  '#f87171'
+  '#f87171',
+  '#38bdf8'
 ]
 
 function getTagStyle(tag) {

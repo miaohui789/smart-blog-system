@@ -68,7 +68,9 @@ function toggleTheme(event) {
 }
 
 function handleCommand(command) {
-  if (command === 'logout') {
+  if (command === 'profile') {
+    router.push('/profile')
+  } else if (command === 'logout') {
     userStore.logout()
     router.push('/login')
   }

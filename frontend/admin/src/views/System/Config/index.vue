@@ -19,6 +19,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSave">保存配置</el-button>
+            <el-button @click="handleResetSite">恢复默认</el-button>
           </el-form-item>
         </el-form>
       </el-tab-pane>
@@ -33,6 +34,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSave">保存配置</el-button>
+            <el-button @click="handleResetOther">恢复默认</el-button>
           </el-form-item>
         </el-form>
       </el-tab-pane>
@@ -42,8 +44,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getConfigs, updateConfigs } from '@/api/system'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getConfigs, updateConfigs, resetConfigs } from '@/api/system'
 import ImageUpload from '@/components/ImageUpload/index.vue'
 
 const activeTab = ref('site')
@@ -51,15 +53,53 @@ const siteConfig = ref({ siteName: '', siteDescription: '', siteLogo: '', icp: '
 const otherConfig = ref({ commentAudit: false, registerEnabled: true })
 
 async function fetchConfigs() {
-  const res = await getConfigs()
-  const data = res.data || {}
-  siteConfig.value = { ...siteConfig.value, ...data.site }
-  otherConfig.value = { ...otherConfig.value, ...data.other }
+  try {
+    const res = await getConfigs()
+    const data = res.data || {}
+    if (data.site) {
+      siteConfig.value = { 
+        siteName: data.site.siteName || '',
+        siteDescription: data.site.siteDescription || '',
+        siteLogo: data.site.siteLogo || '',
+        icp: data.site.icp || ''
+      }
+    }
+    if (data.other) {
+      otherConfig.value = {
+        commentAudit: data.other.commentAudit || false,
+        registerEnabled: data.other.registerEnabled !== false
+      }
+    }
+  } catch (e) {
+    console.error('获取配置失败:', e)
+  }
 }
 
 async function handleSave() {
   await updateConfigs({ site: siteConfig.value, other: otherConfig.value })
   ElMessage.success('保存成功')
+}
+
+async function handleResetSite() {
+  await ElMessageBox.confirm('确定要恢复网站设置为默认值吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+  await resetConfigs('site')
+  await fetchConfigs()
+  ElMessage.success('已恢复默认')
+}
+
+async function handleResetOther() {
+  await ElMessageBox.confirm('确定要恢复其他设置为默认值吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+  await resetConfigs('other')
+  await fetchConfigs()
+  ElMessage.success('已恢复默认')
 }
 
 onMounted(fetchConfigs)

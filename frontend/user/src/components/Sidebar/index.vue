@@ -59,7 +59,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: $spacing-lg;
   position: sticky;
-  top: 80px;
+  top: 88px;
 }
 
 .sidebar-card {
@@ -67,7 +67,11 @@ onMounted(async () => {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
-  transition: background-color 0.3s, border-color 0.3s;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: rgba($primary-color, 0.2);
+  }
 }
 
 .card-title {
@@ -80,10 +84,9 @@ onMounted(async () => {
   margin-bottom: $spacing-lg;
   padding-bottom: $spacing-md;
   border-bottom: 1px solid var(--border-color);
-  transition: color 0.3s, border-color 0.3s;
   
   .el-icon {
-    color: var(--text-muted);
+    color: $primary-color;
   }
 }
 
@@ -97,11 +100,22 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: rgba($primary-color, 0.05);
+    
+    .hot-title {
+      color: $primary-color;
+    }
+  }
 }
 
 .hot-rank {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -109,9 +123,8 @@ onMounted(async () => {
   font-weight: 600;
   color: var(--text-disabled);
   background: var(--bg-card-hover);
-  border-radius: 4px;
+  border-radius: 6px;
   flex-shrink: 0;
-  transition: background-color 0.3s;
 
   &.gold {
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -139,10 +152,6 @@ onMounted(async () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--text-primary);
-  }
+  transition: color 0.2s ease;
 }
 </style>

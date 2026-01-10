@@ -414,3 +414,57 @@ a {
     }
   }
 }
+
+// 表格操作按钮通用样式
+.action-btn {
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: 6px;
+  border: none;
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+  
+  &:hover {
+    filter: brightness(110%);
+    transform: translateY(-1px);
+    border-bottom-width: 4px;
+  }
+  
+  &:active {
+    filter: brightness(90%);
+    transform: translateY(1px);
+    border-bottom-width: 2px;
+  }
+  
+  &:last-child {
+    margin-right: 0;
+  }
+}
+
+.publish-btn, .enable-btn, .pass-btn {
+  background: #22c55e;
+  color: white;
+  border-color: #16a34a;
+}
+
+.offline-btn, .disable-btn, .reject-btn {
+  background: #f59e0b;
+  color: white;
+  border-color: #d97706;
+}
+
+.edit-btn, .view-btn {
+  background: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: white;
+  border-color: #dc2626;
+}

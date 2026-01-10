@@ -20,6 +20,12 @@ const routes = [
         meta: { title: '仪表盘', icon: 'Odometer' }
       },
       {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('@/views/Profile/index.vue'),
+        meta: { title: '个人中心', hidden: true }
+      },
+      {
         path: 'article',
         name: 'Article',
         redirect: '/article/list',

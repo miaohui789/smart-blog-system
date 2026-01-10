@@ -8,6 +8,10 @@ export function updateConfigs(data) {
   return request({ url: '/configs', method: 'put', data })
 }
 
+export function resetConfigs(type) {
+  return request({ url: `/configs/reset/${type}`, method: 'post' })
+}
+
 export function uploadImage(data) {
   return request({ url: '/upload/image', method: 'post', data, headers: { 'Content-Type': 'multipart/form-data' } })
 }

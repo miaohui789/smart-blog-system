@@ -42,11 +42,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="评论时间" width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 0" link type="success" @click="handleAudit(row.id, 1)">通过</el-button>
-            <el-button v-if="row.status === 0" link type="warning" @click="handleAudit(row.id, 2)">拒绝</el-button>
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <button v-if="row.status === 0" class="action-btn pass-btn" @click="handleAudit(row.id, 1)">通过</button>
+            <button v-if="row.status === 0" class="action-btn reject-btn" @click="handleAudit(row.id, 2)">拒绝</button>
+            <button class="action-btn delete-btn" @click="handleDelete(row.id)">删除</button>
           </template>
         </el-table-column>
       </el-table>

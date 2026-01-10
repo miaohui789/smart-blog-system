@@ -85,6 +85,10 @@ onMounted(fetchArticles)
   padding: $spacing-xl;
   text-align: center;
   margin-bottom: $spacing-xl;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: $radius-lg;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .header-icon {
@@ -103,8 +107,9 @@ onMounted(fetchArticles)
 }
 
 .page-desc {
-  color: $text-muted;
+  color: var(--text-muted);
   font-size: 14px;
+  transition: color 0.3s;
 }
 
 .article-list {

@@ -31,6 +31,18 @@ export const useUserStore = defineStore('user', () => {
     menus.value = res.data || []
   }
 
+  function updateAvatar(avatar) {
+    if (userInfo.value) {
+      userInfo.value.avatar = avatar
+    }
+  }
+
+  function updateNickname(nickname) {
+    if (userInfo.value) {
+      userInfo.value.nickname = nickname
+    }
+  }
+
   function logout() {
     token.value = ''
     userInfo.value = null
@@ -38,5 +50,5 @@ export const useUserStore = defineStore('user', () => {
     removeToken()
   }
 
-  return { token, userInfo, menus, permissions, roles, isLoggedIn, login, fetchUserInfo, fetchMenus, logout }
+  return { token, userInfo, menus, permissions, roles, isLoggedIn, login, fetchUserInfo, fetchMenus, updateAvatar, updateNickname, logout }
 })
