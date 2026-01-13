@@ -53,6 +53,17 @@
         <span>用户管理</span>
       </el-menu-item>
       
+      <!-- 会员管理 - 仅超级管理员可见 -->
+      <el-sub-menu index="/vip" v-if="isAdmin">
+        <template #title>
+          <el-icon><Medal /></el-icon>
+          <span>会员管理</span>
+        </template>
+        <el-menu-item index="/vip/member">会员列表</el-menu-item>
+        <el-menu-item index="/vip/key">密钥管理</el-menu-item>
+        <el-menu-item index="/vip/statistics">VIP统计</el-menu-item>
+      </el-sub-menu>
+      
       <!-- 系统管理 - 仅超级管理员可见 -->
       <el-sub-menu index="/system" v-if="isAdmin">
         <template #title>
@@ -72,7 +83,7 @@
 import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useUserStore } from '@/stores/user'
-import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting } from '@element-plus/icons-vue'
+import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting, Medal } from '@element-plus/icons-vue'
 
 const settingsStore = useSettingsStore()
 const userStore = useUserStore()

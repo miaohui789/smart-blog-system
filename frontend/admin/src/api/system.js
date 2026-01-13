@@ -1,21 +1,21 @@
 import request from '@/utils/request'
 
 export function getConfigs() {
-  return request({ url: '/configs', method: 'get' })
+  return request({ url: '/admin/configs', method: 'get' })
 }
 
 export function updateConfigs(data) {
-  return request({ url: '/configs', method: 'put', data })
+  return request({ url: '/admin/configs', method: 'put', data })
 }
 
 export function resetConfigs(type) {
-  return request({ url: `/configs/reset/${type}`, method: 'post' })
+  return request({ url: `/admin/configs/reset/${type}`, method: 'post' })
 }
 
 export function uploadImage(data) {
-  return request({ url: '/upload/image', method: 'post', data, headers: { 'Content-Type': 'multipart/form-data' } })
+  return request({ url: '/admin/upload/image', method: 'post', data, headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
 export function uploadFile(data) {
-  return request({ url: '/upload/file', method: 'post', data, headers: { 'Content-Type': 'multipart/form-data' } })
+  return request({ url: '/admin/upload/file', method: 'post', data, headers: { 'Content-Type': 'multipart/form-data' } })
 }

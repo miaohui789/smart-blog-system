@@ -1,17 +1,17 @@
 import request from '@/utils/request'
 
 export function getCommentList(params) {
-  return request({ url: '/comments', method: 'get', params })
+  return request({ url: '/admin/comments', method: 'get', params })
 }
 
 export function updateCommentStatus(id, status) {
-  return request({ url: `/comments/${id}/status`, method: 'put', data: { status } })
+  return request({ url: `/admin/comments/${id}/status`, method: 'put', data: { status } })
 }
 
 export function deleteComment(id) {
-  return request({ url: `/comments/${id}`, method: 'delete' })
+  return request({ url: `/admin/comments/${id}`, method: 'delete' })
 }
 
 export function batchDeleteComments(ids) {
-  return request({ url: '/comments/batch', method: 'delete', data: { ids } })
+  return request({ url: '/admin/comments/batch', method: 'delete', data: { ids } })
 }

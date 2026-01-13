@@ -15,6 +15,11 @@ export function deleteComment(id) {
   return request({ url: `/comments/${id}`, method: 'delete' })
 }
 
+// 更新评论
+export function updateComment(id, content) {
+  return request({ url: `/comments/${id}`, method: 'put', data: { content } })
+}
+
 // 点赞评论
 export function likeComment(id) {
   return request({ url: `/comments/${id}/like`, method: 'post' })

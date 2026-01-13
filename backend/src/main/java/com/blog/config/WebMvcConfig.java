@@ -15,11 +15,17 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 获取项目根目录的绝对路径
-        String userDir = System.getProperty("user.dir");
-        String absolutePath = Paths.get(userDir, uploadPath).toAbsolutePath().toString();
+        // 判断是否为绝对路径
+        String absolutePath;
+        java.nio.file.Path path = Paths.get(uploadPath);
+        if (path.isAbsolute()) {
+            absolutePath = path.toString();
+        } else {
+            String userDir = System.getProperty("user.dir");
+            absolutePath = Paths.get(userDir, uploadPath).toAbsolutePath().toString();
+        }
         
-        // 配置上传文件的访问路径，使用绝对路径
+        // 配置上传文件的访问路径
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + absolutePath + "/");
     }

@@ -20,6 +20,7 @@ public class Article {
     private Integer likeCount;
     private Integer commentCount;
     private Integer favoriteCount;
+    private Integer heatCount;
     private Integer isTop;
     private Integer isRecommend;
     private Integer status;

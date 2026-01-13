@@ -29,5 +29,6 @@ public class CommentVO {
         private Long id;
         private String nickname;
         private String avatar;
+        private Integer vipLevel;
     }
 }

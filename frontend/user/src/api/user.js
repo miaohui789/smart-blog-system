@@ -10,6 +10,33 @@ export function register(data) {
   return request({ url: '/auth/register', method: 'post', data })
 }
 
+// 发送邮箱验证码（注册用）
+export function sendEmailCode(email) {
+  return request({ 
+    url: '/auth/send-code', 
+    method: 'post', 
+    params: { email },
+    timeout: 60000,
+    showError: false
+  })
+}
+
+// 发送重置密码验证码
+export function sendResetCode(email) {
+  return request({ 
+    url: '/auth/forgot-password/send-code', 
+    method: 'post', 
+    params: { email },
+    timeout: 60000,
+    showError: false
+  })
+}
+
+// 重置密码
+export function resetPassword(data) {
+  return request({ url: '/auth/forgot-password/reset', method: 'post', data })
+}
+
 // 退出登录
 export function logout() {
   return request({ url: '/auth/logout', method: 'post' })

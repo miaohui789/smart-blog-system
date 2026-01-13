@@ -93,12 +93,18 @@
                 />
                 <span v-else>{{ avatarText }}</span>
               </div>
-              <span class="user-greeting">{{ userStore.userInfo?.nickname || '用户' }}</span>
+              <VipUsername 
+                :username="userStore.userInfo?.nickname || '用户'" 
+                :vipLevel="userStore.userInfo?.vipLevel || 0"
+              />
             </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>个人中心
+                </el-dropdown-item>
+                <el-dropdown-item command="vip">
+                  <el-icon><Medal /></el-icon>VIP中心
                 </el-dropdown-item>
                 <el-dropdown-item command="articles">
                   <el-icon><Document /></el-icon>我的文章
@@ -148,8 +154,19 @@
                 class="search-result-item"
                 @click="closeSearch"
               >
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.summary }}</p>
+                <h4 v-html="highlightKeyword(item.title)"></h4>
+                <p v-html="highlightKeyword(item.summary || '')"></p>
+                <div v-if="item.tags && item.tags.length" class="search-tags">
+                  <span 
+                    v-for="tag in item.tags" 
+                    :key="tag.id" 
+                    class="search-tag"
+                    :class="{ 'tag-matched': isTagMatched(tag.name) }"
+                    :style="{ '--tag-color': tag.color || '#a855f7' }"
+                  >
+                    {{ tag.name }}
+                  </span>
+                </div>
               </router-link>
             </div>
             <div v-else-if="keyword && !searching" class="search-empty">
@@ -164,12 +181,13 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { Search, User, Star, Setting, SwitchButton, Document } from '@element-plus/icons-vue'
+import { Search, User, Star, Setting, SwitchButton, Document, Medal } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
 import { searchArticles } from '@/api/article'
+import VipUsername from '@/components/VipUsername/index.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,6 +243,20 @@ function openSearch() {
   nextTick(() => searchInputRef.value?.focus())
 }
 
+// 高亮搜索关键词
+function highlightKeyword(text) {
+  if (!text || !keyword.value.trim()) return text
+  const kw = keyword.value.trim()
+  const regex = new RegExp(`(${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return text.replace(regex, '<mark class="search-highlight">$1</mark>')
+}
+
+// 检查标签是否匹配关键词
+function isTagMatched(tagName) {
+  if (!tagName || !keyword.value.trim()) return false
+  return tagName.toLowerCase().includes(keyword.value.trim().toLowerCase())
+}
+
 function closeSearch() {
   showSearch.value = false
 }
@@ -272,6 +304,9 @@ function handleCommand(command) {
   switch (command) {
     case 'profile':
       router.push('/user/profile')
+      break
+    case 'vip':
+      router.push('/vip/center')
       break
     case 'articles':
       router.push('/user/articles')
@@ -800,12 +835,6 @@ function handleCommand(command) {
   cursor: pointer;
 }
 
-.user-greeting {
-  font-size: 13px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
 .user-avatar {
   width: 32px;
   height: 32px;
@@ -917,6 +946,13 @@ function handleCommand(command) {
     font-weight: 500;
     color: var(--text-secondary);
     margin-bottom: 4px;
+    
+    :deep(.search-highlight) {
+      background: rgba(168, 85, 247, 0.3);
+      color: var(--primary-color);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
   }
   
   p {
@@ -925,6 +961,36 @@ function handleCommand(command) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    
+    :deep(.search-highlight) {
+      background: rgba(168, 85, 247, 0.3);
+      color: var(--primary-color);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+  }
+}
+
+.search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.search-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-card-hover);
+  border-radius: 4px;
+  transition: all 0.2s;
+  
+  &.tag-matched {
+    background: rgba(168, 85, 247, 0.2);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
   }
 }
 

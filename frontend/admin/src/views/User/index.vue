@@ -64,7 +64,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="注册时间" width="160" />
+        <el-table-column label="注册时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <button 
@@ -143,6 +145,7 @@ import { Plus, Search } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/format'
 
 const userStore = useUserStore()
 

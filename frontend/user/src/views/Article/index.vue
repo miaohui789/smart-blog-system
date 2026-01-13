@@ -113,6 +113,20 @@
               <span class="action-text">{{ article.isFavorited ? '已收藏' : '收藏' }}</span>
               <em class="action-count">{{ article.favoriteCount || 0 }}</em>
             </div>
+
+            <!-- VIP加热按钮 -->
+            <div class="action-btn-wrapper vip-btn" @click="handleHeat" :class="{ disabled: heatingArticle }">
+              <el-icon class="heat-icon"><Sunny /></el-icon>
+              <span class="action-text">加热</span>
+              <span v-if="vipInfo.isVip" class="vip-tag">VIP</span>
+            </div>
+
+            <!-- VIP下载按钮 -->
+            <div class="action-btn-wrapper vip-btn" @click="handleDownload">
+              <el-icon class="download-icon"><Download /></el-icon>
+              <span class="action-text">下载</span>
+              <span v-if="vipInfo.isVip" class="vip-tag">VIP</span>
+            </div>
           </div>
         </footer>
       </article>
@@ -170,37 +184,124 @@
 
         <!-- 评论列表 -->
         <div class="comment-list" v-if="comments.length > 0">
-          <div v-for="comment in comments" :key="comment.id" class="comment-item">
-            <el-avatar :size="44" :src="comment.user?.avatar">
-              {{ comment.user?.nickname?.charAt(0) || 'U' }}
-            </el-avatar>
-            <div class="comment-body">
-              <div class="comment-header">
-                <span class="comment-author">{{ comment.user?.nickname || '匿名用户' }}</span>
-                <span class="comment-time">{{ formatRelativeTime(comment.createTime) }}</span>
+          <div v-for="comment in comments" :key="comment.id" class="comment-card">
+            <!-- 主评论 -->
+            <div class="comment-main">
+              <div class="comment-avatar" :class="{ 'vip-avatar': comment.user?.vipLevel > 0, ['vip-level-' + comment.user?.vipLevel]: comment.user?.vipLevel > 0 }">
+                <el-avatar :size="42" :src="comment.user?.avatar">
+                  {{ comment.user?.nickname?.charAt(0) || 'U' }}
+                </el-avatar>
               </div>
-              <p class="comment-content">{{ comment.content }}</p>
-              <div class="comment-actions">
-                <span class="action-item" @click="handleLikeComment(comment)">
-                  <el-icon><Star /></el-icon> {{ comment.likeCount || 0 }}
-                </span>
-                <span class="action-item" @click="handleReply(comment)">
-                  <el-icon><ChatDotRound /></el-icon> 回复
-                </span>
-              </div>
-              
-              <!-- 子评论 -->
-              <div v-if="comment.replies && comment.replies.length" class="reply-list">
-                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                  <el-avatar :size="32" :src="reply.user?.avatar">
-                    {{ reply.user?.nickname?.charAt(0) || 'U' }}
-                  </el-avatar>
-                  <div class="reply-body">
-                    <span class="reply-author">{{ reply.user?.nickname }}</span>
-                    <span v-if="reply.replyUser" class="reply-to">
-                      回复 <em>@{{ reply.replyUser.nickname }}</em>
+              <div class="comment-content-wrapper">
+                <div class="comment-meta">
+                  <VipUsername 
+                    :username="comment.user?.nickname || '匿名用户'" 
+                    :vip-level="comment.user?.vipLevel || 0" 
+                  />
+                  <span class="comment-time">{{ formatRelativeTime(comment.createTime) }}</span>
+                </div>
+                
+                <!-- 编辑模式 -->
+                <div v-if="editingCommentId === comment.id" class="comment-edit-form">
+                  <el-input
+                    v-model="editingContent"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="编辑评论内容..."
+                    maxlength="500"
+                    show-word-limit
+                  />
+                  <div class="edit-actions">
+                    <el-button size="small" @click="cancelEdit">取消</el-button>
+                    <el-button size="small" type="primary" @click="submitEdit(comment)" :loading="editSubmitting">保存</el-button>
+                  </div>
+                </div>
+                
+                <!-- 正常显示 -->
+                <template v-else>
+                  <p class="comment-text">{{ comment.content }}</p>
+                  <div class="comment-actions">
+                    <span class="action-btn" @click="handleLikeComment(comment)">
+                      <el-icon><Star /></el-icon>
+                      <em>{{ comment.likeCount || 0 }}</em>
                     </span>
-                    <span class="reply-content">{{ reply.content }}</span>
+                    <span class="action-btn" @click="handleReply(comment)">
+                      <el-icon><ChatDotRound /></el-icon>
+                      <em>回复</em>
+                    </span>
+                    <template v-if="userStore.userInfo?.id === comment.user?.id">
+                      <span class="action-btn edit" @click="startEdit(comment)">
+                        <el-icon><Edit /></el-icon>
+                        <em>编辑</em>
+                      </span>
+                      <span class="action-btn delete" @click="handleDeleteComment(comment)">
+                        <el-icon><Delete /></el-icon>
+                        <em>删除</em>
+                      </span>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+            <!-- 子评论区域 -->
+            <div v-if="comment.replies && comment.replies.length" class="replies-container">
+              <div class="replies-list">
+                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                  <div class="reply-avatar" :class="{ 'vip-avatar': reply.user?.vipLevel > 0, ['vip-level-' + reply.user?.vipLevel]: reply.user?.vipLevel > 0 }">
+                    <el-avatar :size="32" :src="reply.user?.avatar">
+                      {{ reply.user?.nickname?.charAt(0) || 'U' }}
+                    </el-avatar>
+                  </div>
+                  <div class="reply-content-wrapper">
+                    <div class="reply-meta">
+                      <VipUsername 
+                        :username="reply.user?.nickname || '匿名用户'" 
+                        :vip-level="reply.user?.vipLevel || 0" 
+                        size="small"
+                      />
+                      <span v-if="reply.replyUser" class="reply-target">
+                        回复 <em>@{{ reply.replyUser.nickname }}</em>
+                      </span>
+                      <span class="reply-time">{{ formatRelativeTime(reply.createTime) }}</span>
+                    </div>
+                    
+                    <!-- 子评论编辑模式 -->
+                    <div v-if="editingCommentId === reply.id" class="comment-edit-form">
+                      <el-input
+                        v-model="editingContent"
+                        type="textarea"
+                        :rows="2"
+                        placeholder="编辑回复内容..."
+                        maxlength="500"
+                        show-word-limit
+                      />
+                      <div class="edit-actions">
+                        <el-button size="small" @click="cancelEdit">取消</el-button>
+                        <el-button size="small" type="primary" @click="submitEdit(reply)" :loading="editSubmitting">保存</el-button>
+                      </div>
+                    </div>
+                    
+                    <!-- 子评论正常显示 -->
+                    <template v-else>
+                      <p class="reply-text">{{ reply.content }}</p>
+                      <div class="reply-actions">
+                        <span class="action-btn" @click="handleReply(reply)">
+                          <el-icon><ChatDotRound /></el-icon>
+                          <em>回复</em>
+                        </span>
+                        <template v-if="userStore.userInfo?.id === reply.user?.id">
+                          <span class="action-btn edit" @click="startEdit(reply)">
+                            <el-icon><Edit /></el-icon>
+                            <em>编辑</em>
+                          </span>
+                          <span class="action-btn delete" @click="handleDeleteComment(reply, comment)">
+                            <el-icon><Delete /></el-icon>
+                            <em>删除</em>
+                          </span>
+                        </template>
+                      </div>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -221,15 +322,23 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft, Download, Sunny, Edit, Delete } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getArticleDetail, likeArticle, unlikeArticle, favoriteArticle, unfavoriteArticle } from '@/api/article'
-import { getCommentList, createComment, likeComment } from '@/api/comment'
+import { getCommentList, createComment, likeComment, deleteComment, updateComment } from '@/api/comment'
+import { getVipInfo, heatArticle, downloadArticle } from '@/api/vip'
 import { formatDate, formatRelativeTime } from '@/utils/format'
 import { useUserStore } from '@/stores/user'
 import Loading from '@/components/Loading/index.vue'
+import VipBadge from '@/components/VipBadge/index.vue'
+import VipUsername from '@/components/VipUsername/index.vue'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/atom-one-dark.css'
+
+// 配置 highlight.js
+hljs.configure({
+  ignoreUnescapedHTML: true
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -242,6 +351,8 @@ const loading = ref(true)
 const submitting = ref(false)
 const commentContent = ref('')
 const replyTo = ref(null)
+const vipInfo = ref({ isVip: false })
+const heatingArticle = ref(false)
 
 // 滚动到评论区
 function scrollToComment() {
@@ -260,68 +371,134 @@ function goBack() {
   }
 }
 
-// 代码高亮并添加复制按钮
-function highlightCode() {
-  nextTick(() => {
-    document.querySelectorAll('.article-body pre code').forEach((block) => {
-      // 获取 pre 元素
-      const pre = block.parentElement
-      if (!pre) return
+// 兼容的复制方法（支持 HTTP）
+function copyToClipboard(text) {
+  return new Promise((resolve, reject) => {
+    // 优先使用 Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(resolve).catch(reject)
+    } else {
+      // 降级方案：使用 execCommand
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      textArea.style.top = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
       
-      // 检查是否已经处理过（通过自定义属性标记）
-      if (pre.dataset.highlighted === 'true') return
-      pre.dataset.highlighted = 'true'
-      
-      // 执行代码高亮
-      hljs.highlightElement(block)
-      
-      // 设置 pre 为相对定位
-      pre.style.position = 'relative'
-      
-      // 创建复制按钮
-      const copyBtn = document.createElement('button')
-      copyBtn.className = 'copy-btn'
-      copyBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        </svg>
-        <span>复制</span>
-      `
-      
-      // 点击复制
-      copyBtn.addEventListener('click', async () => {
-        const code = block.textContent || ''
-        try {
-          await navigator.clipboard.writeText(code)
-          copyBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>已复制</span>
-          `
-          copyBtn.classList.add('copied')
-          ElMessage.success('复制成功')
-          
-          // 2秒后恢复
-          setTimeout(() => {
-            copyBtn.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span>复制</span>
-            `
-            copyBtn.classList.remove('copied')
-          }, 2000)
-        } catch (err) {
-          ElMessage.error('复制失败')
+      try {
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        if (successful) {
+          resolve()
+        } else {
+          reject(new Error('复制失败'))
         }
-      })
-      
-      pre.appendChild(copyBtn)
-    })
+      } catch (err) {
+        document.body.removeChild(textArea)
+        reject(err)
+      }
+    }
   })
+}
+
+// 代码高亮并添加复制按钮
+let highlightTimer = null
+function highlightCode() {
+  if (highlightTimer) clearTimeout(highlightTimer)
+  
+  highlightTimer = setTimeout(() => {
+    nextTick(() => {
+      const preElements = document.querySelectorAll('.article-body pre')
+      
+      preElements.forEach((pre) => {
+        // 如果已经有复制按钮，跳过
+        if (pre.querySelector('.copy-btn')) return
+        
+        // 获取 code 元素
+        let codeBlock = pre.querySelector('code')
+        
+        // 在高亮之前保存原始代码内容
+        let originalCode = ''
+        if (codeBlock) {
+          originalCode = codeBlock.textContent || ''
+        } else {
+          originalCode = pre.textContent || ''
+        }
+        originalCode = originalCode.trim()
+        
+        // 从 class 中提取语言
+        const langMatch = (codeBlock?.className || pre.className).match(/language-(\w+)/i)
+        const lang = langMatch ? langMatch[1] : ''
+        const langDisplay = getLanguageDisplay(lang)
+        
+        // 高亮代码
+        if (codeBlock && !codeBlock.classList.contains('hljs')) {
+          try { hljs.highlightElement(codeBlock) } catch (e) {}
+        }
+        
+        // 添加包装类
+        pre.classList.add('code-block-wrapper')
+        
+        // 创建或获取头部
+        let header = pre.querySelector('.code-header')
+        if (!header) {
+          header = document.createElement('div')
+          header.className = 'code-header'
+          header.innerHTML = `<span class="code-lang">${langDisplay}</span>`
+          pre.insertBefore(header, pre.firstChild)
+        }
+        
+        // 创建复制按钮
+        const copyBtn = document.createElement('button')
+        copyBtn.className = 'copy-btn'
+        copyBtn.type = 'button'
+        copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-text">复制代码</span>`
+        
+        // 将原始代码保存到按钮的 data 属性中
+        copyBtn.dataset.code = originalCode
+        
+        copyBtn.onclick = async (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          
+          if (!userStore.isLoggedIn) {
+            ElMessage.warning('请先登录后再复制代码')
+            router.push('/login')
+            return
+          }
+          
+          // 从 data 属性获取保存的原始代码
+          const code = copyBtn.dataset.code || ''
+          
+          if (!code) {
+            ElMessage.warning('代码内容为空')
+            return
+          }
+          
+          console.log('复制代码长度:', code.length, '行数:', code.split('\n').length)
+          
+          try {
+            await copyToClipboard(code)
+            copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="copy-text">已复制!</span>`
+            copyBtn.classList.add('copied')
+            ElMessage.success('代码复制成功')
+            
+            setTimeout(() => {
+              copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-text">复制代码</span>`
+              copyBtn.classList.remove('copied')
+            }, 2000)
+          } catch (err) {
+            ElMessage.error('复制失败')
+          }
+        }
+        
+        header.appendChild(copyBtn)
+      })
+    })
+  }, 200)
 }
 
 // 计算属性：处理文章内容
@@ -331,13 +508,9 @@ const articleContent = computed(() => {
   const content = article.value.content
   const contentHtml = article.value.contentHtml
   
-  // 优先使用 contentHtml
+  // 优先使用 contentHtml（后端已渲染的HTML）
   if (contentHtml && contentHtml.trim()) {
-    // 如果 contentHtml 中还有未解析的 Markdown 图片语法，也进行处理
-    let html = contentHtml
-    // 处理可能遗留的 Markdown 图片语法
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-img" />')
-    return html
+    return contentHtml
   }
   
   // 否则解析 markdown content
@@ -348,6 +521,53 @@ const articleContent = computed(() => {
   return ''
 })
 
+// 获取语言显示名称
+function getLanguageDisplay(lang) {
+  if (!lang) return '代码'
+  const langMap = {
+    'js': 'JavaScript',
+    'javascript': 'JavaScript',
+    'ts': 'TypeScript',
+    'typescript': 'TypeScript',
+    'java': 'Java',
+    'python': 'Python',
+    'py': 'Python',
+    'html': 'HTML',
+    'css': 'CSS',
+    'scss': 'SCSS',
+    'sass': 'Sass',
+    'less': 'Less',
+    'json': 'JSON',
+    'xml': 'XML',
+    'sql': 'SQL',
+    'bash': 'Bash',
+    'shell': 'Shell',
+    'sh': 'Shell',
+    'vue': 'Vue',
+    'jsx': 'JSX',
+    'tsx': 'TSX',
+    'go': 'Go',
+    'rust': 'Rust',
+    'c': 'C',
+    'cpp': 'C++',
+    'csharp': 'C#',
+    'cs': 'C#',
+    'php': 'PHP',
+    'ruby': 'Ruby',
+    'swift': 'Swift',
+    'kotlin': 'Kotlin',
+    'yaml': 'YAML',
+    'yml': 'YAML',
+    'markdown': 'Markdown',
+    'md': 'Markdown',
+    'dockerfile': 'Dockerfile',
+    'nginx': 'Nginx',
+    'text': '纯文本',
+    '': '纯文本'
+  }
+  return langMap[lang.toLowerCase()] || lang.toUpperCase()
+}
+
 // Markdown 解析函数
 function parseMarkdown(text) {
   if (!text) return ''
@@ -355,9 +575,12 @@ function parseMarkdown(text) {
   // 处理字面量 \n 转换为真正的换行
   let content = text.replace(/\\n/g, '\n')
   
-  // 处理代码块
-  content = content.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
-    return `<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(code.trim())}</code></pre>`
+  // 处理代码块 - 添加语言标签头部
+  content = content.replace(/```(\w*)\s*\n?([\s\S]*?)```/g, (match, lang, code) => {
+    const trimmedCode = code.replace(/\s+$/, '')
+    const langDisplay = getLanguageDisplay(lang || 'text')
+    const langClass = lang ? `language-${lang}` : 'language-text'
+    return `<pre class="code-block-wrapper" data-lang="${lang || 'text'}"><div class="code-header"><span class="code-lang">${langDisplay}</span></div><code class="${langClass}">${escapeHtml(trimmedCode)}</code></pre>`
   })
   
   // 处理行内代码
@@ -404,6 +627,10 @@ async function fetchArticle() {
     const res = await getArticleDetail(route.params.id)
     if (res && res.data) {
       article.value = res.data
+      // 文章加载成功后，延迟执行代码高亮
+      setTimeout(() => {
+        highlightCode()
+      }, 200)
     }
   } catch (e) {
     console.error('获取文章失败:', e)
@@ -414,6 +641,80 @@ async function fetchArticle() {
   
   // 单独获取评论，不影响文章加载
   fetchComments()
+  // 获取VIP信息
+  fetchVipInfo()
+}
+
+// 获取VIP信息
+async function fetchVipInfo() {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await getVipInfo()
+    if (res.code === 200) {
+      vipInfo.value = res.data
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// 文章加热
+async function handleHeat() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  if (!vipInfo.value.isVip) {
+    ElMessage.warning('VIP会员专属功能')
+    return
+  }
+  heatingArticle.value = true
+  try {
+    const res = await heatArticle(article.value.id)
+    if (res.code === 200) {
+      ElMessage.success('加热成功！')
+      article.value.heatCount = (article.value.heatCount || 0) + getHeatValue(vipInfo.value.level)
+      vipInfo.value.heatCountToday++
+    } else {
+      ElMessage.error(res.message)
+    }
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '加热失败')
+  } finally {
+    heatingArticle.value = false
+  }
+}
+
+// 下载文章
+async function handleDownload() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  if (!vipInfo.value.isVip) {
+    ElMessage.warning('VIP会员专属功能')
+    return
+  }
+  try {
+    const res = await downloadArticle(article.value.id)
+    const blob = new Blob([res], { type: 'text/markdown' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${article.value.title}.md`
+    a.click()
+    window.URL.revokeObjectURL(url)
+    vipInfo.value.downloadCountToday++
+    ElMessage.success('下载成功')
+  } catch (e) {
+    console.error('下载失败:', e)
+    ElMessage.error(e.message || '下载失败')
+  }
+}
+
+function getHeatValue(level) {
+  const values = { 1: 10, 2: 30, 3: 100 }
+  return values[level] || 10
 }
 
 // 获取评论列表
@@ -525,6 +826,83 @@ async function handleLikeComment(comment) {
   }
 }
 
+// ========== 评论编辑删除功能 ==========
+const editingCommentId = ref(null)
+const editingContent = ref('')
+const editSubmitting = ref(false)
+
+// 开始编辑评论
+function startEdit(comment) {
+  editingCommentId.value = comment.id
+  editingContent.value = comment.content
+}
+
+// 取消编辑
+function cancelEdit() {
+  editingCommentId.value = null
+  editingContent.value = ''
+}
+
+// 提交编辑
+async function submitEdit(comment) {
+  if (!editingContent.value.trim()) {
+    ElMessage.warning('评论内容不能为空')
+    return
+  }
+  
+  editSubmitting.value = true
+  try {
+    await updateComment(comment.id, editingContent.value.trim())
+    comment.content = editingContent.value.trim()
+    ElMessage.success('修改成功')
+    cancelEdit()
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('修改失败')
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+// 删除评论
+async function handleDeleteComment(comment, parentComment = null) {
+  try {
+    await ElMessageBox.confirm('确定要删除这条评论吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await deleteComment(comment.id)
+    ElMessage.success('删除成功')
+    
+    // 如果是子评论，从父评论的replies中移除
+    if (parentComment && parentComment.replies) {
+      const index = parentComment.replies.findIndex(r => r.id === comment.id)
+      if (index > -1) {
+        parentComment.replies.splice(index, 1)
+      }
+    } else {
+      // 如果是主评论，从评论列表中移除
+      const index = comments.value.findIndex(c => c.id === comment.id)
+      if (index > -1) {
+        comments.value.splice(index, 1)
+      }
+    }
+    
+    // 更新评论数
+    if (article.value && article.value.commentCount > 0) {
+      article.value.commentCount--
+    }
+    totalComments.value = Math.max(0, totalComments.value - 1)
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error(e)
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
 // 监听路由变化
 watch(() => route.params.id, (newId) => {
   if (newId) {
@@ -533,9 +911,11 @@ watch(() => route.params.id, (newId) => {
 })
 
 // 监听文章内容变化，执行代码高亮
-watch(articleContent, () => {
-  highlightCode()
-})
+watch(articleContent, (newVal) => {
+  if (newVal) {
+    highlightCode()
+  }
+}, { immediate: true })
 
 onMounted(() => {
   fetchArticle()
@@ -788,92 +1168,181 @@ onMounted(() => {
   }
   :deep(h3) { font-size: 18px; }
   :deep(p) { margin-bottom: 16px; }
-  :deep(.code-block) {
-    background: #282c34;
-    padding: 16px;
-    border-radius: 8px;
-    overflow-x: auto;
+  
+  // 代码块容器样式
+  :deep(.code-block-wrapper),
+  :deep(pre) {
+    background: #1e1e1e !important;
+    border-radius: 10px;
+    overflow: hidden;
     margin: 16px 0;
+    position: relative;
+    border: 1px solid #333;
+    
+    // 代码头部（语言标签 + 复制按钮）
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #2d2d2d;
+      border-bottom: 1px solid #404040;
+      
+      .code-lang {
+        font-size: 12px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .copy-btn {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: #3a3a3a;
+        border: 1px solid #555;
+        border-radius: 6px;
+        color: #ccc;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        
+        svg {
+          width: 14px;
+          height: 14px;
+          flex-shrink: 0;
+        }
+        
+        span, .copy-text {
+          display: inline !important;
+          font-size: 12px !important;
+          color: inherit !important;
+        }
+        
+        &:hover {
+          background: #4a4a4a;
+          border-color: #777;
+          color: #fff;
+        }
+        
+        &.copied {
+          background: rgba(34, 197, 94, 0.2);
+          border-color: #22c55e;
+          color: #22c55e;
+        }
+      }
+    }
+    
     code {
-      font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+      display: block;
+      padding: 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
       font-size: 14px;
       line-height: 1.6;
+      background: transparent !important;
+      color: #d4d4d4;
       white-space: pre;
+      overflow-x: auto;
     }
   }
   
-  // highlight.js 代码块样式
-  :deep(pre) {
-    background: #282c34;
+  // 没有头部的旧代码块兼容
+  :deep(pre:not(.code-block-wrapper)) {
     padding: 16px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 16px 0;
-    position: relative;
     
-    code {
-      font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      background: transparent;
-      padding: 0;
-    }
-    
-    &.hljs {
-      padding: 16px;
-    }
-    
-    // 复制按钮样式
     .copy-btn {
       position: absolute;
       top: 8px;
       right: 8px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 12px;
-      cursor: pointer;
       opacity: 0;
-      transition: all 0.2s ease;
-      
-      svg {
-        width: 14px;
-        height: 14px;
-      }
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.2);
-        color: #fff;
-      }
-      
-      &.copied {
-        background: rgba(34, 197, 94, 0.2);
-        border-color: rgba(34, 197, 94, 0.3);
-        color: #22c55e;
-      }
     }
-    
     &:hover .copy-btn {
       opacity: 1;
     }
   }
   
-  :deep(code.hljs) {
-    padding: 16px;
-    border-radius: 8px;
+  // highlight.js 语法高亮颜色 - VS Code Dark+ 主题风格
+  :deep(.hljs) {
+    background: transparent !important;
+    color: #d4d4d4 !important;
   }
+  
+  :deep(.hljs-keyword),
+  :deep(.hljs-selector-tag),
+  :deep(.hljs-literal),
+  :deep(.hljs-section),
+  :deep(.hljs-link) {
+    color: #569cd6 !important;
+  }
+  
+  :deep(.hljs-function) {
+    color: #dcdcaa !important;
+  }
+  
+  :deep(.hljs-string),
+  :deep(.hljs-attr),
+  :deep(.hljs-symbol),
+  :deep(.hljs-bullet),
+  :deep(.hljs-addition) {
+    color: #ce9178 !important;
+  }
+  
+  :deep(.hljs-title),
+  :deep(.hljs-title.function_) {
+    color: #dcdcaa !important;
+  }
+  
+  :deep(.hljs-number) {
+    color: #b5cea8 !important;
+  }
+  
+  :deep(.hljs-variable),
+  :deep(.hljs-template-variable) {
+    color: #9cdcfe !important;
+  }
+  
+  :deep(.hljs-tag) {
+    color: #569cd6 !important;
+  }
+  
+  :deep(.hljs-comment),
+  :deep(.hljs-quote),
+  :deep(.hljs-deletion),
+  :deep(.hljs-meta) {
+    color: #6a9955 !important;
+  }
+  
+  :deep(.hljs-params) {
+    color: #9cdcfe !important;
+  }
+  
+  :deep(.hljs-built_in) {
+    color: #4ec9b0 !important;
+  }
+  
+  :deep(.hljs-name),
+  :deep(.hljs-attribute) {
+    color: #9cdcfe !important;
+  }
+  
+  :deep(.hljs-class) {
+    color: #4ec9b0 !important;
+  }
+  
+  :deep(.hljs-property) {
+    color: #9cdcfe !important;
+  }
+  
   :deep(.inline-code) {
     background: rgba(59, 130, 246, 0.15);
     color: var(--primary-color);
     padding: 2px 8px;
     border-radius: 4px;
-    font-family: 'Fira Code', monospace;
-    font-size: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
   }
   :deep(a) {
     color: var(--primary-color);
@@ -1100,6 +1569,46 @@ onMounted(() => {
   fill: var(--icon-primary-color);
 }
 
+/* VIP按钮样式 */
+.action-btn-wrapper.vip-btn {
+  position: relative;
+  
+  .heat-icon {
+    font-size: 20px;
+    color: #f97316;
+  }
+  
+  .download-icon {
+    font-size: 20px;
+    color: #3b82f6;
+  }
+  
+  .vip-tag {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    color: #333;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+  
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  &:hover .heat-icon {
+    color: #ea580c;
+  }
+  
+  &:hover .download-icon {
+    color: #2563eb;
+  }
+}
+
 @keyframes bookmark {
   50% { transform: scaleY(0.6); }
   100% { transform: scaleY(1); }
@@ -1243,111 +1752,266 @@ onMounted(() => {
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-.comment-item {
-  display: flex;
   gap: 16px;
 }
 
-.comment-body {
-  flex: 1;
-}
-
-.comment-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.comment-author {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.comment-time {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.comment-content {
-  color: var(--text-secondary);
-  line-height: 1.7;
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-
-.comment-actions {
-  display: flex;
-  gap: 20px;
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.3s;
+/* 评论卡片 - 整体容器 */
+.comment-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  
   &:hover {
-    color: var(--primary-color);
-    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(168, 85, 247, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   }
 }
 
-.reply-list {
-  margin-top: 16px;
-  padding: 16px;
-  background: var(--bg-darker);
-  border-radius: 10px;
+:root[data-theme="dark"] .comment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* 主评论区域 */
+.comment-main {
   display: flex;
-  flex-direction: column;
   gap: 14px;
 }
 
-.reply-item {
+/* 头像样式 */
+.comment-avatar,
+.reply-avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.comment-avatar {
+  width: 42px;
+  height: 42px;
+}
+
+.reply-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+/* VIP头像边框 */
+.comment-avatar.vip-avatar,
+.reply-avatar.vip-avatar {
+  padding: 2px;
+  box-sizing: content-box;
+  
+  :deep(.el-avatar) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+.comment-avatar.vip-level-1,
+.reply-avatar.vip-level-1 {
+  background: linear-gradient(135deg, #cd7f32, #daa520);
+}
+
+.comment-avatar.vip-level-2,
+.reply-avatar.vip-level-2 {
+  background: linear-gradient(135deg, #a8a8a8, #e0e0e0);
+}
+
+.comment-avatar.vip-level-3,
+.reply-avatar.vip-level-3 {
+  background: linear-gradient(135deg, #ffd700, #ffb700);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+/* 评论内容区域 */
+.comment-content-wrapper,
+.reply-content-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 评论元信息 */
+.comment-meta,
+.reply-meta {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
-.reply-body {
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.reply-author {
-  color: var(--primary-color);
-  font-weight: 500;
-  margin-right: 6px;
-}
-
-.reply-to {
+.comment-time,
+.reply-time {
+  font-size: 12px;
   color: var(--text-muted);
-  margin-right: 6px;
+  margin-left: auto;
+}
+
+.reply-target {
+  font-size: 12px;
+  color: var(--text-muted);
+  
   em {
     color: var(--primary-color);
     font-style: normal;
   }
 }
 
-.reply-content {
+/* 评论文本 */
+.comment-text,
+.reply-text {
   color: var(--text-secondary);
+  line-height: 1.7;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  word-break: break-word;
 }
 
+.reply-text {
+  font-size: 13px;
+}
+
+/* 操作按钮 */
+.comment-actions,
+.reply-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: transparent;
+  
+  .el-icon {
+    font-size: 14px;
+  }
+  
+  em {
+    font-style: normal;
+  }
+  
+  &:hover {
+    color: var(--primary-color);
+    background: rgba(168, 85, 247, 0.1);
+  }
+  
+  &.edit:hover {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+  
+  &.delete:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+:root[data-theme="light"] .action-btn {
+  &:hover {
+    background: rgba(168, 85, 247, 0.08);
+  }
+  
+  &.edit:hover {
+    background: rgba(16, 185, 129, 0.08);
+  }
+  
+  &.delete:hover {
+    background: rgba(239, 68, 68, 0.08);
+  }
+}
+
+/* 子评论容器 */
+.replies-container {
+  margin-top: 16px;
+  margin-left: 56px;
+}
+
+/* 子评论列表 */
+.replies-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-darker);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+}
+
+:root[data-theme="light"] .replies-list {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+}
+
+/* 子评论项 */
+.reply-item {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+/* 评论编辑表单 */
+.comment-edit-form {
+  margin-top: 10px;
+  
+  :deep(.el-textarea__inner) {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 14px;
+    
+    &::placeholder {
+      color: var(--text-disabled);
+    }
+    
+    &:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.1);
+    }
+  }
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* 无评论 */
 .no-comment {
   text-align: center;
   padding: 48px 0;
   color: var(--text-muted);
-  .el-icon { margin-bottom: 16px; }
-  p { font-size: 15px; }
+  
+  .el-icon {
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  p {
+    font-size: 15px;
+  }
 }
 
+/* 响应式 */
 @media (max-width: 768px) {
   .article-detail-page { padding: 12px; }
   .article-card, .comment-section { padding: 20px; }
@@ -1357,6 +2021,40 @@ onMounted(() => {
   .action-buttons {
     flex-direction: column;
     .action-btn { justify-content: center; }
+  }
+  
+  .comment-card {
+    padding: 14px;
+  }
+  
+  .comment-main {
+    gap: 10px;
+  }
+  
+  .comment-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .replies-container {
+    margin-left: 10px;
+    padding-left: 14px;
+  }
+  
+  .replies-list {
+    padding: 10px;
+  }
+  
+  .reply-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .comment-time,
+  .reply-time {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 4px;
   }
 }
 </style>

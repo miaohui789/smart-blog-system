@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,6 +17,28 @@ public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private boolean redisAvailable = false;
+
+    // 缓存Key前缀常量
+    public static final String CACHE_PREFIX = "blog:";
+    public static final String CACHE_ARTICLE = CACHE_PREFIX + "article:";
+    public static final String CACHE_ARTICLE_LIST = CACHE_PREFIX + "article:list:";
+    public static final String CACHE_HOT_ARTICLES = CACHE_PREFIX + "hot:articles";
+    public static final String CACHE_RECOMMEND_ARTICLES = CACHE_PREFIX + "recommend:articles";
+    public static final String CACHE_CATEGORY = CACHE_PREFIX + "category:";
+    public static final String CACHE_CATEGORY_LIST = CACHE_PREFIX + "category:list";
+    public static final String CACHE_TAG = CACHE_PREFIX + "tag:";
+    public static final String CACHE_TAG_LIST = CACHE_PREFIX + "tag:list";
+    public static final String CACHE_USER = CACHE_PREFIX + "user:";
+    public static final String CACHE_SITE_CONFIG = CACHE_PREFIX + "site:config";
+    public static final String CACHE_ARCHIVE = CACHE_PREFIX + "archive";
+    public static final String CACHE_STATS = CACHE_PREFIX + "stats";
+    public static final String CACHE_VIEW_COUNT = CACHE_PREFIX + "view:";
+
+    // 缓存过期时间（分钟）
+    public static final long EXPIRE_SHORT = 5;      // 5分钟
+    public static final long EXPIRE_MEDIUM = 30;    // 30分钟
+    public static final long EXPIRE_LONG = 60;      // 1小时
+    public static final long EXPIRE_DAY = 1440;     // 1天
 
     public RedisService(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -47,6 +70,8 @@ public class RedisService {
         return redisAvailable;
     }
 
+    // ==================== 基础操作 ====================
+
     public void set(String key, Object value) {
         if (!redisAvailable) return;
         try {
@@ -65,6 +90,13 @@ public class RedisService {
         }
     }
 
+    /**
+     * 设置缓存（分钟为单位）
+     */
+    public void setWithMinutes(String key, Object value, long minutes) {
+        set(key, value, minutes, TimeUnit.MINUTES);
+    }
+
     public Object get(String key) {
         if (!redisAvailable) return null;
         try {
@@ -73,6 +105,31 @@ public class RedisService {
             handleRedisError(e);
             return null;
         }
+    }
+
+    /**
+     * 获取缓存并转换类型
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T get(String key, Class<T> clazz) {
+        Object value = get(key);
+        if (value == null) return null;
+        if (clazz.isInstance(value)) {
+            return (T) value;
+        }
+        return null;
+    }
+
+    /**
+     * 获取List类型缓存
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getList(String key) {
+        Object value = get(key);
+        if (value instanceof List) {
+            return (List<T>) value;
+        }
+        return null;
     }
 
     public Boolean delete(String key) {
@@ -85,6 +142,23 @@ public class RedisService {
         }
     }
 
+    /**
+     * 批量删除缓存
+     */
+    public Long deleteByPattern(String pattern) {
+        if (!redisAvailable) return 0L;
+        try {
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (keys != null && !keys.isEmpty()) {
+                return redisTemplate.delete(keys);
+            }
+            return 0L;
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+
     public Boolean hasKey(String key) {
         if (!redisAvailable) return false;
         try {
@@ -94,6 +168,34 @@ public class RedisService {
             return false;
         }
     }
+
+    /**
+     * 设置过期时间
+     */
+    public Boolean expire(String key, long timeout, TimeUnit unit) {
+        if (!redisAvailable) return false;
+        try {
+            return redisTemplate.expire(key, timeout, unit);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return false;
+        }
+    }
+
+    /**
+     * 获取过期时间
+     */
+    public Long getExpire(String key) {
+        if (!redisAvailable) return -1L;
+        try {
+            return redisTemplate.getExpire(key, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return -1L;
+        }
+    }
+
+    // ==================== 计数器操作 ====================
 
     public Long increment(String key) {
         if (!redisAvailable) return 0L;
@@ -115,8 +217,228 @@ public class RedisService {
         }
     }
 
+    public Long decrement(String key) {
+        if (!redisAvailable) return 0L;
+        try {
+            return redisTemplate.opsForValue().decrement(key);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+
+    // ==================== Hash操作 ====================
+
+    public void hSet(String key, String hashKey, Object value) {
+        if (!redisAvailable) return;
+        try {
+            redisTemplate.opsForHash().put(key, hashKey, value);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    public Object hGet(String key, String hashKey) {
+        if (!redisAvailable) return null;
+        try {
+            return redisTemplate.opsForHash().get(key, hashKey);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return null;
+        }
+    }
+
+    public Map<Object, Object> hGetAll(String key) {
+        if (!redisAvailable) return new HashMap<>();
+        try {
+            return redisTemplate.opsForHash().entries(key);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return new HashMap<>();
+        }
+    }
+
+    public void hSetAll(String key, Map<String, Object> map) {
+        if (!redisAvailable) return;
+        try {
+            redisTemplate.opsForHash().putAll(key, map);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    public Long hIncrement(String key, String hashKey, long delta) {
+        if (!redisAvailable) return 0L;
+        try {
+            return redisTemplate.opsForHash().increment(key, hashKey, delta);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+
+    // ==================== Set操作 ====================
+
+    public Long sAdd(String key, Object... values) {
+        if (!redisAvailable) return 0L;
+        try {
+            return redisTemplate.opsForSet().add(key, values);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+
+    public Boolean sIsMember(String key, Object value) {
+        if (!redisAvailable) return false;
+        try {
+            return redisTemplate.opsForSet().isMember(key, value);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return false;
+        }
+    }
+
+    public Long sRemove(String key, Object... values) {
+        if (!redisAvailable) return 0L;
+        try {
+            return redisTemplate.opsForSet().remove(key, values);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+
+    public Set<Object> sMembers(String key) {
+        if (!redisAvailable) return new HashSet<>();
+        try {
+            return redisTemplate.opsForSet().members(key);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return new HashSet<>();
+        }
+    }
+
+    // ==================== ZSet操作（排行榜） ====================
+
+    public Boolean zAdd(String key, Object value, double score) {
+        if (!redisAvailable) return false;
+        try {
+            return redisTemplate.opsForZSet().add(key, value, score);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return false;
+        }
+    }
+
+    public Double zIncrementScore(String key, Object value, double delta) {
+        if (!redisAvailable) return 0.0;
+        try {
+            return redisTemplate.opsForZSet().incrementScore(key, value, delta);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0.0;
+        }
+    }
+
+    public Set<Object> zReverseRange(String key, long start, long end) {
+        if (!redisAvailable) return new LinkedHashSet<>();
+        try {
+            return redisTemplate.opsForZSet().reverseRange(key, start, end);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return new LinkedHashSet<>();
+        }
+    }
+
+    public Double zScore(String key, Object value) {
+        if (!redisAvailable) return null;
+        try {
+            return redisTemplate.opsForZSet().score(key, value);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return null;
+        }
+    }
+
+    // ==================== 缓存清理 ====================
+
+    /**
+     * 清除文章相关缓存
+     */
+    public void clearArticleCache(Long articleId) {
+        if (!redisAvailable) return;
+        try {
+            // 清除单篇文章缓存
+            delete(CACHE_ARTICLE + articleId);
+            // 清除文章列表缓存
+            deleteByPattern(CACHE_ARTICLE_LIST + "*");
+            // 清除热门文章缓存
+            delete(CACHE_HOT_ARTICLES);
+            // 清除推荐文章缓存
+            delete(CACHE_RECOMMEND_ARTICLES);
+            // 清除归档缓存
+            delete(CACHE_ARCHIVE);
+            // 清除统计缓存
+            delete(CACHE_STATS);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除分类相关缓存
+     */
+    public void clearCategoryCache() {
+        if (!redisAvailable) return;
+        try {
+            deleteByPattern(CACHE_CATEGORY + "*");
+            delete(CACHE_CATEGORY_LIST);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除标签相关缓存
+     */
+    public void clearTagCache() {
+        if (!redisAvailable) return;
+        try {
+            deleteByPattern(CACHE_TAG + "*");
+            delete(CACHE_TAG_LIST);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除用户相关缓存
+     */
+    public void clearUserCache(Long userId) {
+        if (!redisAvailable) return;
+        try {
+            delete(CACHE_USER + userId);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除所有缓存
+     */
+    public void clearAllCache() {
+        if (!redisAvailable) return;
+        try {
+            deleteByPattern(CACHE_PREFIX + "*");
+            log.info("已清除所有缓存");
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
     private void handleRedisError(Exception e) {
         log.warn("Redis操作失败: {}", e.getMessage());
-        redisAvailable = false;
+        // 不再禁用Redis，只记录错误，下次操作继续尝试
     }
 }

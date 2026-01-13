@@ -1,1 +1,0 @@
-import{q as e}from"./index-4b82dad8.js";function a(){return e({url:"/categories",method:"get"})}function g(t,r){return e({url:`/categories/${t}/articles`,method:"get",params:r})}export{g as a,a as g};

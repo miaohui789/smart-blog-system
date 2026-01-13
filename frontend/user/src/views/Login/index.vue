@@ -78,8 +78,13 @@
           </el-form-item>
         </el-form>
         <div class="login-footer">
-          <span>还没有账号？</span>
-          <router-link to="/register" class="register-link">立即注册</router-link>
+          <div class="footer-links">
+            <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link>
+          </div>
+          <div class="footer-register">
+            <span>还没有账号？</span>
+            <router-link to="/register" class="register-link">立即注册</router-link>
+          </div>
         </div>
       </div>
     </div>
@@ -398,9 +403,29 @@ async function handleLogin() {
   margin-top: 24px;
 }
 
+.footer-links {
+  margin-bottom: 12px;
+}
+
+.forgot-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: color 0.3s;
+  
+  &:hover {
+    color: $primary-color;
+  }
+}
+
+.footer-register {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .register-link {
   color: $primary-color;
-  margin-left: 4px;
   font-weight: 600;
   
   &:hover {

@@ -26,9 +26,15 @@ public class FileService {
 
     @PostConstruct
     public void init() {
-        // 获取项目根目录的绝对路径
-        String userDir = System.getProperty("user.dir");
-        baseUploadPath = Paths.get(userDir, uploadPath).toAbsolutePath();
+        // 判断是否为绝对路径
+        Path path = Paths.get(uploadPath);
+        if (path.isAbsolute()) {
+            baseUploadPath = path;
+        } else {
+            // 相对路径则拼接项目根目录
+            String userDir = System.getProperty("user.dir");
+            baseUploadPath = Paths.get(userDir, uploadPath).toAbsolutePath();
+        }
         log.info("文件上传目录: {}", baseUploadPath);
         
         // 确保目录存在

@@ -20,15 +20,15 @@
             <el-icon><View /></el-icon>
             {{ article.viewCount || 0 }}
           </span>
-          <span class="meta-item like">
+          <span class="meta-item">
             <el-icon><Star /></el-icon>
             {{ article.likeCount || 0 }}
           </span>
-          <span class="meta-item favorite">
+          <span class="meta-item">
             <el-icon><CollectionTag /></el-icon>
             {{ article.favoriteCount || 0 }}
           </span>
-          <span class="meta-item comment">
+          <span class="meta-item">
             <el-icon><ChatDotRound /></el-icon>
             {{ article.commentCount || 0 }}
           </span>
@@ -195,18 +195,6 @@ function goDetail() {
 
   .el-icon {
     font-size: 14px;
-  }
-  
-  &.like {
-    color: #f87171;
-  }
-  
-  &.favorite {
-    color: #fbbf24;
-  }
-  
-  &.comment {
-    color: #60a5fa;
   }
 }
 </style>

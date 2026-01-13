@@ -5,11 +5,13 @@ import com.blog.common.enums.ResultCode;
 import com.blog.common.result.Result;
 import com.blog.dto.request.LoginRequest;
 import com.blog.dto.request.RegisterRequest;
+import com.blog.dto.request.ResetPasswordRequest;
 import com.blog.entity.Role;
 import com.blog.entity.User;
 import com.blog.entity.UserRole;
 import com.blog.security.JwtTokenProvider;
 import com.blog.security.SecurityUser;
+import com.blog.service.EmailService;
 import com.blog.service.RoleService;
 import com.blog.service.UserRoleService;
 import com.blog.service.UserService;
@@ -24,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.constraints.Email;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,7 @@ public class UserController {
     private final UserRoleService userRoleService;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -85,11 +89,41 @@ public class UserController {
         return false;
     }
 
+    @Operation(summary = "发送邮箱验证码")
+    @PostMapping("/send-code")
+    public Result<?> sendCode(@RequestParam @Email(message = "邮箱格式不正确") String email) {
+        // 检查邮箱是否已注册
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, email);
+        if (userService.getOne(wrapper) != null) {
+            return Result.error("该邮箱已被注册");
+        }
+        
+        boolean success = emailService.sendVerifyCode(email);
+        if (success) {
+            return Result.success("验证码已发送");
+        } else {
+            return Result.error("发送过于频繁，请稍后再试");
+        }
+    }
+
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     public Result<?> register(@Validated @RequestBody RegisterRequest request) {
+        // 验证验证码
+        if (!emailService.verifyCode(request.getEmail(), request.getCode())) {
+            return Result.error("验证码错误或已过期");
+        }
+        
         if (userService.getByUsername(request.getUsername()) != null) {
             return Result.error(ResultCode.USERNAME_EXIST);
+        }
+        
+        // 检查邮箱是否已注册
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, request.getEmail());
+        if (userService.getOne(wrapper) != null) {
+            return Result.error("该邮箱已被注册");
         }
 
         User user = new User();
@@ -149,5 +183,47 @@ public class UserController {
             jwtTokenProvider.invalidateToken(token);
         }
         return Result.success("退出成功");
+    }
+
+    @Operation(summary = "发送重置密码验证码")
+    @PostMapping("/forgot-password/send-code")
+    public Result<?> sendResetCode(@RequestParam @Email(message = "邮箱格式不正确") String email) {
+        // 检查邮箱是否已注册
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, email);
+        User user = userService.getOne(wrapper);
+        if (user == null) {
+            return Result.error("该邮箱未注册");
+        }
+        
+        boolean success = emailService.sendResetPasswordCode(email);
+        if (success) {
+            return Result.success("验证码已发送");
+        } else {
+            return Result.error("发送过于频繁，请稍后再试");
+        }
+    }
+
+    @Operation(summary = "重置密码")
+    @PostMapping("/forgot-password/reset")
+    public Result<?> resetPassword(@Validated @RequestBody ResetPasswordRequest request) {
+        // 验证验证码
+        if (!emailService.verifyResetCode(request.getEmail(), request.getCode())) {
+            return Result.error("验证码错误或已过期");
+        }
+        
+        // 查找用户
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, request.getEmail());
+        User user = userService.getOne(wrapper);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        userService.updateById(user);
+        
+        return Result.success("密码重置成功");
     }
 }

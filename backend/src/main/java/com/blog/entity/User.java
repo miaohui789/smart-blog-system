@@ -25,4 +25,9 @@ public class User {
     private LocalDateTime updateTime;
     @TableLogic
     private Integer isDeleted;
+    
+    // VIP相关字段
+    private Integer isVip;
+    private Integer vipLevel;
+    private LocalDateTime vipExpireTime;
 }

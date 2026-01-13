@@ -2,6 +2,7 @@ package com.blog.controller.admin;
 
 import com.blog.common.result.Result;
 import com.blog.entity.Tag;
+import com.blog.service.RedisService;
 import com.blog.service.TagService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class AdminTagController {
 
     private final TagService tagService;
+    private final RedisService redisService;
 
     @Operation(summary = "标签列表")
     @GetMapping
@@ -29,6 +31,10 @@ public class AdminTagController {
     public Result<?> create(@RequestBody Tag tag) {
         tag.setArticleCount(0);
         tagService.save(tag);
+        
+        // 清除标签缓存
+        redisService.clearTagCache();
+        
         return Result.success("创建成功");
     }
 
@@ -37,6 +43,10 @@ public class AdminTagController {
     public Result<?> update(@PathVariable Long id, @RequestBody Tag tag) {
         tag.setId(id);
         tagService.updateById(tag);
+        
+        // 清除标签缓存
+        redisService.clearTagCache();
+        
         return Result.success("更新成功");
     }
 
@@ -44,6 +54,10 @@ public class AdminTagController {
     @DeleteMapping("/{id}")
     public Result<?> delete(@PathVariable Long id) {
         tagService.removeById(id);
+        
+        // 清除标签缓存
+        redisService.clearTagCache();
+        
         return Result.success("删除成功");
     }
 
@@ -53,6 +67,9 @@ public class AdminTagController {
         List<Long> ids = body.get("ids");
         if (ids != null && !ids.isEmpty()) {
             tagService.removeByIds(ids);
+            
+            // 清除标签缓存
+            redisService.clearTagCache();
         }
         return Result.success("删除成功");
     }

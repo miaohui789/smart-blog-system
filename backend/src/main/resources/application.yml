@@ -1,5 +1,18 @@
 server:
   port: 8080
+  # Tomcat优化 - 低内存配置
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 2000
+    accept-count: 100
+    connection-timeout: 10000
+  # 开启响应压缩
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,text/css,application/javascript
+    min-response-size: 1024
 
 spring:
   profiles:
@@ -8,13 +21,40 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 2044403509@qq.com
+    password: nqqewmvjsutnebdg
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+  # Jackson优化
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.blog.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 生产环境关闭SQL日志
+    log-impl: ${MYBATIS_LOG:org.apache.ibatis.logging.stdout.StdOutImpl}
+  global-config:
+    db-config:
+      # 逻辑删除配置
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
 springdoc:
   swagger-ui:
@@ -23,6 +63,6 @@ springdoc:
     path: /v3/api-docs
 
 knife4j:
-  enable: true
+  enable: ${KNIFE4J_ENABLE:true}
   setting:
     language: zh_cn

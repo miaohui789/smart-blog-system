@@ -1,1 +1,0 @@
-import{t as e}from"./index-6646b8cf.js";function u(t){return e({url:"/tags",method:"get",params:t})}function n(t){return e({url:"/tags",method:"post",data:t})}function o(t,r){return e({url:`/tags/${t}`,method:"put",data:r})}function s(t){return e({url:`/tags/${t}`,method:"delete"})}export{n as c,s as d,u as g,o as u};

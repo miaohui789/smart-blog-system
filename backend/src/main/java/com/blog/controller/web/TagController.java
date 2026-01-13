@@ -9,6 +9,7 @@ import com.blog.entity.Article;
 import com.blog.entity.ArticleTag;
 import com.blog.service.ArticleService;
 import com.blog.service.ArticleTagService;
+import com.blog.service.RedisService;
 import com.blog.service.TagService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,10 +29,18 @@ public class TagController {
     private final TagService tagService;
     private final ArticleService articleService;
     private final ArticleTagService articleTagService;
+    private final RedisService redisService;
 
     @Operation(summary = "标签列表")
     @GetMapping
+    @SuppressWarnings("unchecked")
     public Result<?> list() {
+        // 先从 Redis 缓存获取
+        Object cached = redisService.get(RedisService.CACHE_TAG_LIST);
+        if (cached != null) {
+            return Result.success(cached);
+        }
+        
         // 获取所有标签
         List<com.blog.entity.Tag> tags = tagService.list();
         
@@ -50,6 +59,9 @@ public class TagController {
             return vo;
         }).collect(Collectors.toList());
         
+        // 存入 Redis 缓存（1小时）
+        redisService.setWithMinutes(RedisService.CACHE_TAG_LIST, tagVOs, RedisService.EXPIRE_LONG);
+        
         return Result.success(tagVOs);
     }
 
@@ -59,6 +71,13 @@ public class TagController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
+        
+        // 尝试从缓存获取
+        String cacheKey = RedisService.CACHE_TAG + id + ":articles:" + page + ":" + pageSize;
+        Object cached = redisService.get(cacheKey);
+        if (cached != null) {
+            return Result.success(cached);
+        }
         
         // 获取该标签下的所有文章ID
         List<Long> articleIds = articleTagService.getArticleIdsByTagId(id);
@@ -74,6 +93,12 @@ public class TagController {
                         .in(Article::getId, articleIds)
                         .orderByDesc(Article::getPublishTime)
         );
-        return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
+        
+        PageResult<Article> result = PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize);
+        
+        // 存入 Redis 缓存（5分钟）
+        redisService.setWithMinutes(cacheKey, result, RedisService.EXPIRE_SHORT);
+        
+        return Result.success(result);
     }
 }

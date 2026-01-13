@@ -102,20 +102,45 @@ const routes = [
         name: 'EditArticle',
         component: () => import('@/views/Write/index.vue'),
         meta: { title: '编辑文章', requiresAuth: true }
+      },
+      {
+        path: 'vip',
+        name: 'Vip',
+        redirect: '/vip/center',
+        children: [
+          {
+            path: 'activate',
+            name: 'VipActivate',
+            component: () => import('@/views/Vip/Activate.vue'),
+            meta: { title: 'VIP激活', requiresAuth: true }
+          },
+          {
+            path: 'center',
+            name: 'VipCenter',
+            component: () => import('@/views/Vip/Center.vue'),
+            meta: { title: 'VIP中心', requiresAuth: true }
+          }
+        ]
       }
     ]
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/Login/index.vue'),
+    component: () => import('@/views/Auth/index.vue'),
     meta: { title: '登录' }
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/Register/index.vue'),
+    component: () => import('@/views/Auth/index.vue'),
     meta: { title: '注册' }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/Auth/index.vue'),
+    meta: { title: '忘记密码' }
   },
   {
     path: '/:pathMatch(.*)*',

@@ -31,10 +31,17 @@ public class DashboardController {
     private final CategoryService categoryService;
     private final TagService tagService;
     private final JdbcTemplate jdbcTemplate;
+    private final RedisService redisService;
 
     @Operation(summary = "统计数据")
     @GetMapping("/stats")
     public Result<DashboardVO> stats() {
+        // 尝试从缓存获取
+        DashboardVO cached = redisService.get(RedisService.CACHE_STATS, DashboardVO.class);
+        if (cached != null) {
+            return Result.success(cached);
+        }
+        
         DashboardVO vo = new DashboardVO();
         vo.setArticleCount(articleService.count());
         vo.setCommentCount(commentService.count());
@@ -44,12 +51,24 @@ public class DashboardController {
                 .mapToLong(a -> a.getViewCount() != null ? a.getViewCount() : 0)
                 .sum();
         vo.setViewCount(totalViews);
+        
+        // 缓存5分钟
+        redisService.setWithMinutes(RedisService.CACHE_STATS, vo, RedisService.EXPIRE_SHORT);
+        
         return Result.success(vo);
     }
 
     @Operation(summary = "扩展统计数据")
     @GetMapping("/stats-extended")
+    @SuppressWarnings("unchecked")
     public Result<?> statsExtended() {
+        // 尝试从缓存获取
+        String cacheKey = RedisService.CACHE_STATS + ":extended";
+        Object cached = redisService.get(cacheKey);
+        if (cached != null) {
+            return Result.success(cached);
+        }
+        
         Map<String, Object> data = new HashMap<>();
         
         // 基础统计
@@ -91,6 +110,9 @@ public class DashboardController {
         LambdaQueryWrapper<Comment> pendingWrapper = new LambdaQueryWrapper<>();
         pendingWrapper.eq(Comment::getStatus, 0);
         data.put("pendingCommentCount", commentService.count(pendingWrapper));
+        
+        // 缓存5分钟
+        redisService.setWithMinutes(cacheKey, data, RedisService.EXPIRE_SHORT);
         
         return Result.success(data);
     }

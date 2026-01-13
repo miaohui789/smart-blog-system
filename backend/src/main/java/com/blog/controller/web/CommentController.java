@@ -115,6 +115,7 @@ public class CommentController {
             userInfo.setId(user.getId());
             userInfo.setNickname(user.getNickname());
             userInfo.setAvatar(user.getAvatar());
+            userInfo.setVipLevel(user.getVipLevel());
             vo.setUser(userInfo);
         }
         
@@ -125,6 +126,7 @@ public class CommentController {
                 replyUserInfo.setId(replyUser.getId());
                 replyUserInfo.setNickname(replyUser.getNickname());
                 replyUserInfo.setAvatar(replyUser.getAvatar());
+                replyUserInfo.setVipLevel(replyUser.getVipLevel());
                 vo.setReplyUser(replyUserInfo);
             }
         }
@@ -174,18 +176,56 @@ public class CommentController {
         }
 
         if (!comment.getUserId().equals(userId)) {
-            return Result.error(ResultCode.FORBIDDEN);
+            return Result.error(ResultCode.FORBIDDEN, "只能删除自己的评论");
         }
 
+        // 同时删除该评论的所有子评论
+        List<Comment> childComments = commentService.list(
+                new LambdaQueryWrapper<Comment>().eq(Comment::getParentId, id)
+        );
+        int deleteCount = 1 + childComments.size();
+        
         commentService.removeById(id);
+        if (!childComments.isEmpty()) {
+            commentService.removeByIds(childComments.stream().map(Comment::getId).collect(Collectors.toList()));
+        }
 
+        // 更新文章评论数
         Article article = articleService.getById(comment.getArticleId());
-        if (article != null && article.getCommentCount() > 0) {
-            article.setCommentCount(article.getCommentCount() - 1);
+        if (article != null && article.getCommentCount() >= deleteCount) {
+            article.setCommentCount(article.getCommentCount() - deleteCount);
             articleService.updateById(article);
         }
 
         return Result.success("删除成功");
+    }
+
+    @Operation(summary = "更新评论")
+    @PutMapping("/comments/{id}")
+    public Result<?> update(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            return Result.error(ResultCode.UNAUTHORIZED);
+        }
+
+        Comment comment = commentService.getById(id);
+        if (comment == null) {
+            return Result.error(ResultCode.NOT_FOUND);
+        }
+
+        if (!comment.getUserId().equals(userId)) {
+            return Result.error(ResultCode.FORBIDDEN, "只能编辑自己的评论");
+        }
+
+        String content = request.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return Result.error(ResultCode.PARAM_ERROR, "评论内容不能为空");
+        }
+
+        comment.setContent(content.trim());
+        commentService.updateById(comment);
+
+        return Result.success("修改成功");
     }
 
     @Operation(summary = "点赞评论")

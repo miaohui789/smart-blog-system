@@ -30,7 +30,9 @@
             <span>{{ row.articleCount || 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="160" />
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="160">
           <template #default="{ row }">
             <button class="action-btn edit-btn" @click="handleEdit(row)">编辑</button>
@@ -68,6 +70,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getTagList, createTag, updateTag, deleteTag } from '@/api/tag'
+import { formatDateTime } from '@/utils/format'
 
 const list = ref([])
 const loading = ref(false)

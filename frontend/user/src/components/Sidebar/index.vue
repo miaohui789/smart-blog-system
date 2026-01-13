@@ -1,5 +1,8 @@
 <template>
   <div class="sidebar">
+    <!-- 实时天气 -->
+    <Weather />
+    
     <div class="sidebar-card glass-card">
       <h3 class="card-title">
         <el-icon><TrendCharts /></el-icon>
@@ -33,6 +36,7 @@ import { ref, computed, onMounted } from 'vue'
 import { TrendCharts, PriceTag } from '@element-plus/icons-vue'
 import { getHotArticles } from '@/api/article'
 import TagCloud from '@/components/TagCloud/index.vue'
+import Weather from '@/components/Weather/index.vue'
 
 const hotArticles = ref([])
 

@@ -41,7 +41,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="评论时间" width="160" />
+        <el-table-column label="评论时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <button v-if="row.status === 0" class="action-btn pass-btn" @click="handleAudit(row.id, 1)">通过</button>
@@ -69,6 +71,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getCommentList, updateCommentStatus, deleteComment } from '@/api/comment'
+import { formatDateTime } from '@/utils/format'
 
 const list = ref([])
 const total = ref(0)

@@ -1,5 +1,28 @@
 <template>
   <div class="home-page">
+    <!-- 排序栏 -->
+    <div class="sort-bar">
+      <div class="sort-options">
+        <button 
+          v-for="option in sortOptions" 
+          :key="option.value"
+          class="sort-btn"
+          :class="{ active: currentSort === option.value }"
+          @click="handleSort(option.value)"
+        >
+          <el-icon v-if="option.icon"><component :is="option.icon" /></el-icon>
+          <span>{{ option.label }}</span>
+          <el-icon 
+            v-if="currentSort === option.value && option.value !== 'latest' && option.value !== 'comprehensive'" 
+            class="sort-arrow"
+            :class="{ asc: sortOrder === 'asc' }"
+          >
+            <ArrowDown />
+          </el-icon>
+        </button>
+      </div>
+    </div>
+
     <!-- 文章列表 -->
     <div class="article-list">
       <template v-if="!loading && articles.length">
@@ -18,8 +41,8 @@
             <div class="featured-meta">
               <span><el-icon><Calendar /></el-icon>{{ formatDate(featuredArticle.publishTime) }}</span>
               <span><el-icon><View /></el-icon>{{ featuredArticle.viewCount || 0 }}</span>
-              <span class="like"><el-icon><Star /></el-icon>{{ featuredArticle.likeCount || 0 }}</span>
-              <span class="favorite"><el-icon><CollectionTag /></el-icon>{{ featuredArticle.favoriteCount || 0 }}</span>
+              <span><el-icon><Star /></el-icon>{{ featuredArticle.likeCount || 0 }}</span>
+              <span><el-icon><CollectionTag /></el-icon>{{ featuredArticle.favoriteCount || 0 }}</span>
               <span><el-icon><ChatDotRound /></el-icon>{{ featuredArticle.commentCount || 0 }}</span>
             </div>
           </div>
@@ -55,7 +78,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, CollectionTag } from '@element-plus/icons-vue'
+import { Calendar, View, ChatDotRound, Star, CollectionTag, ArrowDown, Sunny, ChatLineSquare, StarFilled, Collection, TrendCharts } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
 import { formatDate } from '@/utils/format'
 import ArticleCard from '@/components/ArticleCard/index.vue'
@@ -68,21 +91,34 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const featuredImageError = ref(false)
+const currentSort = ref('latest')
+const sortOrder = ref('desc')
+
+// 排序选项
+const sortOptions = [
+  { value: 'latest', label: '最新', icon: null },
+  { value: 'comprehensive', label: '综合', icon: TrendCharts },
+  { value: 'heat', label: '热度', icon: Sunny },
+  { value: 'view', label: '阅览', icon: View },
+  { value: 'like', label: '点赞', icon: StarFilled },
+  { value: 'favorite', label: '收藏', icon: Collection },
+  { value: 'comment', label: '评论', icon: ChatLineSquare },
+]
 
 // 默认封面图
 const defaultCover = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="400"%3E%3Cdefs%3E%3ClinearGradient id="g" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%23a855f7"/%3E%3Cstop offset="100%25" stop-color="%23ec4899"/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="800" height="400" fill="url(%23g)"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="48" fill="white" text-anchor="middle" dy=".3em"%3E📝 Blog%3C/text%3E%3C/svg%3E'
 
-// 置顶/推荐文章（第一篇）
+// 置顶/推荐文章（第一篇，仅最新排序时显示）
 const featuredArticle = computed(() => {
-  if (currentPage.value === 1 && articles.value.length > 0) {
+  if (currentPage.value === 1 && articles.value.length > 0 && currentSort.value === 'latest') {
     return articles.value[0]
   }
   return null
 })
 
-// 普通文章（除第一篇外）
+// 普通文章（除第一篇外，或非最新排序时显示全部）
 const normalArticles = computed(() => {
-  if (currentPage.value === 1 && articles.value.length > 1) {
+  if (currentPage.value === 1 && articles.value.length > 1 && currentSort.value === 'latest') {
     return articles.value.slice(1)
   }
   return articles.value
@@ -109,7 +145,9 @@ async function fetchArticles() {
   try {
     const res = await getArticleList({
       page: currentPage.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
+      sortBy: currentSort.value,
+      sortOrder: sortOrder.value
     })
     articles.value = res.data?.list || []
     total.value = res.data?.total || 0
@@ -118,6 +156,20 @@ async function fetchArticles() {
   } finally {
     loading.value = false
   }
+}
+
+// 处理排序
+function handleSort(sortValue) {
+  if (currentSort.value === sortValue && sortValue !== 'latest' && sortValue !== 'comprehensive') {
+    // 切换升降序（最新和综合不支持升序）
+    sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    currentSort.value = sortValue
+    sortOrder.value = 'desc'
+  }
+  currentPage.value = 1
+  featuredImageError.value = false
+  fetchArticles()
 }
 
 function handlePageChange(page) {
@@ -139,6 +191,61 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* 排序栏 */
+.sort-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+.sort-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  .el-icon {
+    font-size: 16px;
+  }
+  
+  .sort-arrow {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+    
+    &.asc {
+      transform: rotate(180deg);
+    }
+  }
+  
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+  
+  &.active {
+    background: rgba($primary-color, 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+  }
 }
 
 .article-list {
@@ -238,14 +345,6 @@ onMounted(() => {
     gap: 6px;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.5);
-    
-    &.like {
-      color: #f87171;
-    }
-    
-    &.favorite {
-      color: #fbbf24;
-    }
   }
 }
 
@@ -274,6 +373,31 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .sort-bar {
+    padding: 10px 12px;
+  }
+  
+  .sort-options {
+    gap: 6px;
+  }
+  
+  .sort-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    
+    span {
+      display: none;
+    }
+    
+    .el-icon:first-child {
+      margin: 0;
+    }
+    
+    &:first-child span {
+      display: inline;
+    }
+  }
+
   .featured-cover {
     height: 200px;
   }

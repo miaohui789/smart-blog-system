@@ -17,7 +17,9 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="操作时间" width="160" />
+          <el-table-column label="操作时间" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
 
@@ -35,7 +37,9 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="登录时间" width="160" />
+          <el-table-column label="登录时间" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
     </el-tabs>
@@ -53,6 +57,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getOperationLogs, getLoginLogs } from '@/api/log'
+import { formatDateTime } from '@/utils/format'
 
 const activeTab = ref('operation')
 const operationLogs = ref([])

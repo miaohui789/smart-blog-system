@@ -33,8 +33,6 @@ public class AdminArticleController {
     private final ArticleService articleService;
     private final CategoryService categoryService;
     private final RedisService redisService;
-    
-    private static final String CACHE_HOT_ARTICLES = "blog:hot:articles";
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -103,6 +101,10 @@ public class AdminArticleController {
             article.setPublishTime(LocalDateTime.now());
         }
         articleService.save(article);
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(article.getId());
+        
         return Result.success("创建成功");
     }
 
@@ -125,6 +127,10 @@ public class AdminArticleController {
             article.setStatus(request.getStatus());
         }
         articleService.updateById(article);
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
+        
         return Result.success("更新成功");
     }
 
@@ -132,6 +138,10 @@ public class AdminArticleController {
     @DeleteMapping("/{id}")
     public Result<?> delete(@PathVariable Long id) {
         articleService.removeById(id);
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
+        
         return Result.success("删除成功");
     }
 
@@ -141,6 +151,8 @@ public class AdminArticleController {
         List<Long> ids = body.get("ids");
         if (ids != null && !ids.isEmpty()) {
             articleService.removeByIds(ids);
+            // 清除所有文章相关缓存
+            ids.forEach(redisService::clearArticleCache);
         }
         return Result.success("删除成功");
     }
@@ -159,12 +171,8 @@ public class AdminArticleController {
         }
         articleService.updateById(article);
         
-        // 清除热门文章缓存
-        try {
-            redisService.delete(CACHE_HOT_ARTICLES);
-        } catch (Exception e) {
-            // Redis 不可用，忽略
-        }
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
         
         return Result.success("更新成功");
     }
@@ -178,6 +186,10 @@ public class AdminArticleController {
         }
         article.setIsTop(body.get("isTop"));
         articleService.updateById(article);
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
+        
         return Result.success("更新成功");
     }
 
@@ -190,6 +202,10 @@ public class AdminArticleController {
         }
         article.setIsRecommend(body.get("isRecommend"));
         articleService.updateById(article);
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
+        
         return Result.success("更新成功");
     }
     

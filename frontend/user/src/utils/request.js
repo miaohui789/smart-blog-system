@@ -27,8 +27,12 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   response => {
     const res = response.data
+    const showError = response.config.showError !== false // 默认显示错误
+    
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
+      if (showError) {
+        ElMessage.error(res.message || '请求失败')
+      }
       
       // Token过期或被挤下线
       if (res.code === 401) {
@@ -42,13 +46,15 @@ service.interceptors.response.use(
   },
   error => {
     console.error('响应错误:', error)
+    const showError = error.config?.showError !== false
+    
     // 处理401错误（可能是被挤下线）
     if (error.response && error.response.status === 401) {
       ElMessage.warning('账号已在其他设备登录，请重新登录')
       removeToken()
       router.push('/login')
-    } else {
-      ElMessage.error(error.message || '网络错误')
+    } else if (showError) {
+      ElMessage.error(error.response?.data?.message || error.message || '网络错误')
     }
     return Promise.reject(error)
   }

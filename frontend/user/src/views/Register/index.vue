@@ -19,6 +19,14 @@
         <el-form-item prop="email">
           <el-input v-model="form.email" placeholder="邮箱" :prefix-icon="Message" size="large" class="custom-input" />
         </el-form-item>
+        <el-form-item prop="code">
+          <div class="code-input-wrapper">
+            <el-input v-model="form.code" placeholder="邮箱验证码" :prefix-icon="Key" size="large" class="custom-input code-input" maxlength="6" />
+            <button type="button" class="send-code-btn" :disabled="countdown > 0 || sendingCode" @click="handleSendCode">
+              {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+            </button>
+          </div>
+        </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" :prefix-icon="Lock" size="large" show-password class="custom-input" />
         </el-form-item>
@@ -48,17 +56,20 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Lock, Message } from '@element-plus/icons-vue'
+import { User, Lock, Message, Key } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { register } from '@/api/user'
+import { register, sendEmailCode } from '@/api/user'
 
 const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
 
 const form = reactive({
   username: '',
   email: '',
+  code: '',
   password: '',
   confirmPassword: ''
 })
@@ -80,6 +91,10 @@ const rules = {
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
+  ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 20, message: '密码长度为6-20个字符', trigger: 'blur' }
@@ -90,6 +105,36 @@ const rules = {
   ]
 }
 
+// 发送验证码
+async function handleSendCode() {
+  // 先验证邮箱
+  try {
+    await formRef.value.validateField('email')
+  } catch {
+    return
+  }
+  
+  // 立即开始倒计时，不等待接口返回
+  countdown.value = 90
+  const timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
+  
+  sendingCode.value = true
+  try {
+    await sendEmailCode(form.email)
+    ElMessage.success('验证码已发送，请查收邮箱')
+  } catch (e) {
+    // 不显示错误弹框，静默处理
+    console.error(e)
+  } finally {
+    sendingCode.value = false
+  }
+}
+
 async function handleRegister() {
   await formRef.value.validate()
   loading.value = true
@@ -97,6 +142,7 @@ async function handleRegister() {
     await register({
       username: form.username,
       email: form.email,
+      code: form.code,
       password: form.password
     })
     ElMessage.success('注册成功，请登录')
@@ -230,6 +276,41 @@ async function handleRegister() {
   }
   
   .el-input__prefix {
+    color: var(--text-muted);
+  }
+}
+
+.code-input-wrapper {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.code-input {
+  flex: 1;
+}
+
+.send-code-btn {
+  flex-shrink: 0;
+  width: 110px;
+  height: 48px;
+  border: 1px solid $primary-color;
+  border-radius: 12px;
+  background: transparent;
+  color: $primary-color;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    background: rgba($primary-color, 0.1);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--border-color);
     color: var(--text-muted);
   }
 }

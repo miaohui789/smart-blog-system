@@ -51,7 +51,9 @@
             <el-switch v-model="row.isTop" :active-value="1" :inactive-value="0" @change="handleTopChange(row)" />
           </template>
         </el-table-column>
-        <el-table-column prop="publishTime" label="发布时间" width="160" />
+        <el-table-column label="发布时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.publishTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <button v-if="row.status !== 1" class="action-btn publish-btn" @click="handlePublish(row)">发布</button>
@@ -78,6 +80,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 import { Plus, Search, View, ChatDotRound } from '@element-plus/icons-vue'
 import { getArticleList, deleteArticle, updateArticleTop, updateArticleStatus } from '@/api/article'
 import { getCategoryList } from '@/api/category'

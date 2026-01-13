@@ -74,6 +74,17 @@ const routes = [
           { path: 'config', name: 'Config', component: () => import('@/views/System/Config/index.vue'), meta: { title: '系统配置', requiresAdmin: true } },
           { path: 'log', name: 'Log', component: () => import('@/views/System/Log/index.vue'), meta: { title: '操作日志', requiresAdmin: true } }
         ]
+      },
+      {
+        path: 'vip',
+        name: 'Vip',
+        redirect: '/vip/member',
+        meta: { title: '会员管理', icon: 'Medal', requiresAdmin: true },
+        children: [
+          { path: 'member', name: 'VipMember', component: () => import('@/views/Vip/Member.vue'), meta: { title: '会员列表', requiresAdmin: true } },
+          { path: 'key', name: 'VipKey', component: () => import('@/views/Vip/Key.vue'), meta: { title: '密钥管理', requiresAdmin: true } },
+          { path: 'statistics', name: 'VipStatistics', component: () => import('@/views/Vip/Statistics.vue'), meta: { title: 'VIP统计', requiresAdmin: true } }
+        ]
       }
     ]
   },
@@ -85,7 +96,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/admin/'),
   routes
 })
 

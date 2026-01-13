@@ -14,6 +14,7 @@ import com.blog.entity.ArticleTag;
 import com.blog.entity.User;
 import com.blog.security.SecurityUser;
 import com.blog.service.*;
+import com.blog.utils.IpUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -44,38 +46,169 @@ public class ArticleController {
     private final CategoryService categoryService;
     private final RedisService redisService;
 
-    // Redis 缓存 Key 前缀
-    private static final String CACHE_HOT_ARTICLES = "blog:hot:articles";
-    private static final String CACHE_ARTICLE_VIEW = "blog:article:view:";
-    private static final long CACHE_HOT_EXPIRE = 30; // 热门文章缓存30分钟
-
     @Operation(summary = "文章列表")
     @GetMapping
     public Result<PageResult<Article>> list(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false, defaultValue = "default") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
+        
+        // 尝试从缓存获取（只缓存最新排序）
+        String cacheKey = RedisService.CACHE_ARTICLE_LIST + page + ":" + pageSize + ":" + (categoryId != null ? categoryId : "all") + ":" + sortBy + ":" + sortOrder;
+        if ("latest".equals(sortBy) || "default".equals(sortBy)) {
+            try {
+                Object cached = redisService.get(cacheKey);
+                if (cached != null) {
+                    return Result.success((PageResult<Article>) cached);
+                }
+            } catch (Exception e) {
+                // 缓存获取失败，继续从数据库查询
+            }
+        }
+        
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
-                .eq(categoryId != null, Article::getCategoryId, categoryId)
-                .orderByDesc(Article::getIsTop)
-                .orderByDesc(Article::getPublishTime);
+                .eq(categoryId != null, Article::getCategoryId, categoryId);
+        
+        // 根据排序参数设置排序
+        boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+        switch (sortBy) {
+            case "latest":
+                // 最新排序：置顶优先，然后按发布时间
+                wrapper.orderByDesc(Article::getIsTop)
+                       .orderByDesc(Article::getPublishTime);
+                break;
+            case "heat":
+                // 热度排序
+                if (isAsc) {
+                    wrapper.orderByAsc(Article::getHeatCount);
+                } else {
+                    wrapper.orderByDesc(Article::getHeatCount);
+                }
+                break;
+            case "view":
+                // 阅览量排序
+                if (isAsc) {
+                    wrapper.orderByAsc(Article::getViewCount);
+                } else {
+                    wrapper.orderByDesc(Article::getViewCount);
+                }
+                break;
+            case "comment":
+                // 评论数排序
+                if (isAsc) {
+                    wrapper.orderByAsc(Article::getCommentCount);
+                } else {
+                    wrapper.orderByDesc(Article::getCommentCount);
+                }
+                break;
+            case "like":
+                // 点赞数排序
+                if (isAsc) {
+                    wrapper.orderByAsc(Article::getLikeCount);
+                } else {
+                    wrapper.orderByDesc(Article::getLikeCount);
+                }
+                break;
+            case "favorite":
+                // 收藏数排序
+                if (isAsc) {
+                    wrapper.orderByAsc(Article::getFavoriteCount);
+                } else {
+                    wrapper.orderByDesc(Article::getFavoriteCount);
+                }
+                break;
+            case "comprehensive":
+                // 综合排序：多因素加权，数据量大的排前面
+                // 公式：热度*0.25 + 阅览量*0.001 + 点赞*0.15 + 收藏*0.2 + 评论*0.15 + 时间衰减
+                wrapper.last("ORDER BY (" +
+                    "COALESCE(heat_count,0) * 0.25 + " +
+                    "COALESCE(view_count,0) * 0.001 + " +
+                    "COALESCE(like_count,0) * 0.15 + " +
+                    "COALESCE(favorite_count,0) * 0.2 + " +
+                    "COALESCE(comment_count,0) * 0.15 + " +
+                    "DATEDIFF(publish_time, '2020-01-01') * 0.01" +
+                    ") DESC, publish_time DESC");
+                break;
+            default:
+                // 默认按最新排序
+                wrapper.orderByDesc(Article::getIsTop)
+                       .orderByDesc(Article::getPublishTime);
+                break;
+        }
+        
+        // 非综合和非最新排序时，添加次级排序
+        if (!"comprehensive".equals(sortBy) && !"latest".equals(sortBy) && !"default".equals(sortBy)) {
+            wrapper.orderByDesc(Article::getPublishTime);
+        }
         
         Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
-        return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
+        PageResult<Article> result = PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize);
+        
+        // 只缓存最新排序
+        if ("latest".equals(sortBy) || "default".equals(sortBy)) {
+            try {
+                redisService.setWithMinutes(cacheKey, result, RedisService.EXPIRE_SHORT);
+            } catch (Exception e) {
+                // 缓存存储失败，忽略
+            }
+        }
+        
+        return Result.success(result);
     }
 
     @Operation(summary = "文章详情")
     @GetMapping("/{id}")
-    public Result<ArticleVO> detail(@PathVariable Long id) {
+    public Result<ArticleVO> detail(@PathVariable Long id, HttpServletRequest request) {
+        // 先从 Redis 缓存获取
+        String cacheKey = RedisService.CACHE_ARTICLE + id;
+        ArticleVO cachedVO = redisService.get(cacheKey, ArticleVO.class);
+        
         Article article = articleService.getById(id);
         if (article == null) {
             return Result.error(ResultCode.NOT_FOUND);
         }
         
-        // 直接更新数据库浏览量，保证数据一致性
-        article.setViewCount((article.getViewCount() == null ? 0 : article.getViewCount()) + 1);
-        articleService.updateById(article);
+        // 获取客户端IP，用于防刷
+        String clientIp = IpUtils.getIpAddress(request);
+        String viewLimitKey = RedisService.CACHE_VIEW_COUNT + "limit:" + id + ":" + clientIp;
+        
+        // 检查该IP是否在5分钟内已经访问过该文章
+        boolean hasViewed = redisService.hasKey(viewLimitKey);
+        
+        if (!hasViewed) {
+            // 设置访问标记，5分钟内同一IP访问同一文章不重复计数
+            redisService.setWithMinutes(viewLimitKey, "1", 5);
+            
+            // 直接更新数据库浏览量
+            article.setViewCount((article.getViewCount() == null ? 0 : article.getViewCount()) + 1);
+            articleService.updateById(article);
+            
+            // 清除文章列表缓存，确保列表页显示最新数据
+            redisService.deleteByPattern(RedisService.CACHE_ARTICLE_LIST + "*");
+        }
+        
+        // 获取当前用户ID
+        Long userId = getCurrentUserId();
+        
+        // 直接使用数据库中的阅览量
+        int currentViewCount = article.getViewCount() != null ? article.getViewCount() : 0;
+        
+        // 如果有缓存，补充用户相关状态后返回
+        if (cachedVO != null) {
+            cachedVO.setViewCount(currentViewCount);
+            // 补充当前用户的点赞和收藏状态
+            if (userId != null) {
+                cachedVO.setIsLiked(articleLikeService.isLiked(id, userId));
+                cachedVO.setIsFavorited(articleFavoriteService.isFavorited(id, userId));
+            } else {
+                cachedVO.setIsLiked(false);
+                cachedVO.setIsFavorited(false);
+            }
+            return Result.success(cachedVO);
+        }
         
         // 转换为VO
         ArticleVO vo = new ArticleVO();
@@ -118,7 +251,6 @@ public class ArticleController {
         }
         
         // 获取当前用户的点赞和收藏状态
-        Long userId = getCurrentUserId();
         if (userId != null) {
             vo.setIsLiked(articleLikeService.isLiked(id, userId));
             vo.setIsFavorited(articleFavoriteService.isFavorited(id, userId));
@@ -127,24 +259,29 @@ public class ArticleController {
             vo.setIsFavorited(false);
         }
         
+        // 设置实时阅览量
+        vo.setViewCount(currentViewCount);
+        
+        // 存入 Redis 缓存（30分钟）- 不缓存用户相关状态
+        ArticleVO cacheVO = new ArticleVO();
+        BeanUtils.copyProperties(vo, cacheVO);
+        cacheVO.setIsLiked(null);
+        cacheVO.setIsFavorited(null);
+        redisService.setWithMinutes(cacheKey, cacheVO, RedisService.EXPIRE_MEDIUM);
+        
         return Result.success(vo);
     }
 
     @Operation(summary = "热门文章")
     @GetMapping("/hot")
-    @SuppressWarnings("unchecked")
     public Result<?> hot() {
         // 先从 Redis 缓存获取
-        try {
-            Object cached = redisService.get(CACHE_HOT_ARTICLES);
-            if (cached != null) {
-                return Result.success(cached);
-            }
-        } catch (Exception e) {
-            // Redis 不可用，忽略缓存
+        Object cached = redisService.get(RedisService.CACHE_HOT_ARTICLES);
+        if (cached != null) {
+            return Result.success(cached);
         }
         
-        // 缓存不存在或 Redis 不可用，从数据库查询
+        // 缓存不存在，从数据库查询
         List<Article> hotArticles = articleService.list(
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getStatus, 1)
@@ -152,12 +289,8 @@ public class ArticleController {
                         .last("LIMIT 10")
         );
         
-        // 尝试存入 Redis 缓存
-        try {
-            redisService.set(CACHE_HOT_ARTICLES, hotArticles, CACHE_HOT_EXPIRE, java.util.concurrent.TimeUnit.MINUTES);
-        } catch (Exception e) {
-            // Redis 不可用，忽略
-        }
+        // 存入 Redis 缓存（30分钟）
+        redisService.setWithMinutes(RedisService.CACHE_HOT_ARTICLES, hotArticles, RedisService.EXPIRE_MEDIUM);
         
         return Result.success(hotArticles);
     }
@@ -165,13 +298,25 @@ public class ArticleController {
     @Operation(summary = "推荐文章")
     @GetMapping("/recommend")
     public Result<?> recommend() {
-        return Result.success(articleService.list(
+        // 先从 Redis 缓存获取
+        Object cached = redisService.get(RedisService.CACHE_RECOMMEND_ARTICLES);
+        if (cached != null) {
+            return Result.success(cached);
+        }
+        
+        // 缓存不存在，从数据库查询
+        List<Article> recommendArticles = articleService.list(
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getStatus, 1)
                         .eq(Article::getIsRecommend, 1)
                         .orderByDesc(Article::getPublishTime)
                         .last("LIMIT 5")
-        ));
+        );
+        
+        // 存入 Redis 缓存（30分钟）
+        redisService.setWithMinutes(RedisService.CACHE_RECOMMEND_ARTICLES, recommendArticles, RedisService.EXPIRE_MEDIUM);
+        
+        return Result.success(recommendArticles);
     }
 
     @Operation(summary = "搜索文章")
@@ -180,21 +325,79 @@ public class ArticleController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        Page<Article> pageResult = articleService.page(
-                new Page<>(page, pageSize),
-                new LambdaQueryWrapper<Article>()
-                        .eq(Article::getStatus, 1)
-                        .and(w -> w.like(Article::getTitle, keyword)
-                                .or()
-                                .like(Article::getSummary, keyword))
-                        .orderByDesc(Article::getPublishTime)
+        
+        // 1. 先查找匹配关键词的标签
+        List<com.blog.entity.Tag> matchedTags = tagService.list(
+                new LambdaQueryWrapper<com.blog.entity.Tag>()
+                        .like(com.blog.entity.Tag::getName, keyword)
         );
-        return Result.success(PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize));
+        
+        // 2. 获取这些标签关联的文章ID
+        List<Long> tagArticleIds = List.of();
+        if (!matchedTags.isEmpty()) {
+            List<Long> tagIds = matchedTags.stream().map(com.blog.entity.Tag::getId).collect(Collectors.toList());
+            tagArticleIds = articleTagService.list(
+                    new LambdaQueryWrapper<ArticleTag>()
+                            .in(ArticleTag::getTagId, tagIds)
+            ).stream().map(ArticleTag::getArticleId).distinct().collect(Collectors.toList());
+        }
+        
+        // 3. 构建查询条件：标题、摘要、内容匹配 OR 标签匹配
+        final List<Long> finalTagArticleIds = tagArticleIds;
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getStatus, 1)
+                .and(w -> {
+                    w.like(Article::getTitle, keyword)
+                            .or()
+                            .like(Article::getSummary, keyword)
+                            .or()
+                            .like(Article::getContent, keyword);
+                    // 如果有标签匹配的文章，也加入结果
+                    if (!finalTagArticleIds.isEmpty()) {
+                        w.or().in(Article::getId, finalTagArticleIds);
+                    }
+                })
+                .orderByDesc(Article::getPublishTime);
+        
+        Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
+        
+        // 4. 为搜索结果添加标签信息
+        List<ArticleVO> voList = pageResult.getRecords().stream().map(article -> {
+            ArticleVO vo = new ArticleVO();
+            BeanUtils.copyProperties(article, vo);
+            
+            // 获取文章的标签
+            List<ArticleTag> articleTags = articleTagService.list(
+                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
+            );
+            if (!articleTags.isEmpty()) {
+                List<Long> tagIds = articleTags.stream().map(ArticleTag::getTagId).collect(Collectors.toList());
+                List<com.blog.entity.Tag> tags = tagService.listByIds(tagIds);
+                List<TagVO> tagVOs = tags.stream().map(tag -> {
+                    TagVO tagVO = new TagVO();
+                    tagVO.setId(tag.getId());
+                    tagVO.setName(tag.getName());
+                    tagVO.setColor(tag.getColor());
+                    return tagVO;
+                }).collect(Collectors.toList());
+                vo.setTags(tagVOs);
+            }
+            
+            return vo;
+        }).collect(Collectors.toList());
+        
+        return Result.success(PageResult.of(voList, pageResult.getTotal(), page, pageSize));
     }
 
     @Operation(summary = "文章归档")
     @GetMapping("/archive")
     public Result<?> archive() {
+        // 先从 Redis 缓存获取
+        Object cached = redisService.get(RedisService.CACHE_ARCHIVE);
+        if (cached != null) {
+            return Result.success(cached);
+        }
+        
         List<Article> articles = articleService.list(
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getStatus, 1)
@@ -212,6 +415,9 @@ public class ArticleController {
                         LinkedHashMap::new,
                         Collectors.toList()
                 ));
+        
+        // 存入 Redis 缓存（1小时）
+        redisService.setWithMinutes(RedisService.CACHE_ARCHIVE, archiveMap, RedisService.EXPIRE_LONG);
         
         return Result.success(archiveMap);
     }
@@ -307,6 +513,9 @@ public class ArticleController {
             articleTagService.saveBatch(articleTags);
         }
         
+        // 清除文章相关缓存
+        redisService.clearArticleCache(article.getId());
+        
         return Result.success(article.getId());
     }
 
@@ -362,6 +571,9 @@ public class ArticleController {
             articleTagService.saveBatch(articleTags);
         }
         
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
+        
         return Result.success("更新成功");
     }
 
@@ -388,6 +600,9 @@ public class ArticleController {
         // 删除标签关联
         articleTagService.remove(new LambdaQueryWrapper<ArticleTag>()
                 .eq(ArticleTag::getArticleId, id));
+        
+        // 清除文章相关缓存
+        redisService.clearArticleCache(id);
         
         return Result.success("删除成功");
     }
