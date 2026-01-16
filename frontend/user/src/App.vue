@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { useNotificationStore } from '@/stores/notification'
@@ -15,6 +15,9 @@ const userStore = useUserStore()
 const themeStore = useThemeStore()
 const notificationStore = useNotificationStore()
 const messageStore = useMessageStore()
+
+// 存储取消订阅函数
+let unsubscribes = []
 
 // 页面加载时，如果已登录则刷新用户信息
 onMounted(() => {
@@ -30,9 +33,7 @@ watch(() => userStore.isLoggedIn, (isLoggedIn) => {
   if (isLoggedIn && userStore.userInfo?.id) {
     initWebSocketConnection()
   } else {
-    closeWebSocket()
-    notificationStore.resetUnread()
-    messageStore.resetUnread()
+    cleanupWebSocket()
   }
 })
 
@@ -43,9 +44,23 @@ watch(() => userStore.userInfo?.id, (newId, oldId) => {
   }
 })
 
+// 清理WebSocket连接和回调
+function cleanupWebSocket() {
+  // 取消所有订阅
+  unsubscribes.forEach(unsub => unsub && unsub())
+  unsubscribes = []
+  closeWebSocket()
+  notificationStore.resetUnread()
+  messageStore.resetUnread()
+}
+
 // 初始化WebSocket连接
 function initWebSocketConnection() {
   if (!userStore.userInfo?.id) return
+  
+  // 先清理旧的订阅
+  unsubscribes.forEach(unsub => unsub && unsub())
+  unsubscribes = []
   
   initWebSocket(userStore.userInfo.id)
   
@@ -55,7 +70,7 @@ function initWebSocketConnection() {
   messageStore.fetchUnreadCount()
   
   // 监听新通知 - 使用桌面通知
-  onNotification((notification) => {
+  unsubscribes.push(onNotification((notification) => {
     // 立即更新未读数
     notificationStore.incrementUnread(notification.type)
     
@@ -73,10 +88,15 @@ function initWebSocketConnection() {
         }
       }
     })
-  })
+  }))
   
   // 监听私信 - 实时更新私信未读数
-  onMessage((message) => {
+  unsubscribes.push(onMessage((message) => {
+    // 如果正在和发送者聊天，不显示通知，也不增加未读数
+    if (messageStore.isChattingWith(message.senderId)) {
+      return
+    }
+    
     // 增加私信未读数
     messageStore.incrementUnread()
     
@@ -91,20 +111,24 @@ function initWebSocketConnection() {
         window.location.href = '/message'
       }
     })
-  })
+  }))
   
   // 监听未读数更新
-  onUnreadUpdate(() => {
+  unsubscribes.push(onUnreadUpdate(() => {
     notificationStore.fetchUnreadCount()
     messageStore.fetchUnreadCount()
-  })
+  }))
   
   // 监听强制下线
-  onForceLogout((data) => {
+  unsubscribes.push(onForceLogout((data) => {
     ElMessage.warning(data.message || '账号已在其他设备登录')
     userStore.logout()
-  })
+  }))
 }
+
+onUnmounted(() => {
+  cleanupWebSocket()
+})
 </script>
 
 <style lang="scss">

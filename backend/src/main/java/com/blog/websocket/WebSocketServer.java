@@ -55,22 +55,17 @@ public class WebSocketServer {
         String key = platform + "_" + userId;
         log.info("========== WebSocket连接请求: {} ==========", key);
         
-        // 检查是否已有连接
+        // 检查是否已有连接，静默关闭旧连接（不发送踢下线通知，避免自己踢自己）
         Session oldSession = onlineSessions.get(key);
         if (oldSession != null && !oldSession.getId().equals(session.getId())) {
-            // 尝试发送心跳检测旧连接是否真的还活着
             try {
                 if (oldSession.isOpen()) {
-                    // 先尝试发送一个测试消息，如果失败说明连接已断开
-                    oldSession.getBasicRemote().sendText("{\"type\":\"ping\"}");
-                    // 如果能发送成功，说明旧连接还活着，需要踢掉
-                    log.info("{} 在新设备登录，踢掉旧连接", key);
-                    oldSession.getBasicRemote().sendText("{\"type\":\"FORCE_LOGOUT\",\"message\":\"账号已在其他设备登录\"}");
+                    // 静默关闭旧连接，不发送FORCE_LOGOUT
                     oldSession.close();
+                    log.info("{} 旧连接已关闭，替换为新连接", key);
                 }
             } catch (IOException e) {
-                // 发送失败说明旧连接已经断开，直接移除即可，不需要通知
-                log.info("{} 旧连接已失效，直接替换", key);
+                log.info("{} 旧连接关闭失败，直接替换", key);
             }
         }
         
@@ -194,6 +189,28 @@ public class WebSocketServer {
 
     public static int getOnlineCount() {
         return onlineSessions.size();
+    }
+    
+    /**
+     * 向指定用户发送消息撤回通知
+     * @param userId 用户ID
+     * @param messageId 被撤回的消息ID
+     */
+    public void sendMessageWithdrawNotice(Long userId, Long messageId) {
+        String key = "user_" + userId;
+        Session session = onlineSessions.get(key);
+        if (session != null && session.isOpen()) {
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("type", "message_withdraw");
+                data.put("messageId", messageId);
+                String json = objectMapper.writeValueAsString(data);
+                session.getBasicRemote().sendText(json);
+                log.info("向用户 {} 推送消息撤回通知，消息ID: {}", userId, messageId);
+            } catch (IOException e) {
+                log.error("向用户 {} 推送消息撤回通知失败: {}", userId, e.getMessage());
+            }
+        }
     }
     
     /**

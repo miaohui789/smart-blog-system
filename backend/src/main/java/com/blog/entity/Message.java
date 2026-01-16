@@ -31,6 +31,9 @@ public class Message {
     /** 是否已读：0未读 1已读 */
     private Integer isRead;
     
+    /** 是否已撤回：0否 1是 */
+    private Integer isWithdrawn;
+    
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     

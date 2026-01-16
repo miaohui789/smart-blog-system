@@ -29,3 +29,18 @@ export function getUnreadCount() {
 export function getConversationWith(userId) {
   return request({ url: `/message/conversation-with/${userId}`, method: 'get' })
 }
+
+// 删除消息
+export function deleteMessage(messageId) {
+  return request({ url: `/message/${messageId}`, method: 'delete' })
+}
+
+// 撤回消息
+export function withdrawMessage(messageId) {
+  return request({ url: `/message/${messageId}/withdraw`, method: 'post' })
+}
+
+// 删除会话
+export function deleteConversation(conversationId) {
+  return request({ url: `/message/conversations/${conversationId}`, method: 'delete' })
+}

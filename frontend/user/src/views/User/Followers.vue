@@ -247,6 +247,8 @@ onMounted(() => {
   gap: 16px;
   cursor: pointer;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .avatar-wrapper {
@@ -276,6 +278,7 @@ onMounted(() => {
 .user-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .user-intro {
@@ -285,6 +288,7 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .user-actions {

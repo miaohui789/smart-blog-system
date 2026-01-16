@@ -37,6 +37,7 @@ public class RedisService {
     // 新功能缓存Key
     public static final String CACHE_NOTIFICATION_UNREAD = CACHE_PREFIX + "notification:unread:";
     public static final String CACHE_MESSAGE_UNREAD = CACHE_PREFIX + "message:unread:";
+    public static final String CACHE_MESSAGE_CONVERSATION = CACHE_PREFIX + "message:conv:";
     public static final String CACHE_WEATHER = CACHE_PREFIX + "weather:";
     public static final String CACHE_USER_FOLLOW = CACHE_PREFIX + "user:follow:";
     public static final String CACHE_USER_FANS = CACHE_PREFIX + "user:fans:";
@@ -454,8 +455,46 @@ public class RedisService {
         if (!redisAvailable) return;
         try {
             delete(CACHE_MESSAGE_UNREAD + userId);
+            delete(CACHE_MESSAGE_CONVERSATION + userId);
         } catch (Exception e) {
             handleRedisError(e);
+        }
+    }
+    
+    /**
+     * 增加私信未读数（原子操作）
+     */
+    public Long incrementMessageUnread(Long userId) {
+        if (!redisAvailable) return 0L;
+        try {
+            String key = CACHE_MESSAGE_UNREAD + userId;
+            Long result = redisTemplate.opsForValue().increment(key);
+            // 设置过期时间，防止数据不一致时长期存在
+            expire(key, EXPIRE_MEDIUM, TimeUnit.MINUTES);
+            return result;
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
+        }
+    }
+    
+    /**
+     * 减少私信未读数（原子操作）
+     */
+    public Long decrementMessageUnread(Long userId, int count) {
+        if (!redisAvailable) return 0L;
+        try {
+            String key = CACHE_MESSAGE_UNREAD + userId;
+            Long result = redisTemplate.opsForValue().decrement(key, count);
+            // 防止负数
+            if (result != null && result < 0) {
+                set(key, 0);
+                return 0L;
+            }
+            return result;
+        } catch (Exception e) {
+            handleRedisError(e);
+            return 0L;
         }
     }
     

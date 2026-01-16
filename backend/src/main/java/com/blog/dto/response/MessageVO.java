@@ -15,6 +15,7 @@ public class MessageVO {
     private String content;
     private Integer type;
     private Integer isRead;
+    private Boolean isWithdrawn;
     private LocalDateTime createTime;
     
     /** 发送者信息 */

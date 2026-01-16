@@ -4,6 +4,8 @@ import { getUnreadCount } from '@/api/message'
 
 export const useMessageStore = defineStore('message', () => {
   const unreadCount = ref(0)
+  // 当前正在聊天的用户ID
+  const currentChatUserId = ref(null)
   
   // 防抖标记
   let fetchTimer = null
@@ -35,6 +37,21 @@ export const useMessageStore = defineStore('message', () => {
     }
   }
 
+  // 设置当前聊天用户
+  function setCurrentChatUser(userId) {
+    currentChatUserId.value = userId
+  }
+
+  // 清除当前聊天用户
+  function clearCurrentChatUser() {
+    currentChatUserId.value = null
+  }
+
+  // 检查是否正在和某用户聊天
+  function isChattingWith(userId) {
+    return currentChatUserId.value === userId
+  }
+
   // 增加未读数
   function incrementUnread() {
     unreadCount.value++
@@ -48,12 +65,17 @@ export const useMessageStore = defineStore('message', () => {
   // 重置未读数
   function resetUnread() {
     unreadCount.value = 0
+    currentChatUserId.value = null
     lastFetchTime = 0
   }
 
   return {
     unreadCount,
+    currentChatUserId,
     fetchUnreadCount,
+    setCurrentChatUser,
+    clearCurrentChatUser,
+    isChattingWith,
     incrementUnread,
     decrementUnread,
     resetUnread

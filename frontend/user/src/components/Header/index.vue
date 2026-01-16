@@ -413,7 +413,7 @@ function goToFollowing() {
 // 跳转到粉丝列表
 function goToFollowers() {
   showUserCard.value = false
-  router.push(`/user/${userStore.userInfo?.id}?tab=followers`)
+  router.push(`/user/${userStore.userInfo?.id}/followers`)
 }
 
 // 格式化VIP到期时间

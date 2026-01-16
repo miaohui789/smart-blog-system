@@ -23,6 +23,7 @@ const callbacks = {
   notification: new Set(),
   new_comment: new Set(),
   message: new Set(),
+  message_withdraw: new Set(),  // 消息撤回
   force_logout: new Set(),
   unread_update: new Set()  // 未读数更新
 }
@@ -127,6 +128,10 @@ function handleMessage(rawData) {
         // 私信也触发未读数更新
         callbacks.unread_update.forEach(cb => cb())
         break
+      case 'message_withdraw':
+        console.log('[WebSocket] 收到消息撤回通知, messageId:', data.messageId)
+        callbacks.message_withdraw.forEach(cb => cb(data.messageId))
+        break
       case 'unread_update':
         callbacks.unread_update.forEach(cb => cb(data.data))
         break
@@ -176,11 +181,6 @@ export function closeWebSocket() {
     ws.close(1000, 'User logout')
     ws = null
   }
-  
-  // 清空回调
-  Object.keys(callbacks).forEach(key => {
-    callbacks[key].clear()
-  })
   
   messageQueue = []
 }
@@ -265,6 +265,13 @@ export function onForceLogout(callback) {
  */
 export function onUnreadUpdate(callback) {
   return registerCallback('unread_update', callback)
+}
+
+/**
+ * 注册消息撤回回调
+ */
+export function onMessageWithdraw(callback) {
+  return registerCallback('message_withdraw', callback)
 }
 
 /**

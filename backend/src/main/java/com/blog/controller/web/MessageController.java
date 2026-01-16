@@ -58,6 +58,12 @@ public class MessageController {
             return Result.error("该用户已注销，无法发送私信");
         }
         
+        // 检查陌生人消息限制
+        String checkResult = messageService.checkCanSendMessage(currentUserId, request.getReceiverId());
+        if (checkResult != null) {
+            return Result.error(checkResult);
+        }
+        
         Message message = messageService.sendMessage(
                 currentUserId, 
                 request.getReceiverId(), 
@@ -171,6 +177,7 @@ public class MessageController {
             vo.setContent(msg.getContent());
             vo.setType(msg.getType());
             vo.setIsRead(msg.getIsRead());
+            vo.setIsWithdrawn(msg.getIsWithdrawn() != null && msg.getIsWithdrawn() == 1);
             vo.setCreateTime(msg.getCreateTime());
             vo.setIsSelf(msg.getSenderId().equals(currentUserId));
             
@@ -224,6 +231,51 @@ public class MessageController {
         
         MessageConversation conversation = messageService.getOrCreateConversation(currentUserId, userId);
         return Result.success(conversation);
+    }
+
+    @Operation(summary = "删除消息")
+    @DeleteMapping("/{messageId}")
+    public Result<?> deleteMessage(@PathVariable Long messageId) {
+        Long currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return Result.error("请先登录");
+        }
+        
+        boolean success = messageService.deleteMessage(messageId, currentUserId);
+        if (success) {
+            return Result.success("删除成功");
+        }
+        return Result.error("删除失败，消息不存在或无权限");
+    }
+
+    @Operation(summary = "撤回消息")
+    @PostMapping("/{messageId}/withdraw")
+    public Result<?> withdrawMessage(@PathVariable Long messageId) {
+        Long currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return Result.error("请先登录");
+        }
+        
+        boolean success = messageService.withdrawMessage(messageId, currentUserId);
+        if (success) {
+            return Result.success("撤回成功");
+        }
+        return Result.error("撤回失败，消息不存在、无权限或已超过撤回时限");
+    }
+
+    @Operation(summary = "删除会话")
+    @DeleteMapping("/conversations/{conversationId}")
+    public Result<?> deleteConversation(@PathVariable Long conversationId) {
+        Long currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return Result.error("请先登录");
+        }
+        
+        boolean success = messageService.deleteConversation(conversationId, currentUserId);
+        if (success) {
+            return Result.success("删除成功");
+        }
+        return Result.error("删除失败，会话不存在或无权限");
     }
 
     private Long getCurrentUserId() {

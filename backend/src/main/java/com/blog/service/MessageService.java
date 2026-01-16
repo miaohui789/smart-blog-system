@@ -14,6 +14,12 @@ public interface MessageService extends IService<Message> {
     Message sendMessage(Long senderId, Long receiverId, String content, Integer type);
     
     /**
+     * 检查是否可以发送消息（陌生人限制）
+     * @return null表示可以发送，否则返回错误提示
+     */
+    String checkCanSendMessage(Long senderId, Long receiverId);
+    
+    /**
      * 获取会话列表
      */
     List<MessageConversation> getConversationList(Long userId);
@@ -37,4 +43,19 @@ public interface MessageService extends IService<Message> {
      * 获取或创建会话
      */
     MessageConversation getOrCreateConversation(Long userId1, Long userId2);
+    
+    /**
+     * 删除消息
+     */
+    boolean deleteMessage(Long messageId, Long userId);
+    
+    /**
+     * 撤回消息（2分钟内）
+     */
+    boolean withdrawMessage(Long messageId, Long userId);
+    
+    /**
+     * 删除会话
+     */
+    boolean deleteConversation(Long conversationId, Long userId);
 }

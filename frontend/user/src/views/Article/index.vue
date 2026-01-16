@@ -627,14 +627,14 @@ const articleContent = computed(() => {
   const content = article.value.content
   const contentHtml = article.value.contentHtml
   
-  // 优先使用 contentHtml（后端已渲染的HTML）
-  if (contentHtml && contentHtml.trim()) {
-    return contentHtml
-  }
-  
-  // 否则解析 markdown content
+  // 优先使用原始 markdown content 进行解析（确保代码块和表格正确渲染）
   if (content && content.trim()) {
     return parseMarkdown(content)
+  }
+  
+  // 如果没有 content，使用 contentHtml
+  if (contentHtml && contentHtml.trim()) {
+    return contentHtml
   }
   
   return ''
@@ -694,9 +694,18 @@ function parseMarkdown(text) {
   // 处理字面量 \n 转换为真正的换行
   let content = text.replace(/\\n/g, '\n')
   
-  // 处理代码块 - 添加语言标签头部
-  content = content.replace(/```(\w*)\s*\n?([\s\S]*?)```/g, (match, lang, code) => {
+  // 处理代码块 - 支持多种格式
+  // 格式1: ```lang\ncode\n``` 或 ```\ncode\n```
+  content = content.replace(/```(\w*)\s*\n([\s\S]*?)\n```/g, (match, lang, code) => {
     const trimmedCode = code.replace(/\s+$/, '')
+    const langDisplay = getLanguageDisplay(lang || 'text')
+    const langClass = lang ? `language-${lang}` : 'language-text'
+    return `<pre class="code-block-wrapper" data-lang="${lang || 'text'}"><div class="code-header"><span class="code-lang">${langDisplay}</span></div><code class="${langClass}">${escapeHtml(trimmedCode)}</code></pre>`
+  })
+  
+  // 格式2: ```lang code``` (单行或无换行)
+  content = content.replace(/```(\w*)\s*([\s\S]*?)```/g, (match, lang, code) => {
+    const trimmedCode = code.replace(/\s+$/, '').replace(/^\s+/, '')
     const langDisplay = getLanguageDisplay(lang || 'text')
     const langClass = lang ? `language-${lang}` : 'language-text'
     return `<pre class="code-block-wrapper" data-lang="${lang || 'text'}"><div class="code-header"><span class="code-lang">${langDisplay}</span></div><code class="${langClass}">${escapeHtml(trimmedCode)}</code></pre>`
@@ -704,6 +713,50 @@ function parseMarkdown(text) {
   
   // 处理行内代码
   content = content.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+  
+  // 处理表格
+  content = content.replace(/^(\|.+\|)\r?\n(\|[-:\s|]+\|)\r?\n((?:\|.+\|\r?\n?)+)/gm, (match, header, separator, body) => {
+    // 解析表头
+    const headers = header.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
+    
+    // 解析对齐方式
+    const aligns = separator.split('|').filter(cell => cell.trim() !== '').map(cell => {
+      const trimmed = cell.trim()
+      if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center'
+      if (trimmed.endsWith(':')) return 'right'
+      return 'left'
+    })
+    
+    // 解析表体
+    const rows = body.trim().split('\n').map(row => 
+      row.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
+    )
+    
+    // 生成 HTML
+    let tableHtml = '<div class="table-wrapper"><table class="md-table">'
+    
+    // 表头
+    tableHtml += '<thead><tr>'
+    headers.forEach((cell, i) => {
+      const align = aligns[i] || 'left'
+      tableHtml += `<th style="text-align: ${align}">${cell}</th>`
+    })
+    tableHtml += '</tr></thead>'
+    
+    // 表体
+    tableHtml += '<tbody>'
+    rows.forEach(row => {
+      tableHtml += '<tr>'
+      row.forEach((cell, i) => {
+        const align = aligns[i] || 'left'
+        tableHtml += `<td style="text-align: ${align}">${cell}</td>`
+      })
+      tableHtml += '</tr>'
+    })
+    tableHtml += '</tbody></table></div>'
+    
+    return tableHtml
+  })
   
   // 处理标题
   content = content.replace(/^### (.*$)/gm, '<h3>$1</h3>')
@@ -725,7 +778,7 @@ function parseMarkdown(text) {
   content = paragraphs.map(p => {
     p = p.trim()
     if (!p) return ''
-    if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<img')) {
+    if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<img') || p.startsWith('<div class="table-wrapper">')) {
       return p
     }
     return `<p>${p.replace(/\n/g, '<br>')}</p>`
@@ -1711,6 +1764,50 @@ function addNewCommentToList(newComment) {
     margin: 16px 0;
     display: block;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  // 表格样式
+  :deep(.table-wrapper) {
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  }
+  
+  :deep(.md-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    
+    th, td {
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      word-break: break-word;
+    }
+    
+    th {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    td {
+      background: var(--bg-card);
+      color: var(--text-secondary);
+    }
+    
+    tbody tr:hover td {
+      background: rgba(59, 130, 246, 0.05);
+    }
+    
+    tbody tr:nth-child(even) td {
+      background: var(--bg-card-hover);
+    }
+    
+    tbody tr:nth-child(even):hover td {
+      background: rgba(59, 130, 246, 0.08);
+    }
   }
 }
 
