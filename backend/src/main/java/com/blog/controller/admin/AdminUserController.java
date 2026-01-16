@@ -144,6 +144,19 @@ public class AdminUserController {
         return Result.success("删除成功");
     }
 
+    @Operation(summary = "注销用户")
+    @PutMapping("/{id}/cancel")
+    public Result<?> cancelUser(@PathVariable Long id) {
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        // 设置用户状态为已注销(2)
+        user.setStatus(2);
+        userService.updateById(user);
+        return Result.success("用户已注销");
+    }
+
     @Operation(summary = "更新状态")
     @PutMapping("/{id}/status")
     public Result<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {

@@ -5,7 +5,8 @@ import lombok.Getter;
 @Getter
 public enum UserStatus {
     DISABLED(0, "禁用"),
-    NORMAL(1, "正常");
+    NORMAL(1, "正常"),
+    CANCELLED(2, "已注销");
 
     private final Integer code;
     private final String desc;

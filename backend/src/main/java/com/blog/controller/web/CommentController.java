@@ -13,7 +13,9 @@ import com.blog.entity.User;
 import com.blog.security.SecurityUser;
 import com.blog.service.ArticleService;
 import com.blog.service.CommentService;
+import com.blog.service.NotificationService;
 import com.blog.service.UserService;
+import com.blog.websocket.WebSocketServer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,8 @@ public class CommentController {
     private final CommentService commentService;
     private final ArticleService articleService;
     private final UserService userService;
+    private final NotificationService notificationService;
+    private final WebSocketServer webSocketServer;
 
     @Operation(summary = "获取文章评论列表")
     @GetMapping("/articles/{articleId}/comments")
@@ -61,23 +65,26 @@ public class CommentController {
             return Result.success(PageResult.of(new ArrayList<>(), 0L, page, pageSize));
         }
         
-        // 获取所有评论的子评论
+        // 获取所有评论的子评论（包括多层嵌套的情况）
         List<Long> parentIds = comments.stream().map(Comment::getId).collect(Collectors.toList());
-        List<Comment> replies = new ArrayList<>();
+        List<Comment> allReplies = new ArrayList<>();
+        
         if (!parentIds.isEmpty()) {
-            replies = commentService.list(
+            // 获取所有非顶级评论（parentId 不为 null 且不为 0）
+            allReplies = commentService.list(
                     new LambdaQueryWrapper<Comment>()
                             .eq(Comment::getArticleId, articleId)
                             .eq(Comment::getStatus, 1)
-                            .in(Comment::getParentId, parentIds)
+                            .isNotNull(Comment::getParentId)
+                            .ne(Comment::getParentId, 0L)
                             .orderByAsc(Comment::getCreateTime)
             );
         }
         
         // 收集所有用户ID
         Set<Long> userIds = comments.stream().map(Comment::getUserId).collect(Collectors.toSet());
-        userIds.addAll(replies.stream().map(Comment::getUserId).collect(Collectors.toSet()));
-        userIds.addAll(replies.stream()
+        userIds.addAll(allReplies.stream().map(Comment::getUserId).collect(Collectors.toSet()));
+        userIds.addAll(allReplies.stream()
                 .filter(r -> r.getReplyUserId() != null)
                 .map(Comment::getReplyUserId)
                 .collect(Collectors.toSet()));
@@ -86,9 +93,19 @@ public class CommentController {
         Map<Long, User> userMap = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
         
-        // 按父评论ID分组子评论
-        Map<Long, List<Comment>> repliesMap = replies.stream()
-                .collect(Collectors.groupingBy(Comment::getParentId));
+        // 构建评论ID到评论的映射，用于查找根评论
+        Map<Long, Comment> commentMap = new java.util.HashMap<>();
+        comments.forEach(c -> commentMap.put(c.getId(), c));
+        allReplies.forEach(c -> commentMap.put(c.getId(), c));
+        
+        // 找到每个子评论的根评论ID
+        Map<Long, List<Comment>> repliesMap = new java.util.HashMap<>();
+        for (Comment reply : allReplies) {
+            Long rootId = findRootCommentId(reply, commentMap, parentIds);
+            if (rootId != null) {
+                repliesMap.computeIfAbsent(rootId, k -> new ArrayList<>()).add(reply);
+            }
+        }
         
         // 转换为VO
         List<CommentVO> voList = comments.stream().map(comment -> {
@@ -105,6 +122,23 @@ public class CommentController {
         return Result.success(PageResult.of(voList, pageResult.getTotal(), page, pageSize));
     }
     
+    // 递归查找根评论ID
+    private Long findRootCommentId(Comment comment, Map<Long, Comment> commentMap, List<Long> rootIds) {
+        Long parentId = comment.getParentId();
+        if (parentId == null || parentId == 0L) {
+            return comment.getId();
+        }
+        if (rootIds.contains(parentId)) {
+            return parentId;
+        }
+        Comment parent = commentMap.get(parentId);
+        if (parent != null) {
+            return findRootCommentId(parent, commentMap, rootIds);
+        }
+        // 如果找不到父评论，直接返回parentId（可能是已删除的评论）
+        return parentId;
+    }
+    
     private CommentVO convertToVO(Comment comment, Map<Long, User> userMap) {
         CommentVO vo = new CommentVO();
         BeanUtils.copyProperties(comment, vo);
@@ -116,6 +150,7 @@ public class CommentController {
             userInfo.setNickname(user.getNickname());
             userInfo.setAvatar(user.getAvatar());
             userInfo.setVipLevel(user.getVipLevel());
+            userInfo.setStatus(user.getStatus());
             vo.setUser(userInfo);
         }
         
@@ -127,6 +162,7 @@ public class CommentController {
                 replyUserInfo.setNickname(replyUser.getNickname());
                 replyUserInfo.setAvatar(replyUser.getAvatar());
                 replyUserInfo.setVipLevel(replyUser.getVipLevel());
+                replyUserInfo.setStatus(replyUser.getStatus());
                 vo.setReplyUser(replyUserInfo);
             }
         }
@@ -157,9 +193,76 @@ public class CommentController {
         if (article != null) {
             article.setCommentCount(article.getCommentCount() + 1);
             articleService.updateById(article);
+            
+            // 发送通知
+            if (request.getParentId() != null && request.getParentId() > 0) {
+                // 回复评论 - 通知被回复的用户
+                if (request.getReplyUserId() != null && !request.getReplyUserId().equals(userId)) {
+                    notificationService.notifyCommentReplied(
+                        request.getReplyUserId(), userId, article.getId(), 
+                        article.getTitle(), request.getParentId(), request.getContent()
+                    );
+                }
+            } else {
+                // 新评论 - 通知文章作者
+                if (!article.getUserId().equals(userId)) {
+                    notificationService.notifyArticleCommented(
+                        article.getUserId(), userId, article.getId(), 
+                        article.getTitle(), request.getContent()
+                    );
+                }
+            }
+            
+            // 广播新评论到文章页面（实时刷新评论区）
+            broadcastNewComment(request.getArticleId(), comment, userId);
         }
 
-        return Result.success("评论成功");
+        // 返回新评论的ID
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("id", comment.getId());
+        result.put("message", "评论成功");
+        return Result.success(result);
+    }
+    
+    // 广播新评论
+    private void broadcastNewComment(Long articleId, Comment comment, Long userId) {
+        try {
+            User user = userService.getById(userId);
+            Map<String, Object> commentData = new java.util.HashMap<>();
+            commentData.put("id", comment.getId());
+            commentData.put("articleId", articleId);
+            commentData.put("content", comment.getContent());
+            commentData.put("parentId", comment.getParentId());
+            commentData.put("replyUserId", comment.getReplyUserId());
+            commentData.put("createTime", comment.getCreateTime());
+            
+            if (user != null) {
+                Map<String, Object> userInfo = new java.util.HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("nickname", user.getNickname());
+                userInfo.put("avatar", user.getAvatar());
+                userInfo.put("vipLevel", user.getVipLevel());
+                userInfo.put("status", user.getStatus());
+                commentData.put("user", userInfo);
+            }
+            
+            // 如果有被回复用户
+            if (comment.getReplyUserId() != null) {
+                User replyUser = userService.getById(comment.getReplyUserId());
+                if (replyUser != null) {
+                    Map<String, Object> replyUserInfo = new java.util.HashMap<>();
+                    replyUserInfo.put("id", replyUser.getId());
+                    replyUserInfo.put("nickname", replyUser.getNickname());
+                    replyUserInfo.put("status", replyUser.getStatus());
+                    commentData.put("replyUser", replyUserInfo);
+                }
+            }
+            
+            // 通过WebSocket广播到所有在线用户
+            webSocketServer.broadcastToArticle(articleId, "new_comment", commentData);
+        } catch (Exception e) {
+            // 广播失败不影响评论功能
+        }
     }
 
     @Operation(summary = "删除评论")

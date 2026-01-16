@@ -83,7 +83,25 @@ const routes = [
         children: [
           { path: 'member', name: 'VipMember', component: () => import('@/views/Vip/Member.vue'), meta: { title: '会员列表', requiresAdmin: true } },
           { path: 'key', name: 'VipKey', component: () => import('@/views/Vip/Key.vue'), meta: { title: '密钥管理', requiresAdmin: true } },
+          { path: 'heat', name: 'VipHeat', component: () => import('@/views/Vip/Heat.vue'), meta: { title: '加热记录', requiresAdmin: true } },
           { path: 'statistics', name: 'VipStatistics', component: () => import('@/views/Vip/Statistics.vue'), meta: { title: 'VIP统计', requiresAdmin: true } }
+        ]
+      },
+      {
+        path: 'ai',
+        name: 'AiConfig',
+        component: () => import('@/views/AI/Config.vue'),
+        meta: { title: 'AI配置', icon: 'MagicStick', requiresAdmin: true }
+      },
+      {
+        path: 'social',
+        name: 'Social',
+        redirect: '/social/follow',
+        meta: { title: '社交管理', icon: 'Connection', requiresAdmin: true },
+        children: [
+          { path: 'follow', name: 'Follow', component: () => import('@/views/Follow/index.vue'), meta: { title: '关注管理', requiresAdmin: true } },
+          { path: 'message', name: 'Message', component: () => import('@/views/Message/index.vue'), meta: { title: '私信管理', requiresAdmin: true } },
+          { path: 'notification', name: 'Notification', component: () => import('@/views/Notification/index.vue'), meta: { title: '通知管理', requiresAdmin: true } }
         ]
       }
     ]

@@ -345,3 +345,60 @@ img {
 .el-tag {
   border-radius: 4px;
 }
+
+// 全局空状态样式 - 统一颜色
+.el-empty {
+  .el-empty__image {
+    svg {
+      // 暗色主题使用 #dadada 系列
+      --el-empty-fill-color-0: #dadada;
+      --el-empty-fill-color-1: #c8c8c8;
+      --el-empty-fill-color-2: #b8b8b8;
+      --el-empty-fill-color-3: #dadada;
+      --el-empty-fill-color-4: #c0c0c0;
+      --el-empty-fill-color-5: #dadada;
+      --el-empty-fill-color-6: #c8c8c8;
+      --el-empty-fill-color-7: #dadada;
+      --el-empty-fill-color-8: #d0d0d0;
+      --el-empty-fill-color-9: #dadada;
+    }
+  }
+  
+  .el-empty__description {
+    color: var(--text-muted);
+  }
+}
+
+// 亮色主题下的空状态
+:root[data-theme="light"] {
+  .el-empty {
+    .el-empty__image {
+      svg {
+        --el-empty-fill-color-0: #e0e0e0;
+        --el-empty-fill-color-1: #d0d0d0;
+        --el-empty-fill-color-2: #c0c0c0;
+        --el-empty-fill-color-3: #d8d8d8;
+        --el-empty-fill-color-4: #c8c8c8;
+        --el-empty-fill-color-5: #e0e0e0;
+        --el-empty-fill-color-6: #d0d0d0;
+        --el-empty-fill-color-7: #e0e0e0;
+        --el-empty-fill-color-8: #d8d8d8;
+        --el-empty-fill-color-9: #e0e0e0;
+      }
+    }
+  }
+}
+
+// 页面过渡动画 - 丝滑淡入淡出（仅内容区域）
+.page-fade-enter-active {
+  transition: opacity 0.15s ease-out;
+}
+
+.page-fade-leave-active {
+  transition: opacity 0.1s ease-in;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}

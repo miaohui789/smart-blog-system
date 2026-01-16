@@ -26,8 +26,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -45,6 +47,7 @@ public class ArticleController {
     private final UserService userService;
     private final CategoryService categoryService;
     private final RedisService redisService;
+    private final NotificationService notificationService;
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -53,11 +56,13 @@ public class ArticleController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false, defaultValue = "default") String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
+            @RequestParam(required = false, defaultValue = "desc") String sortOrder,
+            @RequestParam(required = false) Integer excludeTop,
+            @RequestParam(required = false) Integer onlyTop) {
         
-        // 尝试从缓存获取（只缓存最新排序）
+        // 尝试从缓存获取（只缓存最新排序且无特殊筛选）
         String cacheKey = RedisService.CACHE_ARTICLE_LIST + page + ":" + pageSize + ":" + (categoryId != null ? categoryId : "all") + ":" + sortBy + ":" + sortOrder;
-        if ("latest".equals(sortBy) || "default".equals(sortBy)) {
+        if (("latest".equals(sortBy) || "default".equals(sortBy)) && excludeTop == null && onlyTop == null) {
             try {
                 Object cached = redisService.get(cacheKey);
                 if (cached != null) {
@@ -71,6 +76,15 @@ public class ArticleController {
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
                 .eq(categoryId != null, Article::getCategoryId, categoryId);
+        
+        // 处理置顶筛选
+        if (onlyTop != null && onlyTop == 1) {
+            // 只获取置顶文章
+            wrapper.eq(Article::getIsTop, 1);
+        } else if (excludeTop != null && excludeTop == 1) {
+            // 排除置顶文章
+            wrapper.eq(Article::getIsTop, 0);
+        }
         
         // 根据排序参数设置排序
         boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
@@ -207,6 +221,13 @@ public class ArticleController {
                 cachedVO.setIsLiked(false);
                 cachedVO.setIsFavorited(false);
             }
+            // 更新作者状态（可能被冻结）
+            if (cachedVO.getAuthor() != null) {
+                User author = userService.getById(article.getUserId());
+                if (author != null) {
+                    cachedVO.getAuthor().setStatus(author.getStatus());
+                }
+            }
             return Result.success(cachedVO);
         }
         
@@ -222,6 +243,7 @@ public class ArticleController {
             authorVO.setUsername(author.getUsername());
             authorVO.setNickname(author.getNickname());
             authorVO.setAvatar(author.getAvatar());
+            authorVO.setStatus(author.getStatus());
             vo.setAuthor(authorVO);
         }
         
@@ -386,7 +408,25 @@ public class ArticleController {
             return vo;
         }).collect(Collectors.toList());
         
-        return Result.success(PageResult.of(voList, pageResult.getTotal(), page, pageSize));
+        // 5. 搜索用户（最多返回5个）
+        List<User> users = userService.searchUsers(keyword, 5);
+        List<UserVO> userVOList = users.stream().map(user -> {
+            UserVO uvo = new UserVO();
+            uvo.setId(user.getId());
+            uvo.setUsername(user.getUsername());
+            uvo.setNickname(user.getNickname());
+            uvo.setAvatar(user.getAvatar());
+            uvo.setIntro(user.getIntro());
+            uvo.setVipLevel(user.getVipLevel());
+            return uvo;
+        }).collect(Collectors.toList());
+        
+        // 6. 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("articles", PageResult.of(voList, pageResult.getTotal(), page, pageSize));
+        result.put("users", userVOList);
+        
+        return Result.success(result);
     }
 
     @Operation(summary = "文章归档")
@@ -430,6 +470,13 @@ public class ArticleController {
             return Result.error(ResultCode.UNAUTHORIZED);
         }
         boolean success = articleLikeService.like(id, userId);
+        if (success) {
+            // 发送点赞通知
+            Article article = articleService.getById(id);
+            if (article != null && !article.getUserId().equals(userId)) {
+                notificationService.notifyArticleLiked(article.getUserId(), userId, id, article.getTitle());
+            }
+        }
         return success ? Result.success("点赞成功") : Result.error("已经点赞过了");
     }
 
@@ -452,6 +499,13 @@ public class ArticleController {
             return Result.error(ResultCode.UNAUTHORIZED);
         }
         boolean success = articleFavoriteService.favorite(id, userId);
+        if (success) {
+            // 发送收藏通知
+            Article article = articleService.getById(id);
+            if (article != null && !article.getUserId().equals(userId)) {
+                notificationService.notifyArticleFavorited(article.getUserId(), userId, id, article.getTitle());
+            }
+        }
         return success ? Result.success("收藏成功") : Result.error("已经收藏过了");
     }
 

@@ -36,6 +36,10 @@ export function deleteUser(id) {
   return request({ url: `/admin/users/${id}`, method: 'delete' })
 }
 
+export function cancelUser(id) {
+  return request({ url: `/admin/users/${id}/cancel`, method: 'put' })
+}
+
 export function updateUserStatus(id, status) {
   return request({ url: `/admin/users/${id}/status`, method: 'put', data: { status } })
 }

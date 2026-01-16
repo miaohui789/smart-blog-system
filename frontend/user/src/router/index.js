@@ -60,6 +60,7 @@ const routes = [
         component: () => import('@/views/Search/index.vue'),
         meta: { title: '搜索' }
       },
+
       {
         path: 'user',
         name: 'User',
@@ -67,7 +68,7 @@ const routes = [
         children: [
           {
             path: 'profile',
-            name: 'UserProfile',
+            name: 'UserProfileSelf',
             component: () => import('@/views/User/Profile.vue'),
             meta: { title: '个人资料', requiresAuth: true }
           },
@@ -88,8 +89,50 @@ const routes = [
             name: 'UserArticles',
             component: () => import('@/views/User/Articles.vue'),
             meta: { title: '我的文章', requiresAuth: true }
+          },
+          {
+            path: 'following',
+            name: 'UserFollowing',
+            component: () => import('@/views/User/Following.vue'),
+            meta: { title: '我的关注', requiresAuth: true }
           }
         ]
+      },
+      {
+        path: 'user/:userId',
+        name: 'UserProfile',
+        component: () => import('@/views/User/UserProfile.vue'),
+        meta: { title: '用户主页' }
+      },
+      {
+        path: 'user/:userId/followers',
+        name: 'UserFollowers',
+        component: () => import('@/views/User/Followers.vue'),
+        meta: { title: '粉丝列表' }
+      },
+      {
+        path: 'user/:userId/following',
+        name: 'UserFollowingList',
+        component: () => import('@/views/User/FollowingList.vue'),
+        meta: { title: '关注列表' }
+      },
+      {
+        path: 'message',
+        name: 'MessageList',
+        component: () => import('@/views/Message/index.vue'),
+        meta: { title: '私信', requiresAuth: true }
+      },
+      {
+        path: 'message/:userId',
+        name: 'MessageChat',
+        component: () => import('@/views/Message/index.vue'),
+        meta: { title: '私信', requiresAuth: true }
+      },
+      {
+        path: 'notification',
+        name: 'Notification',
+        component: () => import('@/views/Notification/index.vue'),
+        meta: { title: '消息通知', requiresAuth: true }
       },
       {
         path: 'write',
@@ -125,6 +168,12 @@ const routes = [
     ]
   },
   {
+    path: '/ai',
+    name: 'AI',
+    component: () => import('@/views/AI/index.vue'),
+    meta: { title: 'AI助手' }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Auth/index.vue'),
@@ -153,8 +202,21 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
-    return { top: 0 }
+  scrollBehavior(to, from, savedPosition) {
+    // 如果有保存的位置（浏览器后退/前进），使用保存的位置
+    if (savedPosition) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ ...savedPosition, behavior: 'smooth' })
+        }, 100)
+      })
+    }
+    // 否则滚动到顶部，带平滑效果
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ top: 0, behavior: 'smooth' })
+      }, 100)
+    })
   }
 })
 

@@ -70,8 +70,10 @@ public class JwtTokenProvider {
         String tokenPrefix = isAdmin ? ADMIN_TOKEN_PREFIX : USER_TOKEN_PREFIX;
         String wsPrefix = isAdmin ? "admin_" : "user_";
         
+        boolean shouldForceLogout = false;
+        
         if (redisService.isAvailable()) {
-            // 获取该端之前的Token并加入黑名单
+            // 获取该端之前的Token
             Object oldToken = redisService.get(tokenPrefix + userId);
             if (oldToken != null) {
                 String oldTokenStr = oldToken.toString();
@@ -83,18 +85,22 @@ public class JwtTokenProvider {
                             .getBody();
                     long remainingTime = oldClaims.getExpiration().getTime() - System.currentTimeMillis();
                     if (remainingTime > 0) {
+                        // 旧Token还有效，需要踢掉旧设备
+                        shouldForceLogout = true;
                         redisService.set(TOKEN_BLACKLIST_PREFIX + oldTokenStr, "1", remainingTime, TimeUnit.MILLISECONDS);
                     }
                 } catch (Exception e) {
-                    // 旧Token已失效，忽略
+                    // 旧Token已失效，不需要踢人
                 }
             }
             // 存储新Token
             redisService.set(tokenPrefix + userId, token, expiration, TimeUnit.MILLISECONDS);
         }
         
-        // 通过WebSocket实时通知该端旧设备下线
-        WebSocketServer.forceLogout(wsPrefix + userId);
+        // 只有当旧Token还有效时，才通过WebSocket通知旧设备下线
+        if (shouldForceLogout) {
+            WebSocketServer.forceLogout(wsPrefix + userId);
+        }
         
         return token;
     }

@@ -27,6 +27,7 @@
       <el-select v-model="query.status" placeholder="状态" clearable style="width: 120px">
         <el-option label="正常" :value="1" />
         <el-option label="禁用" :value="0" />
+        <el-option label="已注销" :value="2" />
       </el-select>
       <el-button type="primary" @click="fetchList">
         <el-icon><Search /></el-icon>
@@ -59,7 +60,8 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+            <el-tag v-if="row.status === 2" type="info" size="small">已注销</el-tag>
+            <el-tag v-else :type="row.status === 1 ? 'success' : 'danger'" size="small">
               {{ row.status === 1 ? '正常' : '禁用' }}
             </el-tag>
           </template>
@@ -67,34 +69,39 @@
         <el-table-column label="注册时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <button 
-              class="action-btn edit-btn" 
-              :class="{ disabled: !canManageUsers }"
-              :disabled="!canManageUsers"
-              @click="handleEdit(row)"
-            >编辑</button>
-            <button 
-              v-if="row.status === 1" 
-              class="action-btn disable-btn"
-              :class="{ disabled: !canManageUsers }"
-              :disabled="!canManageUsers"
-              @click="handleToggleStatus(row)"
-            >禁用</button>
-            <button 
-              v-else 
-              class="action-btn enable-btn"
-              :class="{ disabled: !canManageUsers }"
-              :disabled="!canManageUsers"
-              @click="handleToggleStatus(row)"
-            >启用</button>
-            <button 
-              class="action-btn delete-btn"
-              :class="{ disabled: !canManageUsers }"
-              :disabled="!canManageUsers"
-              @click="handleDelete(row.id)"
-            >删除</button>
+            <template v-if="row.status !== 2">
+              <button 
+                class="action-btn edit-btn" 
+                :class="{ disabled: !canManageUsers }"
+                :disabled="!canManageUsers"
+                @click="handleEdit(row)"
+              >编辑</button>
+              <button 
+                v-if="row.status === 1" 
+                class="action-btn disable-btn"
+                :class="{ disabled: !canManageUsers }"
+                :disabled="!canManageUsers"
+                @click="handleToggleStatus(row)"
+              >禁用</button>
+              <button 
+                v-else 
+                class="action-btn enable-btn"
+                :class="{ disabled: !canManageUsers }"
+                :disabled="!canManageUsers"
+                @click="handleToggleStatus(row)"
+              >启用</button>
+              <button 
+                class="action-btn cancel-btn"
+                :class="{ disabled: !canManageUsers }"
+                :disabled="!canManageUsers"
+                @click="handleCancel(row.id)"
+              >注销</button>
+            </template>
+            <template v-else>
+              <span class="cancelled-text">该用户已注销</span>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -142,7 +149,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, cancelUser } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
@@ -258,6 +265,17 @@ async function handleDelete(id) {
   await ElMessageBox.confirm('确定删除该用户吗？删除后不可恢复', '提示', { type: 'warning' })
   await deleteUser(id)
   ElMessage.success('删除成功')
+  fetchList()
+}
+
+async function handleCancel(id) {
+  await ElMessageBox.confirm(
+    '确定注销该用户吗？注销后用户将无法登录，但其发布的文章会保留，用户主页将显示"该用户已注销"', 
+    '注销用户', 
+    { type: 'warning', confirmButtonText: '确定注销', cancelButtonText: '取消' }
+  )
+  await cancelUser(id)
+  ElMessage.success('用户已注销')
   fetchList()
 }
 
@@ -386,6 +404,21 @@ onMounted(() => {
   &:hover:not(.disabled) {
     background: rgba(239, 68, 68, 0.3);
   }
+}
+
+.cancel-btn {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+  
+  &:hover:not(.disabled) {
+    background: rgba(107, 114, 128, 0.3);
+  }
+}
+
+.cancelled-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
 }
 
 :deep(.el-table) {

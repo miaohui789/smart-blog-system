@@ -268,9 +268,13 @@ onMounted(fetchArticles)
 }
 
 .article-grid {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pagination-wrapper {

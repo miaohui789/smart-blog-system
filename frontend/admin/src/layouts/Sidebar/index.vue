@@ -61,8 +61,26 @@
         </template>
         <el-menu-item index="/vip/member">会员列表</el-menu-item>
         <el-menu-item index="/vip/key">密钥管理</el-menu-item>
+        <el-menu-item index="/vip/heat">加热记录</el-menu-item>
         <el-menu-item index="/vip/statistics">VIP统计</el-menu-item>
       </el-sub-menu>
+      
+      <!-- 社交管理 - 仅超级管理员可见 -->
+      <el-sub-menu index="/social" v-if="isAdmin">
+        <template #title>
+          <el-icon><Connection /></el-icon>
+          <span>社交管理</span>
+        </template>
+        <el-menu-item index="/social/follow">关注管理</el-menu-item>
+        <el-menu-item index="/social/message">私信管理</el-menu-item>
+        <el-menu-item index="/social/notification">通知管理</el-menu-item>
+      </el-sub-menu>
+      
+      <!-- AI配置 - 仅超级管理员可见 -->
+      <el-menu-item index="/ai" v-if="isAdmin">
+        <el-icon><MagicStick /></el-icon>
+        <span>AI配置</span>
+      </el-menu-item>
       
       <!-- 系统管理 - 仅超级管理员可见 -->
       <el-sub-menu index="/system" v-if="isAdmin">
@@ -83,7 +101,7 @@
 import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useUserStore } from '@/stores/user'
-import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting, Medal } from '@element-plus/icons-vue'
+import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting, Medal, MagicStick, Connection } from '@element-plus/icons-vue'
 
 const settingsStore = useSettingsStore()
 const userStore = useUserStore()

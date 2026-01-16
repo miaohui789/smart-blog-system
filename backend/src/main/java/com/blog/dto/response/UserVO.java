@@ -13,5 +13,6 @@ public class UserVO {
     private String intro;
     private String website;
     private Integer status;
+    private Integer vipLevel;
     private LocalDateTime createTime;
 }

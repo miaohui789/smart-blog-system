@@ -25,10 +25,39 @@
           </div>
           <div class="article-info">
             <div class="author-info" v-if="article.author">
-              <el-avatar :size="36" :src="article.author.avatar">
-                {{ article.author.nickname?.charAt(0) }}
-              </el-avatar>
-              <span class="author-name">{{ article.author.nickname }}</span>
+              <!-- 已注销用户显示默认头像 -->
+              <div class="author-avatar" :class="{ 'cancelled-avatar-wrapper': article.author.status === 2 }" @click="goToAuthorPage">
+                <el-avatar v-if="article.author.status === 2" :size="36" class="cancelled-avatar">
+                  <el-icon><UserFilled /></el-icon>
+                </el-avatar>
+                <el-avatar v-else :size="36" :src="article.author.avatar">
+                  {{ article.author.nickname?.charAt(0) }}
+                </el-avatar>
+              </div>
+              <!-- 已注销用户显示"已注销用户" -->
+              <span v-if="article.author.status === 2" class="author-name cancelled-author" @click="goToAuthorPage">已注销用户</span>
+              <span v-else class="author-name" @click="goToAuthorPage">{{ article.author.nickname }}</span>
+              <!-- 作者已注销提示 -->
+              <span v-if="article.author.status === 2" class="author-cancelled-tag">
+                <el-icon><WarningFilled /></el-icon>
+                该作者已注销
+              </span>
+              <!-- 作者被冻结提示 -->
+              <span v-else-if="article.author.status === 0 || article.author.status === '0'" class="author-frozen-tag">
+                <el-icon><WarningFilled /></el-icon>
+                该作者因违反相关规定已被冻结
+              </span>
+              <!-- 关注按钮 - 作者未被冻结且未注销时显示 -->
+              <button 
+                v-else-if="userStore.isLoggedIn && userStore.userInfo?.id !== article.author.id && article.author.status !== 0"
+                class="follow-btn"
+                :class="{ followed: isFollowingAuthor }"
+                @click="handleFollowAuthor"
+                :disabled="followLoading"
+              >
+                <el-icon v-if="!followLoading"><Plus v-if="!isFollowingAuthor" /><Check v-else /></el-icon>
+                <span>{{ isFollowingAuthor ? '已关注' : '关注' }}</span>
+              </button>
             </div>
             <div class="meta-info">
               <span><el-icon><Calendar /></el-icon>{{ formatDate(article.publishTime) }}</span>
@@ -187,16 +216,29 @@
           <div v-for="comment in comments" :key="comment.id" class="comment-card">
             <!-- 主评论 -->
             <div class="comment-main">
-              <div class="comment-avatar" :class="{ 'vip-avatar': comment.user?.vipLevel > 0, ['vip-level-' + comment.user?.vipLevel]: comment.user?.vipLevel > 0 }">
-                <el-avatar :size="42" :src="comment.user?.avatar">
+              <div class="comment-avatar clickable" :class="{ 
+                'vip-avatar': comment.user?.vipLevel > 0 && comment.user?.status !== 2, 
+                ['vip-level-' + comment.user?.vipLevel]: comment.user?.vipLevel > 0 && comment.user?.status !== 2,
+                'cancelled-user-avatar': comment.user?.status === 2
+              }" @click="goUserProfile(comment.user?.id)">
+                <el-avatar v-if="comment.user?.status === 2" :size="42" class="cancelled-avatar">
+                  <el-icon><UserFilled /></el-icon>
+                </el-avatar>
+                <el-avatar v-else :size="42" :src="comment.user?.avatar">
                   {{ comment.user?.nickname?.charAt(0) || 'U' }}
                 </el-avatar>
               </div>
               <div class="comment-content-wrapper">
                 <div class="comment-meta">
+                  <template v-if="comment.user?.status === 2">
+                    <span class="cancelled-username">已注销用户</span>
+                  </template>
                   <VipUsername 
+                    v-else
                     :username="comment.user?.nickname || '匿名用户'" 
-                    :vip-level="comment.user?.vipLevel || 0" 
+                    :vip-level="comment.user?.vipLevel || 0"
+                    class="clickable-name"
+                    @click="goUserProfile(comment.user?.id)"
                   />
                   <span class="comment-time">{{ formatRelativeTime(comment.createTime) }}</span>
                 </div>
@@ -248,20 +290,33 @@
             <div v-if="comment.replies && comment.replies.length" class="replies-container">
               <div class="replies-list">
                 <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                  <div class="reply-avatar" :class="{ 'vip-avatar': reply.user?.vipLevel > 0, ['vip-level-' + reply.user?.vipLevel]: reply.user?.vipLevel > 0 }">
-                    <el-avatar :size="32" :src="reply.user?.avatar">
+                  <div class="reply-avatar clickable" :class="{ 
+                    'vip-avatar': reply.user?.vipLevel > 0 && reply.user?.status !== 2, 
+                    ['vip-level-' + reply.user?.vipLevel]: reply.user?.vipLevel > 0 && reply.user?.status !== 2,
+                    'cancelled-user-avatar': reply.user?.status === 2
+                  }" @click="goUserProfile(reply.user?.id)">
+                    <el-avatar v-if="reply.user?.status === 2" :size="32" class="cancelled-avatar">
+                      <el-icon><UserFilled /></el-icon>
+                    </el-avatar>
+                    <el-avatar v-else :size="32" :src="reply.user?.avatar">
                       {{ reply.user?.nickname?.charAt(0) || 'U' }}
                     </el-avatar>
                   </div>
                   <div class="reply-content-wrapper">
                     <div class="reply-meta">
+                      <template v-if="reply.user?.status === 2">
+                        <span class="cancelled-username">已注销用户</span>
+                      </template>
                       <VipUsername 
+                        v-else
                         :username="reply.user?.nickname || '匿名用户'" 
                         :vip-level="reply.user?.vipLevel || 0" 
                         size="small"
+                        class="clickable-name"
+                        @click="goUserProfile(reply.user?.id)"
                       />
                       <span v-if="reply.replyUser" class="reply-target">
-                        回复 <em>@{{ reply.replyUser.nickname }}</em>
+                        回复 <em class="clickable-name" @click="goUserProfile(reply.replyUser?.id)">@{{ reply.replyUser.status === 2 ? '已注销用户' : reply.replyUser.nickname }}</em>
                       </span>
                       <span class="reply-time">{{ formatRelativeTime(reply.createTime) }}</span>
                     </div>
@@ -320,15 +375,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft, Download, Sunny, Edit, Delete } from '@element-plus/icons-vue'
+import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft, Download, Sunny, Edit, Delete, Plus, Check, WarningFilled, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getArticleDetail, likeArticle, unlikeArticle, favoriteArticle, unfavoriteArticle } from '@/api/article'
 import { getCommentList, createComment, likeComment, deleteComment, updateComment } from '@/api/comment'
 import { getVipInfo, heatArticle, downloadArticle } from '@/api/vip'
+import { followUser, unfollowUser, getUserProfile } from '@/api/follow'
 import { formatDate, formatRelativeTime } from '@/utils/format'
 import { useUserStore } from '@/stores/user'
+import { viewArticle, leaveArticle, onNewComment } from '@/utils/websocket'
 import Loading from '@/components/Loading/index.vue'
 import VipBadge from '@/components/VipBadge/index.vue'
 import VipUsername from '@/components/VipUsername/index.vue'
@@ -354,6 +411,61 @@ const replyTo = ref(null)
 const vipInfo = ref({ isVip: false })
 const heatingArticle = ref(false)
 
+// 关注作者相关
+const isFollowingAuthor = ref(false)
+const followLoading = ref(false)
+
+// 跳转到作者主页
+function goToAuthorPage() {
+  if (article.value?.author?.id) {
+    router.push(`/user/${article.value.author.id}`)
+  }
+}
+
+// 检查是否已关注作者
+async function checkFollowStatus() {
+  if (!userStore.isLoggedIn || !article.value?.author?.id) return
+  if (userStore.userInfo?.id === article.value.author.id) return
+  
+  try {
+    const res = await getUserProfile(article.value.author.id)
+    if (res.code === 200 && res.data) {
+      // 后端返回的字段是 isFollowed
+      isFollowingAuthor.value = res.data.isFollowed || false
+    }
+  } catch (e) {
+    console.error('检查关注状态失败', e)
+  }
+}
+
+// 关注/取消关注作者
+async function handleFollowAuthor() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  
+  const authorId = article.value?.author?.id
+  if (!authorId) return
+  
+  followLoading.value = true
+  try {
+    if (isFollowingAuthor.value) {
+      await unfollowUser(authorId)
+      isFollowingAuthor.value = false
+      ElMessage.success('已取消关注')
+    } else {
+      await followUser(authorId)
+      isFollowingAuthor.value = true
+      ElMessage.success('关注成功')
+    }
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  } finally {
+    followLoading.value = false
+  }
+}
+
 // 滚动到评论区
 function scrollToComment() {
   const commentSection = document.getElementById('comment-section')
@@ -368,6 +480,13 @@ function goBack() {
     router.back()
   } else {
     router.push('/')
+  }
+}
+
+// 跳转到用户详情页
+function goUserProfile(userId) {
+  if (userId) {
+    router.push(`/user/${userId}`)
   }
 }
 
@@ -643,6 +762,8 @@ async function fetchArticle() {
   fetchComments()
   // 获取VIP信息
   fetchVipInfo()
+  // 检查是否已关注作者
+  checkFollowStatus()
 }
 
 // 获取VIP信息
@@ -776,26 +897,73 @@ async function handleFavorite() {
 async function submitComment() {
   if (!commentContent.value.trim()) return
   submitting.value = true
+  
+  const content = commentContent.value.trim()
+  const parentId = replyTo.value ? (replyTo.value.parentId || replyTo.value.id) : null
+  const replyUserId = replyTo.value?.user?.id
+  const replyUserInfo = replyTo.value?.user ? {
+    id: replyTo.value.user.id,
+    nickname: replyTo.value.user.nickname
+  } : null
+  
   try {
     const data = { 
       articleId: Number(route.params.id), 
-      content: commentContent.value 
+      content: content
     }
-    if (replyTo.value) {
-      data.parentId = replyTo.value.id
-      data.replyUserId = replyTo.value.user?.id
+    if (parentId) {
+      data.parentId = parentId
+      data.replyUserId = replyUserId
     }
-    await createComment(data)
+    
+    // 先清空输入框，提升用户体验
     commentContent.value = ''
+    const savedReplyTo = replyTo.value
     replyTo.value = null
-    ElMessage.success('评论成功')
-    await fetchComments()
+    
+    const res = await createComment(data)
+    
+    // 立即添加到列表（乐观更新）
+    const newComment = {
+      id: res.data?.id || Date.now(), // 使用返回的ID或临时ID
+      content: content,
+      parentId: parentId,
+      replyUserId: replyUserId,
+      createTime: new Date().toISOString(),
+      likeCount: 0,
+      user: {
+        id: userStore.userInfo?.id,
+        nickname: userStore.userInfo?.nickname,
+        avatar: userStore.userInfo?.avatar,
+        vipLevel: userStore.userInfo?.vipLevel || 0
+      },
+      replyUser: replyUserInfo,
+      replies: []
+    }
+    
+    if (parentId) {
+      // 子评论 - 找到根评论并添加
+      const rootComment = comments.value.find(c => c.id === parentId)
+      if (rootComment) {
+        if (!rootComment.replies) rootComment.replies = []
+        rootComment.replies.push(newComment)
+      }
+    } else {
+      // 顶级评论 - 添加到列表开头
+      comments.value.unshift(newComment)
+    }
+    
+    totalComments.value++
     if (article.value) {
       article.value.commentCount = (article.value.commentCount || 0) + 1
     }
+    
+    ElMessage.success('评论成功')
   } catch (e) {
     console.error(e)
     ElMessage.error('评论失败')
+    // 恢复输入内容
+    commentContent.value = content
   } finally {
     submitting.value = false
   }
@@ -917,9 +1085,82 @@ watch(articleContent, (newVal) => {
   }
 }, { immediate: true })
 
+// 存储取消订阅函数
+let unsubscribeNewComment = null
+
 onMounted(() => {
   fetchArticle()
+  
+  // 通知服务器正在浏览此文章
+  viewArticle(route.params.id)
+  
+  // 监听新评论（实时刷新）
+  unsubscribeNewComment = onNewComment((newComment) => {
+    if (String(newComment.articleId) === String(route.params.id)) {
+      // 收到新评论，添加到列表
+      addNewCommentToList(newComment)
+    }
+  })
 })
+
+onUnmounted(() => {
+  // 通知服务器离开文章页面
+  leaveArticle()
+  
+  // 取消订阅
+  if (unsubscribeNewComment) {
+    unsubscribeNewComment()
+    unsubscribeNewComment = null
+  }
+})
+
+// 添加新评论到列表（优化版本）
+function addNewCommentToList(newComment) {
+  // 如果是自己发的评论，忽略（已经在submitComment中处理）
+  if (newComment.user?.id === userStore.userInfo?.id) {
+    return
+  }
+  
+  // 使用nextTick确保DOM更新
+  nextTick(() => {
+    if (newComment.parentId && newComment.parentId > 0) {
+      // 子评论 - 找到根评论并添加
+      // 先在顶级评论中查找
+      let rootComment = comments.value.find(c => c.id === newComment.parentId)
+      
+      // 如果没找到，可能parentId指向的是另一个子评论，需要找到根评论
+      if (!rootComment) {
+        for (const comment of comments.value) {
+          if (comment.replies?.some(r => r.id === newComment.parentId)) {
+            rootComment = comment
+            break
+          }
+        }
+      }
+      
+      if (rootComment) {
+        if (!rootComment.replies) {
+          rootComment.replies = []
+        }
+        // 检查是否已存在
+        if (!rootComment.replies.find(r => r.id === newComment.id)) {
+          rootComment.replies.push(newComment)
+        }
+      }
+    } else {
+      // 顶级评论 - 添加到列表开头
+      if (!comments.value.find(c => c.id === newComment.id)) {
+        comments.value.unshift(newComment)
+        totalComments.value++
+      }
+    }
+    
+    // 更新文章评论数
+    if (article.value) {
+      article.value.commentCount = (article.value.commentCount || 0) + 1
+    }
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -1071,10 +1312,119 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  
+  .author-avatar {
+    cursor: pointer;
+    transition: transform 0.2s;
+    
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+  
   .author-name {
     font-size: 15px;
     color: var(--primary-color);
     font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+    
+    &:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+  }
+  
+  .author-frozen-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 500;
+    
+    .el-icon {
+      font-size: 14px;
+    }
+  }
+  
+  .author-cancelled-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(107, 114, 128, 0.1);
+    border: 1px solid rgba(107, 114, 128, 0.3);
+    border-radius: 4px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    
+    .el-icon {
+      font-size: 14px;
+    }
+  }
+  
+  .cancelled-avatar-wrapper {
+    .cancelled-avatar {
+      background: #4b5563;
+      color: #9ca3af;
+    }
+  }
+  
+  .cancelled-author {
+    color: #6b7280 !important;
+    
+    &:hover {
+      color: #6b7280 !important;
+      text-decoration: none !important;
+    }
+  }
+  
+  .follow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    border: 1px solid var(--primary-color);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    .el-icon {
+      font-size: 14px;
+    }
+    
+    &:hover:not(:disabled) {
+      background: var(--primary-color);
+      color: #fff;
+    }
+    
+    &.followed {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color);
+      color: var(--text-muted);
+      
+      &:hover:not(:disabled) {
+        border-color: #ef4444;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+      }
+    }
+    
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
 }
 
@@ -1824,6 +2174,21 @@ onMounted(() => {
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
+/* 已注销用户头像样式 */
+.comment-avatar.cancelled-user-avatar,
+.reply-avatar.cancelled-user-avatar {
+  .cancelled-avatar {
+    background: #4b5563;
+    color: #9ca3af;
+  }
+}
+
+/* 已注销用户名样式 */
+.cancelled-username {
+  color: #6b7280;
+  font-size: 14px;
+}
+
 /* 评论内容区域 */
 .comment-content-wrapper,
 .reply-content-wrapper {
@@ -2055,6 +2420,25 @@ onMounted(() => {
     margin-left: 0;
     width: 100%;
     margin-top: 4px;
+  }
+}
+
+/* 可点击样式 */
+.clickable {
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  
+  &:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.clickable-name {
+  cursor: pointer;
+  
+  &:hover {
+    opacity: 0.8;
   }
 }
 </style>

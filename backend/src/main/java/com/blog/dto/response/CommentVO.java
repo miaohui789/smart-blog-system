@@ -30,5 +30,6 @@ public class CommentVO {
         private String nickname;
         private String avatar;
         private Integer vipLevel;
+        private Integer status;
     }
 }

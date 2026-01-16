@@ -113,10 +113,14 @@ onMounted(fetchArticles)
 }
 
 .article-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-lg;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
   margin-bottom: $spacing-xl;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 :deep(.el-pagination) {

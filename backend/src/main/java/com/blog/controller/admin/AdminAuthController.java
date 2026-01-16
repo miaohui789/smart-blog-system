@@ -36,6 +36,12 @@ public class AdminAuthController {
     @Operation(summary = "管理员登录")
     @PostMapping("/login")
     public Result<?> login(@Validated @RequestBody LoginRequest request) {
+        // 先检查用户是否存在以及状态
+        User existingUser = userService.getByUsername(request.getUsername());
+        if (existingUser != null && existingUser.getStatus() != null && existingUser.getStatus() == 2) {
+            return Result.error("该账号已注销");
+        }
+        
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );

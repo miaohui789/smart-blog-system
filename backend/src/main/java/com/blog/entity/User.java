@@ -30,4 +30,9 @@ public class User {
     private Integer isVip;
     private Integer vipLevel;
     private LocalDateTime vipExpireTime;
+    
+    // 社交统计字段
+    private Integer followCount;
+    private Integer fansCount;
+    private Integer articleCount;
 }

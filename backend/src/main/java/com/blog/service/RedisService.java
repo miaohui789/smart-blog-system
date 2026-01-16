@@ -33,6 +33,13 @@ public class RedisService {
     public static final String CACHE_ARCHIVE = CACHE_PREFIX + "archive";
     public static final String CACHE_STATS = CACHE_PREFIX + "stats";
     public static final String CACHE_VIEW_COUNT = CACHE_PREFIX + "view:";
+    
+    // 新功能缓存Key
+    public static final String CACHE_NOTIFICATION_UNREAD = CACHE_PREFIX + "notification:unread:";
+    public static final String CACHE_MESSAGE_UNREAD = CACHE_PREFIX + "message:unread:";
+    public static final String CACHE_WEATHER = CACHE_PREFIX + "weather:";
+    public static final String CACHE_USER_FOLLOW = CACHE_PREFIX + "user:follow:";
+    public static final String CACHE_USER_FANS = CACHE_PREFIX + "user:fans:";
 
     // 缓存过期时间（分钟）
     public static final long EXPIRE_SHORT = 5;      // 5分钟
@@ -419,6 +426,46 @@ public class RedisService {
         if (!redisAvailable) return;
         try {
             delete(CACHE_USER + userId);
+            delete(CACHE_NOTIFICATION_UNREAD + userId);
+            delete(CACHE_MESSAGE_UNREAD + userId);
+            deleteByPattern(CACHE_USER_FOLLOW + userId + ":*");
+            deleteByPattern(CACHE_USER_FANS + userId + ":*");
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+    
+    /**
+     * 清除通知未读数缓存
+     */
+    public void clearNotificationCache(Long userId) {
+        if (!redisAvailable) return;
+        try {
+            delete(CACHE_NOTIFICATION_UNREAD + userId);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+    
+    /**
+     * 清除私信未读数缓存
+     */
+    public void clearMessageCache(Long userId) {
+        if (!redisAvailable) return;
+        try {
+            delete(CACHE_MESSAGE_UNREAD + userId);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+    
+    /**
+     * 清除天气缓存
+     */
+    public void clearWeatherCache(String city) {
+        if (!redisAvailable) return;
+        try {
+            delete(CACHE_WEATHER + city);
         } catch (Exception e) {
             handleRedisError(e);
         }

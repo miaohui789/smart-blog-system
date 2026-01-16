@@ -48,6 +48,12 @@ public class UserController {
     @Operation(summary = "用户登录")
     @PostMapping("/login")
     public Result<?> login(@Validated @RequestBody LoginRequest request) {
+        // 先检查用户是否存在以及状态
+        User existingUser = userService.getByUsername(request.getUsername());
+        if (existingUser != null && existingUser.getStatus() != null && existingUser.getStatus() == 2) {
+            return Result.error("该账号已注销");
+        }
+        
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
@@ -67,11 +73,12 @@ public class UserController {
     }
     
     /**
-     * 检查用户是否有有效的普通用户角色
+     * 检查用户是否有有效的用户端登录权限
      * 规则：
-     * 1. 用户必须拥有"普通用户"角色（roleKey = 'user'）
-     * 2. 该角色必须是启用状态（status = 1）
-     * 超级管理员如果没有普通用户角色，则不能登录用户端
+     * 1. 超级管理员（roleKey = 'admin'）可以登录用户端
+     * 2. 内容编辑（roleKey = 'editor'）可以登录用户端
+     * 3. 普通用户（roleKey = 'user'）可以登录用户端
+     * 4. 对应角色必须是启用状态（status = 1）
      */
     private boolean hasValidUserRole(Long userId) {
         List<Map<String, Object>> roles = userRoleService.getRolesWithStatusByUserId(userId);
@@ -81,8 +88,9 @@ public class UserController {
             Object statusObj = role.get("status");
             int status = statusObj instanceof Number ? ((Number) statusObj).intValue() : 0;
             
-            // 检查是否有普通用户角色且角色状态为启用
-            if ("user".equals(roleKey) && status == 1) {
+            // 检查是否有有效角色且角色状态为启用
+            // admin（超级管理员）、editor（内容编辑）、user（普通用户）都可以登录用户端
+            if (("admin".equals(roleKey) || "editor".equals(roleKey) || "user".equals(roleKey)) && status == 1) {
                 return true;
             }
         }

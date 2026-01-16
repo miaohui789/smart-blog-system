@@ -5,7 +5,13 @@
       <div class="container">
         <div class="content-wrapper">
           <div class="content-main">
-            <router-view />
+            <router-view v-slot="{ Component, route }">
+              <transition name="page-fade" mode="out-in" appear>
+                <keep-alive :include="cachedViews" :max="10">
+                  <component :is="Component" :key="route.path" />
+                </keep-alive>
+              </transition>
+            </router-view>
           </div>
           <aside class="content-sidebar">
             <Sidebar />
@@ -21,10 +27,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import Header from '@/components/Header/index.vue'
 import Footer from '@/components/Footer/index.vue'
 import Sidebar from '@/components/Sidebar/index.vue'
 import BackToTop from '@/components/BackToTop/index.vue'
+
+// 缓存常用页面，提升切换速度
+const cachedViews = ref(['Home', 'Category', 'Tag', 'Archive', 'About'])
 </script>
 
 <style lang="scss" scoped>

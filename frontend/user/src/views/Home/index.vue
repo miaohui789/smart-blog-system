@@ -23,51 +23,56 @@
       </div>
     </div>
 
-    <!-- 文章列表 -->
-    <div class="article-list">
-      <template v-if="!loading && articles.length">
-        <!-- 置顶/推荐文章 - 大卡片 -->
-        <div v-if="featuredArticle" class="featured-article" @click="goArticle(featuredArticle.id)">
-          <div class="featured-cover">
-            <img :src="getFeaturedCover" :alt="featuredArticle.title" @error="handleFeaturedImageError" />
-            <div class="featured-overlay"></div>
-          </div>
-          <div class="featured-content">
-            <div class="featured-badge" v-if="featuredArticle.isTop">
-              <span>置顶</span>
-            </div>
-            <h2 class="featured-title">{{ featuredArticle.title }}</h2>
-            <p class="featured-summary">{{ featuredArticle.summary }}</p>
-            <div class="featured-meta">
-              <span><el-icon><Calendar /></el-icon>{{ formatDate(featuredArticle.publishTime) }}</span>
-              <span><el-icon><View /></el-icon>{{ featuredArticle.viewCount || 0 }}</span>
-              <span><el-icon><Star /></el-icon>{{ featuredArticle.likeCount || 0 }}</span>
-              <span><el-icon><CollectionTag /></el-icon>{{ featuredArticle.favoriteCount || 0 }}</span>
-              <span><el-icon><ChatDotRound /></el-icon>{{ featuredArticle.commentCount || 0 }}</span>
-            </div>
-          </div>
+    <!-- 置顶文章 -->
+    <div 
+      v-if="topArticle && currentPage === 1" 
+      class="featured-article" 
+      @click="goArticle(topArticle.id)"
+    >
+      <div class="featured-cover">
+        <img :src="topArticle.cover || defaultCover" :alt="topArticle.title" @error="(e) => e.target.src = defaultCover" />
+        <div class="featured-overlay"></div>
+      </div>
+      <div class="featured-content">
+        <div class="featured-badge">
+          <span>置顶</span>
         </div>
+        <h2 class="featured-title">{{ topArticle.title }}</h2>
+        <p class="featured-summary">{{ topArticle.summary }}</p>
+        <div class="featured-meta">
+          <span><el-icon><Calendar /></el-icon>{{ formatDate(topArticle.publishTime) }}</span>
+          <span><el-icon><View /></el-icon>{{ topArticle.viewCount || 0 }}</span>
+          <span><el-icon><Star /></el-icon>{{ topArticle.likeCount || 0 }}</span>
+          <span><el-icon><CollectionTag /></el-icon>{{ topArticle.favoriteCount || 0 }}</span>
+          <span><el-icon><ChatDotRound /></el-icon>{{ topArticle.commentCount || 0 }}</span>
+        </div>
+      </div>
+    </div>
 
-        <!-- 普通文章列表 -->
-        <div class="normal-articles">
-          <ArticleCard
-            v-for="article in normalArticles"
-            :key="article.id"
-            :article="article"
-          />
-        </div>
-      </template>
+    <!-- 普通文章列表 -->
+    <div class="article-section" v-if="!loading">
+      <div class="section-header" v-if="topArticle && currentPage === 1 && currentSort === 'latest'">
+        <h3>最新文章</h3>
+      </div>
+      <div class="normal-articles" v-if="normalArticles.length > 0">
+        <ArticleCard
+          v-for="article in normalArticles"
+          :key="article.id"
+          :article="article"
+        />
+      </div>
+      <el-empty v-else-if="!loading && normalArticles.length === 0 && !topArticle" description="暂无文章" />
     </div>
 
     <Loading v-if="loading" />
 
-    <el-empty v-if="!loading && !articles.length" description="暂无文章" />
-
+    <!-- 分页 -->
     <div class="pagination-wrapper" v-if="total > pageSize">
       <el-pagination
         v-model:current-page="currentPage"
         :page-size="pageSize"
         :total="total"
+        :pager-count="5"
         layout="prev, pager, next"
         @current-change="handlePageChange"
       />
@@ -85,12 +90,12 @@ import ArticleCard from '@/components/ArticleCard/index.vue'
 import Loading from '@/components/Loading/index.vue'
 
 const router = useRouter()
-const articles = ref([])
+const topArticle = ref(null)     // 置顶文章（只有1篇）
+const normalArticles = ref([])   // 普通文章
 const loading = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const featuredImageError = ref(false)
+const pageSize = ref(8)          // 每页8篇普通文章
+const total = ref(0)             // 普通文章总数
 const currentSort = ref('latest')
 const sortOrder = ref('desc')
 
@@ -108,34 +113,6 @@ const sortOptions = [
 // 默认封面图
 const defaultCover = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="400"%3E%3Cdefs%3E%3ClinearGradient id="g" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" stop-color="%23a855f7"/%3E%3Cstop offset="100%25" stop-color="%23ec4899"/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="800" height="400" fill="url(%23g)"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="48" fill="white" text-anchor="middle" dy=".3em"%3E📝 Blog%3C/text%3E%3C/svg%3E'
 
-// 置顶/推荐文章（第一篇，仅最新排序时显示）
-const featuredArticle = computed(() => {
-  if (currentPage.value === 1 && articles.value.length > 0 && currentSort.value === 'latest') {
-    return articles.value[0]
-  }
-  return null
-})
-
-// 普通文章（除第一篇外，或非最新排序时显示全部）
-const normalArticles = computed(() => {
-  if (currentPage.value === 1 && articles.value.length > 1 && currentSort.value === 'latest') {
-    return articles.value.slice(1)
-  }
-  return articles.value
-})
-
-// 置顶文章封面
-const getFeaturedCover = computed(() => {
-  if (featuredImageError.value || !featuredArticle.value?.cover) {
-    return defaultCover
-  }
-  return featuredArticle.value.cover
-})
-
-function handleFeaturedImageError() {
-  featuredImageError.value = true
-}
-
 function goArticle(id) {
   router.push(`/article/${id}`)
 }
@@ -147,9 +124,10 @@ async function fetchArticles() {
       page: currentPage.value,
       pageSize: pageSize.value,
       sortBy: currentSort.value,
-      sortOrder: sortOrder.value
+      sortOrder: sortOrder.value,
+      excludeTop: 1  // 排除置顶文章
     })
-    articles.value = res.data?.list || []
+    normalArticles.value = res.data?.list || []
     total.value = res.data?.total || 0
   } catch (e) {
     console.error(e)
@@ -158,28 +136,41 @@ async function fetchArticles() {
   }
 }
 
+// 获取置顶文章（只获取1篇）
+async function fetchTopArticles() {
+  try {
+    const res = await getArticleList({
+      page: 1,
+      pageSize: 1,  // 只获取1篇置顶文章
+      onlyTop: 1
+    })
+    const list = res.data?.list || []
+    topArticle.value = list.length > 0 ? list[0] : null
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 // 处理排序
 function handleSort(sortValue) {
   if (currentSort.value === sortValue && sortValue !== 'latest' && sortValue !== 'comprehensive') {
-    // 切换升降序（最新和综合不支持升序）
     sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
   } else {
     currentSort.value = sortValue
     sortOrder.value = 'desc'
   }
   currentPage.value = 1
-  featuredImageError.value = false
   fetchArticles()
 }
 
 function handlePageChange(page) {
   currentPage.value = page
-  featuredImageError.value = false
   fetchArticles()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 onMounted(() => {
+  fetchTopArticles()
   fetchArticles()
 })
 </script>
@@ -191,6 +182,24 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* 文章区域 */
+.article-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-header {
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    padding-left: 12px;
+    border-left: 3px solid $primary-color;
+  }
 }
 
 /* 排序栏 */
