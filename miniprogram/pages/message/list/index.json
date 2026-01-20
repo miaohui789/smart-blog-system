@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "消息",
+  "usingComponents": {
+    "empty": "/components/empty/index",
+    "loading": "/components/loading/index",
+    "vip-badge": "/components/vip-badge/index",
+    "van-search": "@vant/weapp/search/index"
+  }
+}

@@ -1,0 +1,29 @@
+/* components/empty/index.wxss */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 40rpx;
+}
+
+.icon {
+  font-size: 120rpx;
+  margin-bottom: 24rpx;
+}
+
+.text {
+  font-size: var(--font-md);
+  color: var(--text-muted);
+  margin-bottom: 32rpx;
+}
+
+.button {
+  padding: 16rpx 48rpx;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-md);
+}

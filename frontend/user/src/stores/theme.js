@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { saveTheme } from '@/api/user'
+import { getToken } from '@/utils/auth'
 
 export const useThemeStore = defineStore('theme', () => {
   const isDark = ref(true)
+  const hasCustomBackground = ref(false)
   
   // 从 localStorage 读取主题
   const savedTheme = localStorage.getItem('theme')
@@ -13,10 +16,86 @@ export const useThemeStore = defineStore('theme', () => {
     isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
 
+  // 检查是否有自定义背景
+  function checkCustomBackground() {
+    const theme = isDark.value ? 'dark' : 'light'
+    const skinData = localStorage.getItem(`${theme}Skin`)
+    
+    if (skinData) {
+      try {
+        const data = JSON.parse(skinData)
+        hasCustomBackground.value = data.skinId !== 'default' && !!data.component
+      } catch (e) {
+        hasCustomBackground.value = false
+      }
+    } else {
+      hasCustomBackground.value = false
+    }
+    
+    // 更新CSS变量
+    updateTransparency()
+  }
+
+  // 更新透明度
+  function updateTransparency() {
+    if (hasCustomBackground.value) {
+      document.body.classList.add('has-custom-bg')
+    } else {
+      document.body.classList.remove('has-custom-bg')
+    }
+  }
+
   // 应用主题
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
     localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+    checkCustomBackground()
+    
+    // 如果用户已登录，保存主题模式到服务器
+    if (getToken()) {
+      saveThemeMode()
+    }
+  }
+
+  // 保存主题模式到服务器
+  async function saveThemeMode() {
+    try {
+      const themeMode = isDark.value ? 'dark' : 'light'
+      
+      // 获取当前皮肤设置
+      const darkSkinData = localStorage.getItem('darkSkin')
+      const lightSkinData = localStorage.getItem('lightSkin')
+      
+      let darkSkin = 'default'
+      let lightSkin = 'default'
+      
+      if (darkSkinData) {
+        try {
+          const data = JSON.parse(darkSkinData)
+          darkSkin = data.skinId || 'default'
+        } catch (e) {
+          darkSkin = 'default'
+        }
+      }
+      
+      if (lightSkinData) {
+        try {
+          const data = JSON.parse(lightSkinData)
+          lightSkin = data.skinId || 'default'
+        } catch (e) {
+          lightSkin = 'default'
+        }
+      }
+      
+      await saveTheme({
+        themeMode,
+        darkSkin,
+        lightSkin
+      })
+      console.log('主题模式已保存到服务器')
+    } catch (e) {
+      console.error('保存主题模式失败:', e)
+    }
   }
 
   // 切换主题（带圆形扩散动画）
@@ -35,6 +114,8 @@ export const useThemeStore = defineStore('theme', () => {
     if (!document.startViewTransition) {
       isDark.value = !isDark.value
       applyTheme()
+      // 触发主题切换事件
+      window.dispatchEvent(new Event('theme-changed'))
       return
     }
     
@@ -42,6 +123,8 @@ export const useThemeStore = defineStore('theme', () => {
     const transition = document.startViewTransition(() => {
       isDark.value = !isDark.value
       applyTheme()
+      // 触发主题切换事件
+      window.dispatchEvent(new Event('theme-changed'))
     })
     
     transition.ready.then(() => {
@@ -73,5 +156,5 @@ export const useThemeStore = defineStore('theme', () => {
   // 初始化时应用主题
   applyTheme()
 
-  return { isDark, toggleTheme, applyTheme }
+  return { isDark, hasCustomBackground, toggleTheme, applyTheme, checkCustomBackground }
 })

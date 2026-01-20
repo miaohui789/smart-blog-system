@@ -185,7 +185,7 @@ onMounted(() => {
   padding: 8px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 16px;
   color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
@@ -206,8 +206,10 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   
   h2 {
     font-size: 18px;
@@ -233,7 +235,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 16px;
   background: var(--bg-card-hover);
-  border-radius: 12px;
+  border-radius: 20px;
   transition: all 0.2s;
   
   &:hover {
@@ -302,7 +304,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 12px;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;

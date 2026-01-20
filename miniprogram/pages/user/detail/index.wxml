@@ -1,0 +1,193 @@
+<!-- pages/user/detail/index.wxml -->
+<view class="container" wx:if="{{user}}">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">用户主页</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 用户信息 -->
+  <view class="user-header">
+    <!-- 背景装饰 -->
+    <view class="header-bg"></view>
+    
+    <!-- 头像 -->
+    <view class="avatar-wrapper">
+      <image class="user-avatar" src="{{user.avatar}}" mode="aspectFill" />
+      <view class="avatar-ring"></view>
+    </view>
+    
+    <!-- 用户信息 -->
+    <view class="user-info">
+      <view class="user-name">
+        <text>{{user.nickname || user.username}}</text>
+        <vip-badge wx:if="{{user.vipLevel > 0}}" level="{{user.vipLevel}}" />
+      </view>
+      <view class="user-bio">{{user.bio || '这个人很懒，什么都没留下~'}}</view>
+    </view>
+    
+    <!-- 统计信息卡片 -->
+    <view class="stats-card">
+      <view class="stat-item">
+        <text class="stat-value">{{user.articleCount || 0}}</text>
+        <text class="stat-label">文章</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{user.followingCount || 0}}</text>
+        <text class="stat-label">关注</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{user.followerCount || 0}}</text>
+        <text class="stat-label">粉丝</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{user.likeCount || 0}}</text>
+        <text class="stat-label">获赞</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-btns" wx:if="{{!isSelf}}">
+    <button class="follow-btn {{isFollowing ? 'following' : ''}}" bindtap="handleFollow">
+      <van-icon name="{{isFollowing ? 'success' : 'plus'}}" size="18px" />
+      <text>{{isFollowing ? '已关注' : '关注TA'}}</text>
+    </button>
+    <button class="message-btn" bindtap="sendMessage">
+      <van-icon name="chat-o" size="18px" />
+      <text>发消息</text>
+    </button>
+  </view>
+
+  <!-- 标签页 -->
+  <van-tabs 
+    active="{{activeTab}}" 
+    bind:change="onTabChange" 
+    color="#3b82f6" 
+    title-active-color="#3b82f6"
+    custom-class="custom-tabs"
+    nav-class="custom-tabs-nav"
+    tab-class="custom-tab"
+    tab-active-class="custom-tab-active"
+    line-width="60rpx"
+    line-height="6rpx"
+  >
+    <van-tab title="文章 {{user.articleCount || 0}}">
+      <view class="article-list">
+        <article-card 
+          wx:for="{{articles}}" 
+          wx:key="id"
+          article="{{item}}"
+          bindtap="goToDetail"
+          data-id="{{item.id}}"
+        />
+      </view>
+
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <van-loading type="spinner" color="#3b82f6" />
+        <text>加载中...</text>
+      </view>
+
+      <!-- 没有更多 -->
+      <view class="no-more" wx:if="{{!hasMore && articles.length > 0}}">
+        <text>没有更多了</text>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+        <van-icon name="notes-o" size="80px" color="#64748b" />
+        <text class="empty-text">暂无文章</text>
+      </view>
+    </van-tab>
+
+    <van-tab title="关注 {{user.followingCount || 0}}">
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <van-loading type="spinner" color="#3b82f6" />
+        <text>加载中...</text>
+      </view>
+
+      <!-- 用户列表 -->
+      <view class="user-list" wx:if="{{!loading}}">
+        <view 
+          class="user-item" 
+          wx:for="{{articles}}" 
+          wx:key="id"
+          bindtap="goToUserDetail"
+          data-id="{{item.id}}"
+        >
+          <image class="item-avatar" src="{{item.avatar}}" mode="aspectFill" />
+          <view class="item-info">
+            <view class="item-name">
+              <text>{{item.nickname || item.username}}</text>
+              <vip-badge wx:if="{{item.vipLevel > 0}}" level="{{item.vipLevel}}" size="small" />
+            </view>
+            <view class="item-bio">{{item.bio || '这个人很懒，什么都没留下~'}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 没有更多 -->
+      <view class="no-more" wx:if="{{!loading && !hasMore && articles.length > 0}}">
+        <text>没有更多了</text>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+        <van-icon name="friends-o" size="80px" color="#64748b" />
+        <text class="empty-text">暂无关注</text>
+      </view>
+    </van-tab>
+
+    <van-tab title="粉丝 {{user.followerCount || 0}}">
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <van-loading type="spinner" color="#3b82f6" />
+        <text>加载中...</text>
+      </view>
+
+      <!-- 用户列表 -->
+      <view class="user-list" wx:if="{{!loading}}">
+        <view 
+          class="user-item" 
+          wx:for="{{articles}}" 
+          wx:key="id"
+          bindtap="goToUserDetail"
+          data-id="{{item.id}}"
+        >
+          <image class="item-avatar" src="{{item.avatar}}" mode="aspectFill" />
+          <view class="item-info">
+            <view class="item-name">
+              <text>{{item.nickname || item.username}}</text>
+              <vip-badge wx:if="{{item.vipLevel > 0}}" level="{{item.vipLevel}}" size="small" />
+            </view>
+            <view class="item-bio">{{item.bio || '这个人很懒，什么都没留下~'}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 没有更多 -->
+      <view class="no-more" wx:if="{{!loading && !hasMore && articles.length > 0}}">
+        <text>没有更多了</text>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+        <van-icon name="friends-o" size="80px" color="#64748b" />
+        <text class="empty-text">暂无粉丝</text>
+      </view>
+    </van-tab>
+  </van-tabs>
+</view>
+
+<!-- 加载中 -->
+<view class="loading-container" wx:if="{{!user}}">
+  <van-loading type="spinner" color="#3b82f6" size="40px" />
+</view>

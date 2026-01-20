@@ -7,6 +7,7 @@ import com.blog.entity.ArticleLike;
 import com.blog.mapper.ArticleLikeMapper;
 import com.blog.service.ArticleLikeService;
 import com.blog.service.ArticleService;
+import com.blog.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, ArticleLike> implements ArticleLikeService {
 
     private final ArticleService articleService;
+    private final RedisService redisService;
 
     @Override
     public boolean isLiked(Long articleId, Long userId) {
@@ -38,8 +40,12 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
         // 更新文章点赞数
         Article article = articleService.getById(articleId);
         if (article != null) {
-            article.setLikeCount(article.getLikeCount() + 1);
+            Integer currentCount = article.getLikeCount();
+            article.setLikeCount(currentCount == null ? 1 : currentCount + 1);
             articleService.updateById(article);
+            
+            // 清除文章详情缓存
+            redisService.clearArticleCache(articleId);
         }
         return true;
     }
@@ -53,9 +59,13 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
         
         if (removed) {
             Article article = articleService.getById(articleId);
-            if (article != null && article.getLikeCount() > 0) {
-                article.setLikeCount(article.getLikeCount() - 1);
+            if (article != null) {
+                Integer currentCount = article.getLikeCount();
+                article.setLikeCount(currentCount != null && currentCount > 0 ? currentCount - 1 : 0);
                 articleService.updateById(article);
+                
+                // 清除文章详情缓存
+                redisService.clearArticleCache(articleId);
             }
         }
         return removed;

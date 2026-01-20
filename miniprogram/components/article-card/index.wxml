@@ -1,0 +1,49 @@
+<!-- components/article-card/index.wxml -->
+<view class="article-card" bindtap="handleTap">
+  <!-- 封面图 -->
+  <image 
+    wx:if="{{article.cover}}" 
+    class="cover" 
+    src="{{article.cover}}" 
+    mode="aspectFill"
+    lazy-load
+  />
+
+  <!-- 内容 -->
+  <view class="content">
+    <!-- 标题 -->
+    <view class="title">{{article.title}}</view>
+
+    <!-- 摘要 -->
+    <view class="summary">{{article.summary}}</view>
+
+    <!-- 元信息 -->
+    <view class="meta">
+      <view class="author" catchtap="handleAuthorTap">
+        <image class="avatar" src="{{article.author.avatar}}" />
+        <text class="nickname">{{article.author.nickname}}</text>
+        <!-- VIP 标识 -->
+        <view wx:if="{{article.author.isVip}}" class="vip-badge level-{{article.author.vipLevel}}">
+          VIP
+        </view>
+      </view>
+
+      <view class="stats">
+        <view class="stat-item">
+          <van-icon name="eye-o" size="12px" color="#64748b" />
+          <text>{{article.viewCount}}</text>
+        </view>
+        <view class="stat-item">
+          <van-icon name="good-job-o" size="12px" color="#64748b" />
+          <text>{{article.likeCount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部信息 -->
+    <view class="footer">
+      <view class="category-tag" wx:if="{{article.categoryName}}">{{article.categoryName}}</view>
+      <text class="publish-time">{{article.createTime}}</text>
+    </view>
+  </view>
+</view>

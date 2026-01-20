@@ -54,6 +54,7 @@ public class WebSocketServer {
     public void onOpen(Session session, @PathParam("platform") String platform, @PathParam("userId") Long userId) {
         String key = platform + "_" + userId;
         log.info("========== WebSocket连接请求: {} ==========", key);
+        log.info("平台: {}, 用户ID: {}, SessionID: {}", platform, userId, session.getId());
         
         // 检查是否已有连接，静默关闭旧连接（不发送踢下线通知，避免自己踢自己）
         Session oldSession = onlineSessions.get(key);
@@ -70,7 +71,9 @@ public class WebSocketServer {
         }
         
         onlineSessions.put(key, session);
-        log.info("{} WebSocket连接成功，当前在线: {}", key, onlineSessions.size());
+        log.info("✅ {} WebSocket连接成功，当前在线: {}", key, onlineSessions.size());
+        log.info("所有在线用户: {}", onlineSessions.keySet());
+        log.info("========================================");
     }
 
     @OnClose
@@ -148,6 +151,12 @@ public class WebSocketServer {
      */
     public void sendMessageToUser(Long userId, Object message) {
         String key = "user_" + userId;
+        log.info("========== 开始推送消息 ==========");
+        log.info("目标用户ID: {}", userId);
+        log.info("会话key: {}", key);
+        log.info("在线用户总数: {}", onlineSessions.size());
+        log.info("所有在线用户key: {}", onlineSessions.keySet());
+        
         Session session = onlineSessions.get(key);
         if (session != null && session.isOpen()) {
             try {
@@ -155,14 +164,19 @@ public class WebSocketServer {
                 data.put("type", "message");
                 data.put("data", message);
                 String json = objectMapper.writeValueAsString(data);
+                log.info("推送消息内容: {}", json);
                 session.getBasicRemote().sendText(json);
-                log.info("向用户 {} 推送私信成功", userId);
+                log.info("✅ 向用户 {} 推送私信成功", userId);
             } catch (IOException e) {
-                log.error("向用户 {} 推送私信失败: {}", userId, e.getMessage());
+                log.error("❌ 向用户 {} 推送私信失败: {}", userId, e.getMessage(), e);
             }
         } else {
-            log.info("用户 {} 不在线，无法推送私信", userId);
+            log.warn("⚠️ 用户 {} 不在线或session已关闭，无法推送私信", userId);
+            if (session != null) {
+                log.warn("session状态: isOpen={}", session.isOpen());
+            }
         }
+        log.info("========== 推送消息结束 ==========");
     }
     
     /**

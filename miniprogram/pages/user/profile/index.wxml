@@ -1,0 +1,168 @@
+<!-- pages/user/profile/index.wxml -->
+<view class="container">
+  <!-- 用户信息卡片 -->
+  <view class="user-card" wx:if="{{isLoggedIn}}">
+    <!-- 顶部标题栏 -->
+    <view class="header">
+      <view class="header-left">
+        <text class="title">个人中心</text>
+      </view>
+      <view class="setting-btn" bindtap="goToSettings">
+        <van-icon name="setting-o" size="20px" color="#fff" />
+      </view>
+    </view>
+
+    <view class="user-info" bindtap="goToMyProfile">
+      <view class="avatar-wrapper">
+        <image class="avatar" src="{{userInfo.avatar}}" />
+        <vip-badge wx:if="{{userInfo.isVip}}" level="{{userInfo.vipLevel}}" size="small" class="vip-badge" />
+      </view>
+      <view class="info">
+        <text class="nickname">{{userInfo.nickname}}</text>
+        <text class="vip-expire" wx:if="{{userInfo.isVip}}">VIP 有效期至 {{userInfo.vipExpireDate}}</text>
+      </view>
+    </view>
+
+    <!-- 统计信息 -->
+    <view class="stats">
+      <view class="stat-item" bindtap="goToMyArticles">
+        <text class="value">{{userInfo.articleCount || 0}}</text>
+        <text class="label">文章</text>
+      </view>
+      <view class="stat-item" bindtap="goToFollowing">
+        <text class="value">{{userInfo.followCount || 0}}</text>
+        <text class="label">关注</text>
+      </view>
+      <view class="stat-item" bindtap="goToFollowers">
+        <text class="value">{{userInfo.fansCount || 0}}</text>
+        <text class="label">粉丝</text>
+      </view>
+      <view class="stat-item">
+        <text class="value">{{userInfo.totalArticleLikes || 0}}</text>
+        <text class="label">赞</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 未登录状态 -->
+  <view class="login-card" wx:else>
+    <!-- 顶部标题栏 -->
+    <view class="header">
+      <view class="header-left">
+        <text class="title">个人中心</text>
+      </view>
+      <view class="setting-btn" bindtap="goToSettings">
+        <van-icon name="setting-o" size="20px" color="#fff" />
+      </view>
+    </view>
+
+    <view class="login-content" bindtap="goToLogin">
+      <view class="avatar-placeholder">
+        <van-icon name="user-o" size="48px" color="rgba(255,255,255,0.5)" />
+      </view>
+      <text class="login-text">点击登录</text>
+    </view>
+  </view>
+
+  <!-- 我的内容 -->
+  <view class="menu-section">
+    <view class="section-title">我的内容</view>
+    <view class="menu-list">
+      <view 
+        class="menu-item" 
+        wx:for="{{myContentMenus}}" 
+        wx:key="title"
+        bindtap="goToPage"
+        data-url="{{item.url}}"
+      >
+        <view class="left">
+          <view class="icon-wrapper" style="background: {{item.iconBg}}">
+            <van-icon name="{{item.icon}}" size="22px" color="#fff" />
+          </view>
+          <text class="title">{{item.title}}</text>
+        </view>
+        <view class="right">
+          <text class="count">{{item.count}}</text>
+          <van-icon name="arrow" size="16px" color="rgba(255,255,255,0.3)" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 社交互动 -->
+  <view class="menu-section">
+    <view class="section-title">社交互动</view>
+    <view class="menu-list">
+      <view 
+        class="menu-item" 
+        wx:for="{{socialMenus}}" 
+        wx:key="title"
+        bindtap="goToPage"
+        data-url="{{item.url}}"
+      >
+        <view class="left">
+          <view class="icon-wrapper" style="background: {{item.iconBg}}">
+            <van-icon name="{{item.icon}}" size="22px" color="#fff" />
+          </view>
+          <text class="title">{{item.title}}</text>
+        </view>
+        <view class="right">
+          <text class="count" wx:if="{{item.count}}">{{item.count}}</text>
+          <view class="badge" wx:if="{{item.badge > 0}}">{{item.badge}}</view>
+          <van-icon name="arrow" size="16px" color="rgba(255,255,255,0.3)" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- VIP会员中心 -->
+  <view class="vip-card" bindtap="goToVipCenter" wx:if="{{isLoggedIn}}">
+    <view class="vip-content">
+      <van-icon name="diamond-o" size="28px" color="#fff" class="vip-icon" />
+      <view class="vip-text">
+        <text class="vip-title">VIP 会员中心</text>
+        <text class="vip-desc">专属特权·畅享无忧</text>
+      </view>
+    </view>
+    <van-icon name="arrow" size="20px" color="#fff" />
+  </view>
+
+  <!-- 更多功能 -->
+  <view class="more-section" wx:if="{{isLoggedIn}}">
+    <view class="section-title">更多功能</view>
+    <view class="function-grid">
+      <view class="function-item" bindtap="goToPage" data-url="/pages/index/index">
+        <view class="function-icon" style="background: #b8860b">
+          <van-icon name="like-o" size="24px" color="#fff" />
+        </view>
+        <text class="function-name">关爱</text>
+      </view>
+      <view class="function-item" bindtap="goToPage" data-url="/pages/index/index">
+        <view class="function-icon" style="background: #f6d365">
+          <van-icon name="weather-cloudy" size="24px" color="#fff" />
+        </view>
+        <text class="function-name">天气</text>
+      </view>
+      <view class="function-item" bindtap="goToPage" data-url="/packageAI/pages/chat/index">
+        <view class="function-icon" style="background: #a8edea">
+          <van-icon name="chat-o" size="24px" color="#fff" />
+        </view>
+        <text class="function-name">AI聊天</text>
+      </view>
+      <view class="function-item" bindtap="goToSettings">
+        <view class="function-icon" style="background: #d299c2">
+          <van-icon name="setting-o" size="24px" color="#fff" />
+        </view>
+        <text class="function-name">设置</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-section" wx:if="{{isLoggedIn}}">
+    <view class="logout-btn" bindtap="handleLogout">
+      <van-icon name="arrow-left" size="16px" color="rgba(255,255,255,0.6)" />
+      <text>退出登录</text>
+    </view>
+  </view>
+</view>

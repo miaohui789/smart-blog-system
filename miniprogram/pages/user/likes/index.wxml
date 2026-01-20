@@ -1,0 +1,74 @@
+<!-- pages/user/likes/index.wxml -->
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">我的点赞</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 统计信息 -->
+  <view class="stats-bar">
+    <text class="stats-text">共点赞 {{total}} 篇文章</text>
+  </view>
+
+  <!-- 文章列表 -->
+  <view class="article-list">
+    <view 
+      class="article-item" 
+      wx:for="{{articles}}" 
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+    >
+      <!-- 封面图 -->
+      <image class="cover" src="{{item.cover}}" mode="aspectFill" wx:if="{{item.cover}}" />
+      
+      <!-- 内容 -->
+      <view class="content">
+        <view class="title">{{item.title}}</view>
+        <view class="summary">{{item.summary}}</view>
+        
+        <view class="meta">
+          <view class="author">
+            <image class="avatar" src="{{item.author.avatar}}" />
+            <text class="nickname">{{item.author.nickname}}</text>
+          </view>
+          <view class="stats">
+            <view class="stat-item">
+              <van-icon name="eye-o" size="12px" color="#64748b" />
+              <text>{{item.viewCount}}</text>
+            </view>
+            <view class="stat-item">
+              <van-icon name="good-job-o" size="12px" color="#64748b" />
+              <text>{{item.likeCount}}</text>
+            </view>
+          </view>
+        </view>
+        
+        <view class="footer">
+          <text class="time">{{item.createTime}}</text>
+          <view class="action-btn" catchtap="handleUnlike" data-id="{{item.id}}">
+            <van-icon name="good-job" size="14px" color="#ef4444" />
+            <text>取消点赞</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <van-loading type="spinner" color="#3b82f6" />
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+    <van-icon name="like-o" size="80px" color="#64748b" />
+    <text class="empty-text">还没有点赞过文章</text>
+    <text class="empty-desc">快去给喜欢的文章点赞吧</text>
+  </view>
+</view>

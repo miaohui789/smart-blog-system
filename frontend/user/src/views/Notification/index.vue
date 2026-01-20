@@ -242,6 +242,10 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   
   h2 {
     font-size: 18px;
@@ -260,7 +264,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -360,7 +364,7 @@ onMounted(() => {
   gap: 12px;
   padding: 16px;
   background: var(--bg-card-hover);
-  border-radius: 12px;
+  border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s;
   
@@ -371,6 +375,8 @@ onMounted(() => {
   &.unread {
     background: rgba($primary-color, 0.08);
     border-left: 3px solid $primary-color;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
   }
 }
 

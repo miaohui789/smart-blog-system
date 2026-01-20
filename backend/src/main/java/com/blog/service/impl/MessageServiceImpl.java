@@ -6,11 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.entity.Message;
 import com.blog.entity.MessageConversation;
+import com.blog.entity.User;
 import com.blog.mapper.MessageConversationMapper;
 import com.blog.mapper.MessageMapper;
 import com.blog.service.MessageService;
 import com.blog.service.RedisService;
 import com.blog.service.UserFollowService;
+import com.blog.service.UserService;
 import com.blog.websocket.WebSocketServer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -29,6 +33,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     private final WebSocketServer webSocketServer;
     private final RedisService redisService;
     private final UserFollowService userFollowService;
+    private final UserService userService;
 
     @Override
     public String checkCanSendMessage(Long senderId, Long receiverId) {
@@ -93,7 +98,30 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         redisService.delete(RedisService.CACHE_MESSAGE_CONVERSATION + receiverId);
         
         // 通过WebSocket推送消息给接收者
-        webSocketServer.sendMessageToUser(receiverId, message);
+        log.info("准备推送消息给接收者 userId={}, messageId={}", receiverId, message.getId());
+        
+        // 构建包含发送者信息的推送数据
+        Map<String, Object> pushData = new HashMap<>();
+        pushData.put("id", message.getId());
+        pushData.put("conversationId", message.getConversationId());
+        pushData.put("senderId", message.getSenderId());
+        pushData.put("receiverId", message.getReceiverId());
+        pushData.put("content", message.getContent());
+        pushData.put("type", message.getType());
+        pushData.put("createTime", message.getCreateTime());
+        
+        // 获取发送者信息
+        User sender = userService.getById(senderId);
+        if (sender != null) {
+            Map<String, Object> senderInfo = new HashMap<>();
+            senderInfo.put("id", sender.getId());
+            senderInfo.put("nickname", sender.getNickname());
+            senderInfo.put("avatar", sender.getAvatar());
+            senderInfo.put("vipLevel", sender.getVipLevel());
+            pushData.put("sender", senderInfo);
+        }
+        
+        webSocketServer.sendMessageToUser(receiverId, pushData);
         
         return message;
     }
@@ -128,6 +156,13 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     public List<Message> getMessageList(Long conversationId, Long userId, Integer page, Integer pageSize) {
         LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Message::getConversationId, conversationId)
+               .and(w -> w
+                   // 发送者查看：不显示自己删除的
+                   .apply("(sender_id = {0} AND (sender_deleted IS NULL OR sender_deleted = 0))", userId)
+                   .or()
+                   // 接收者查看：不显示自己删除的
+                   .apply("(receiver_id = {0} AND (receiver_deleted IS NULL OR receiver_deleted = 0))", userId)
+               )
                .orderByDesc(Message::getCreateTime);
         
         Page<Message> pageResult = page(new Page<>(page, pageSize), wrapper);
@@ -240,7 +275,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             return false;
         }
         
-        return removeById(messageId);
+        // 逻辑删除：标记当前用户的删除状态
+        if (message.getSenderId().equals(userId)) {
+            // 发送者删除
+            message.setSenderDeleted(1);
+        } else {
+            // 接收者删除
+            message.setReceiverDeleted(1);
+        }
+        
+        boolean success = updateById(message);
+        
+        // 如果双方都删除了，物理删除消息
+        if (success && message.getSenderDeleted() != null && message.getSenderDeleted() == 1 
+                && message.getReceiverDeleted() != null && message.getReceiverDeleted() == 1) {
+            removeById(messageId);
+        }
+        
+        return success;
     }
 
     @Override

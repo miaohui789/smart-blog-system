@@ -209,6 +209,13 @@ onMounted(() => {
   border-radius: 12px;
   padding: 12px 16px;
   transition: all 0.3s ease;
+  
+  // 自定义背景下强制透明
+  body.has-custom-bg & {
+    background: rgba(var(--bg-card-rgb), 0.65) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
 .sort-options {

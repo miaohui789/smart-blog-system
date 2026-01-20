@@ -1,0 +1,145 @@
+<!-- packageVip/pages/center/index.wxml -->
+<view class="container">
+  <!-- 顶部背景 -->
+  <view class="header-bg">
+    <view class="nav-bar">
+      <view class="nav-left" bindtap="goBack">
+        <van-icon name="arrow-left" size="20px" color="#fff" />
+      </view>
+      <view class="nav-title">VIP会员中心</view>
+      <view class="nav-right"></view>
+    </view>
+
+    <!-- VIP状态卡片 -->
+    <view class="vip-card" wx:if="{{isVip}}">
+      <view class="vip-header">
+        <view class="vip-icon">
+          <van-icon name="diamond" size="32px" color="#ffd700" />
+        </view>
+        <view class="vip-info">
+          <text class="vip-level">VIP {{vipLevel}}</text>
+          <text class="vip-expire">有效期至 {{vipExpireDate}}</text>
+        </view>
+      </view>
+      <view class="vip-progress">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{vipProgress}}%"></view>
+        </view>
+        <text class="progress-text">距离到期还有 {{remainDays}} 天</text>
+      </view>
+    </view>
+
+    <!-- 非VIP状态 -->
+    <view class="non-vip-card" wx:else>
+      <view class="non-vip-icon">
+        <van-icon name="diamond-o" size="48px" color="rgba(255,255,255,0.5)" />
+      </view>
+      <text class="non-vip-text">您还不是VIP会员</text>
+      <text class="non-vip-desc">开通VIP，享受专属特权</text>
+    </view>
+  </view>
+
+  <!-- VIP特权 -->
+  <view class="section">
+    <view class="section-title">
+      <van-icon name="star" size="18px" color="#ffd700" />
+      <text>VIP特权</text>
+    </view>
+    <view class="privilege-grid">
+      <view class="privilege-item" wx:for="{{privileges}}" wx:key="id">
+        <view class="privilege-icon" style="background: {{item.color}}">
+          <van-icon name="{{item.icon}}" size="24px" color="#fff" />
+        </view>
+        <text class="privilege-name">{{item.name}}</text>
+        <text class="privilege-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 激活码激活 -->
+  <view class="section">
+    <view class="section-title">
+      <van-icon name="gift" size="18px" color="#f59e0b" />
+      <text>激活VIP</text>
+    </view>
+    <view class="activate-card">
+      <view class="input-wrapper">
+        <van-field
+          value="{{keyCode}}"
+          placeholder="请输入激活码"
+          border="{{false}}"
+          bind:change="onKeyCodeChange"
+          custom-style="background: rgba(255,255,255,0.1); border-radius: 12rpx; color: #fff;"
+        />
+      </view>
+      <view class="activate-btn" bindtap="handleActivate">
+        <van-icon name="passed" size="18px" color="#fff" />
+        <text>立即激活</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- VIP等级说明 -->
+  <view class="section">
+    <view class="section-title">
+      <van-icon name="medal" size="18px" color="#3b82f6" />
+      <text>等级说明</text>
+    </view>
+    <view class="level-list">
+      <view class="level-item" wx:for="{{levels}}" wx:key="level">
+        <view class="level-badge" style="background: {{item.color}}">
+          <text>VIP {{item.level}}</text>
+        </view>
+        <view class="level-info">
+          <text class="level-name">{{item.name}}</text>
+          <text class="level-desc">{{item.desc}}</text>
+        </view>
+        <view class="level-check" wx:if="{{isVip && vipLevel === item.level}}">
+          <van-icon name="success" size="20px" color="#10b981" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 使用记录 -->
+  <view class="section" wx:if="{{isVip}}">
+    <view class="section-title">
+      <van-icon name="records" size="18px" color="#8b5cf6" />
+      <text>使用记录</text>
+    </view>
+    <view class="record-list">
+      <view class="record-item" wx:for="{{records}}" wx:key="id">
+        <view class="record-icon">
+          <van-icon name="fire" size="20px" color="#f59e0b" />
+        </view>
+        <view class="record-info">
+          <text class="record-title">{{item.title}}</text>
+          <text class="record-time">{{item.time}}</text>
+        </view>
+        <text class="record-count">-{{item.count}}</text>
+      </view>
+      <view class="empty-record" wx:if="{{records.length === 0}}">
+        <text>暂无使用记录</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 常见问题 -->
+  <view class="section">
+    <view class="section-title">
+      <van-icon name="question" size="18px" color="#06b6d4" />
+      <text>常见问题</text>
+    </view>
+    <view class="faq-list">
+      <view class="faq-item" wx:for="{{faqs}}" wx:key="id" bindtap="toggleFaq" data-id="{{item.id}}">
+        <view class="faq-question">
+          <text>{{item.question}}</text>
+          <van-icon name="{{item.expanded ? 'arrow-up' : 'arrow-down'}}" size="16px" color="#94a3b8" />
+        </view>
+        <view class="faq-answer" wx:if="{{item.expanded}}">
+          <text>{{item.answer}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

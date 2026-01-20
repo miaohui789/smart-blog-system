@@ -1,0 +1,55 @@
+<!-- pages/message/list/index.wxml -->
+<view class="container">
+  <!-- 搜索框 -->
+  <view class="search-bar">
+    <van-search
+      value="{{ searchKeyword }}"
+      placeholder="搜索用户名"
+      background="transparent"
+      shape="round"
+      bind:change="onSearchChange"
+    />
+  </view>
+
+  <!-- 会话列表 -->
+  <view class="conversation-list">
+    <view
+      class="conversation-item"
+      wx:for="{{conversations}}"
+      wx:key="id"
+      bindtap="openChat"
+      data-conversation="{{item}}"
+    >
+      <!-- 头像区域 -->
+      <view class="avatar-wrapper">
+        <image class="avatar" src="{{item.targetUser.avatar}}" mode="aspectFill" />
+        <!-- 未读消息徽章 -->
+        <view class="unread-badge" wx:if="{{item.unreadCount > 0}}">
+          {{item.unreadCount > 99 ? '99+' : item.unreadCount}}
+        </view>
+        <!-- 在线状态指示器 -->
+        <view class="online-indicator" wx:if="{{item.targetUser.isOnline}}"></view>
+      </view>
+
+      <!-- 信息内容 -->
+      <view class="conversation-info">
+        <view class="top-row">
+          <view class="username-wrapper">
+            <text class="username">{{item.targetUser.nickname}}</text>
+            <vip-badge wx:if="{{item.targetUser.isVip}}" level="{{item.targetUser.vipLevel}}" size="mini" />
+          </view>
+          <text class="time">{{item.lastMessageTime}}</text>
+        </view>
+        <view class="bottom-row">
+          <text class="last-message">{{item.lastMessage || '暂无消息'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <empty wx:if="{{!loading && conversations.length === 0}}" icon="💬" text="暂无私信" />
+  </view>
+
+  <!-- 加载中 -->
+  <loading wx:if="{{loading}}" />
+</view>

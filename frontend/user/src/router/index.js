@@ -95,6 +95,12 @@ const routes = [
             name: 'UserFollowing',
             component: () => import('@/views/User/Following.vue'),
             meta: { title: '我的关注', requiresAuth: true }
+          },
+          {
+            path: 'skin',
+            name: 'UserSkin',
+            component: () => import('@/views/User/Skin.vue'),
+            meta: { title: '我的皮肤', requiresAuth: true }
           }
         ]
       },

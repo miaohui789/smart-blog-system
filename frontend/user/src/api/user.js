@@ -76,3 +76,13 @@ export function getFavorites(params) {
 export function getMyComments(params) {
   return request({ url: '/user/comments', method: 'get', params })
 }
+
+// 保存主题设置
+export function saveTheme(data) {
+  return request({ url: '/user/theme', method: 'put', data })
+}
+
+// 获取主题设置
+export function getTheme() {
+  return request({ url: '/user/theme', method: 'get' })
+}

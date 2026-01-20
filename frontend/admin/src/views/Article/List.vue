@@ -161,6 +161,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: $spacing-lg;
 
+
   h2 {
     font-size: 20px;
     font-weight: 600;

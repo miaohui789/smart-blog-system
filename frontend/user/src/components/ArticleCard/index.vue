@@ -82,6 +82,9 @@ function goDetail() {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 
   &:hover {
     border-color: rgba($primary-color, 0.3);

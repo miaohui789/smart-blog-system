@@ -1,0 +1,177 @@
+<!-- pages/user/settings/index.wxml -->
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">设置</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 设置列表 -->
+  <view class="settings-list">
+    <!-- 账号信息 -->
+    <view class="section">
+      <view class="section-title">账号信息</view>
+      <view class="setting-item" bindtap="goToProfile">
+        <view class="item-left">
+          <van-icon name="user-o" size="20px" color="#3b82f6" />
+          <text class="item-label">个人资料</text>
+        </view>
+        <view class="item-right">
+          <text class="item-value">{{userInfo.nickname}}</text>
+          <van-icon name="arrow" size="16px" color="#64748b" />
+        </view>
+      </view>
+
+      <view class="setting-item" bindtap="handleChangePassword">
+        <view class="item-left">
+          <van-icon name="lock" size="20px" color="#f59e0b" />
+          <text class="item-label">修改密码</text>
+        </view>
+        <view class="item-right">
+          <van-icon name="arrow" size="16px" color="#64748b" />
+        </view>
+      </view>
+    </view>
+
+    <!-- 通知设置 -->
+    <view class="section">
+      <view class="section-title">通知设置</view>
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="bell" size="20px" color="#10b981" />
+          <text class="item-label">消息通知</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.messageNotify}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="messageNotify"
+          />
+        </view>
+      </view>
+
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="comment-o" size="20px" color="#06b6d4" />
+          <text class="item-label">评论通知</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.commentNotify}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="commentNotify"
+          />
+        </view>
+      </view>
+
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="like-o" size="20px" color="#ef4444" />
+          <text class="item-label">点赞通知</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.likeNotify}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="likeNotify"
+          />
+        </view>
+      </view>
+
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="star-o" size="20px" color="#8b5cf6" />
+          <text class="item-label">收藏通知</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.favoriteNotify}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="favoriteNotify"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 隐私设置 -->
+    <view class="section">
+      <view class="section-title">隐私设置</view>
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="eye-o" size="20px" color="#64748b" />
+          <text class="item-label">公开个人资料</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.publicProfile}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="publicProfile"
+          />
+        </view>
+      </view>
+
+      <view class="setting-item">
+        <view class="item-left">
+          <van-icon name="friends-o" size="20px" color="#64748b" />
+          <text class="item-label">显示关注列表</text>
+        </view>
+        <view class="item-right">
+          <van-switch 
+            checked="{{settings.showFollowing}}" 
+            size="20px"
+            active-color="#3b82f6"
+            bind:change="handleSwitchChange"
+            data-key="showFollowing"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 其他设置 -->
+    <view class="section">
+      <view class="section-title">其他</view>
+      <view class="setting-item" bindtap="handleClearCache">
+        <view class="item-left">
+          <van-icon name="delete-o" size="20px" color="#94a3b8" />
+          <text class="item-label">清除缓存</text>
+        </view>
+        <view class="item-right">
+          <text class="item-value">{{cacheSize}}</text>
+          <van-icon name="arrow" size="16px" color="#64748b" />
+        </view>
+      </view>
+
+      <view class="setting-item" bindtap="handleAbout">
+        <view class="item-left">
+          <van-icon name="info-o" size="20px" color="#94a3b8" />
+          <text class="item-label">关于我们</text>
+        </view>
+        <view class="item-right">
+          <text class="item-value">v1.0.0</text>
+          <van-icon name="arrow" size="16px" color="#64748b" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 退出登录按钮 -->
+  <view class="logout-section">
+    <view class="logout-btn" bindtap="handleLogout">
+      <van-icon name="sign-out" size="18px" color="#ef4444" />
+      <text>退出登录</text>
+    </view>
+  </view>
+</view>

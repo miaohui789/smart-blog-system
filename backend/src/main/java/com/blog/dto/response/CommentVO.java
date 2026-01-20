@@ -21,6 +21,9 @@ public class CommentVO {
     // 回复的用户信息
     private UserInfo replyUser;
     
+    // 文章信息（用于"我的评论"页面）
+    private ArticleInfo article;
+    
     // 子评论列表
     private List<CommentVO> replies;
     
@@ -31,5 +34,14 @@ public class CommentVO {
         private String avatar;
         private Integer vipLevel;
         private Integer status;
+    }
+    
+    @Data
+    public static class ArticleInfo {
+        private Long id;
+        private String title;
+        private String cover;
+        private Integer viewCount;
+        private Integer likeCount;
     }
 }

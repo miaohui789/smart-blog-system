@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "我的",
+  "usingComponents": {
+    "vip-badge": "/components/vip-badge/index",
+    "van-icon": "@vant/weapp/icon/index"
+  }
+}

@@ -169,6 +169,11 @@ onMounted(fetchArticles)
   align-items: center;
   justify-content: space-between;
   margin-bottom: $spacing-xl;
+  padding: $spacing-lg;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: $radius-xl;
+  transition: all 0.3s;
 }
 
 .page-title {
@@ -190,7 +195,7 @@ onMounted(fetchArticles)
   margin-bottom: $spacing-lg;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: $radius-lg;
+  border-radius: $radius-xl;
   transition: background-color 0.3s, border-color 0.3s;
 }
 
@@ -207,7 +212,7 @@ onMounted(fetchArticles)
   padding: $spacing-lg;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: $radius-lg;
+  border-radius: $radius-xl;
   transition: all 0.3s;
   
   &:hover {
@@ -220,7 +225,7 @@ onMounted(fetchArticles)
   width: 180px;
   height: 120px;
   flex-shrink: 0;
-  border-radius: $radius-md;
+  border-radius: $radius-lg;
   overflow: hidden;
   
   img {

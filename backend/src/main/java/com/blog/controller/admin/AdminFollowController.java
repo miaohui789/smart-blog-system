@@ -132,11 +132,13 @@ public class AdminFollowController {
         todayWrapper.apply("DATE(create_time) = CURDATE()");
         data.put("todayFollows", userFollowMapper.selectCount(todayWrapper));
         
-        // 活跃用户数（有关注行为的用户）
-        LambdaQueryWrapper<UserFollow> activeWrapper = new LambdaQueryWrapper<>();
-        activeWrapper.select(UserFollow::getUserId);
-        activeWrapper.groupBy(UserFollow::getUserId);
-        data.put("activeUsers", userFollowMapper.selectCount(activeWrapper));
+        // 活跃用户数（有关注行为的用户）- 使用distinct查询
+        List<UserFollow> allFollows = userFollowMapper.selectList(null);
+        long activeUsers = allFollows.stream()
+            .map(UserFollow::getUserId)
+            .distinct()
+            .count();
+        data.put("activeUsers", activeUsers);
         
         // 互相关注数（简化计算）
         data.put("mutualFollows", 0);

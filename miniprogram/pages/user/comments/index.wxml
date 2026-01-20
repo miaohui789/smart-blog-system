@@ -1,0 +1,73 @@
+<!-- pages/user/comments/index.wxml -->
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">我的评论</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 统计信息 -->
+  <view class="stats-bar">
+    <text class="stats-text">共 {{total}} 条评论</text>
+  </view>
+
+  <!-- 评论列表 -->
+  <view class="comment-list">
+    <view 
+      class="comment-item" 
+      wx:for="{{comments}}" 
+      wx:key="id"
+      bindtap="goToArticle"
+      data-id="{{item.articleId}}"
+    >
+      <view class="comment-header">
+        <text class="time">{{item.createTime}}</text>
+      </view>
+      
+      <view class="comment-content">
+        <text class="content-text">{{item.content}}</text>
+      </view>
+
+      <view class="article-info" wx:if="{{item.article}}">
+        <image class="article-cover" src="{{item.article.cover}}" mode="aspectFill" wx:if="{{item.article.cover}}" />
+        <view class="article-text">
+          <text class="article-title">{{item.article.title}}</text>
+          <view class="article-meta">
+            <van-icon name="eye-o" size="12px" color="#64748b" />
+            <text>{{item.article.viewCount}}</text>
+            <van-icon name="good-job-o" size="12px" color="#64748b" />
+            <text>{{item.article.likeCount}}</text>
+          </view>
+        </view>
+        <van-icon name="arrow" size="16px" color="#64748b" />
+      </view>
+
+      <view class="comment-stats">
+        <view class="stat-item">
+          <van-icon name="good-job-o" size="14px" color="#64748b" />
+          <text>{{item.likeCount || 0}}</text>
+        </view>
+        <view class="stat-item" wx:if="{{item.replyCount > 0}}">
+          <van-icon name="comment-o" size="14px" color="#64748b" />
+          <text>{{item.replyCount}} 条回复</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <van-loading type="spinner" color="#3b82f6" />
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && comments.length === 0}}">
+    <van-icon name="comment-o" size="80px" color="#64748b" />
+    <text class="empty-text">还没有发表过评论</text>
+    <text class="empty-desc">快去文章下方发表你的看法吧</text>
+  </view>
+</view>

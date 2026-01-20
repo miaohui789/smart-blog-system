@@ -10,6 +10,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useMessageStore } from '@/stores/message'
 import { initWebSocket, closeWebSocket, onNotification, onForceLogout, onUnreadUpdate, onMessage } from '@/utils/websocket'
 import { ElMessage, ElNotification } from 'element-plus'
+import { getTheme } from '@/api/user'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -19,14 +20,92 @@ const messageStore = useMessageStore()
 // 存储取消订阅函数
 let unsubscribes = []
 
-// 页面加载时，如果已登录则刷新用户信息
+// 页面加载时，如果已登录则刷新用户信息并加载主题
 onMounted(() => {
   if (userStore.isLoggedIn) {
     userStore.fetchUserInfo().then(() => {
       initWebSocketConnection()
+      loadUserTheme()
     })
   }
 })
+
+// 从服务器加载用户主题设置
+async function loadUserTheme() {
+  try {
+    const res = await getTheme()
+    if (res.code === 200 && res.data) {
+      const { themeMode, darkSkin, lightSkin } = res.data
+      
+      // 更新主题模式
+      if (themeMode) {
+        localStorage.setItem('theme', themeMode)
+        themeStore.isDark = themeMode === 'dark'
+        themeStore.applyTheme()
+      }
+      
+      // 获取皮肤配置
+      const darkSkins = [
+        { id: 'default', name: '默认', component: null },
+        { id: 'matrix', name: '黑客帝国', component: 'MatrixRain' },
+        { id: 'dark-2', name: '彩色斑点', component: 'ColorGrid' },
+        { id: 'dark-3', name: '方块', component: 'HexagonPattern' }
+      ]
+      
+      const lightSkins = [
+        { id: 'default', name: '默认', component: null },
+        { id: 'light-1', name: '清新蓝', component: 'MovingDots' },
+        { id: 'light-2', name: '紫色骨头', component: 'PurpleDots' },
+        { id: 'light-3', name: '立体', component: 'GeometricPattern' }
+      ]
+      
+      // 保存暗色主题皮肤
+      if (darkSkin) {
+        const darkSkinObj = darkSkins.find(s => s.id === darkSkin)
+        if (darkSkinObj) {
+          localStorage.setItem('darkSkin', JSON.stringify({
+            theme: 'dark',
+            skinId: darkSkin,
+            component: darkSkinObj.component
+          }))
+        }
+      }
+      
+      // 保存亮色主题皮肤
+      if (lightSkin) {
+        const lightSkinObj = lightSkins.find(s => s.id === lightSkin)
+        if (lightSkinObj) {
+          localStorage.setItem('lightSkin', JSON.stringify({
+            theme: 'light',
+            skinId: lightSkin,
+            component: lightSkinObj.component
+          }))
+        }
+      }
+      
+      // 触发背景更新
+      const currentSkinId = themeMode === 'dark' ? darkSkin : lightSkin
+      const currentSkinObj = themeMode === 'dark' 
+        ? darkSkins.find(s => s.id === currentSkinId)
+        : lightSkins.find(s => s.id === currentSkinId)
+      
+      if (currentSkinObj) {
+        window.dispatchEvent(new CustomEvent('skin-change', { 
+          detail: {
+            theme: themeMode,
+            skinId: currentSkinId,
+            component: currentSkinObj.component
+          }
+        }))
+      }
+      
+      // 更新透明度检查
+      themeStore.checkCustomBackground()
+    }
+  } catch (e) {
+    console.error('加载用户主题设置失败:', e)
+  }
+}
 
 // 监听登录状态变化
 watch(() => userStore.isLoggedIn, (isLoggedIn) => {

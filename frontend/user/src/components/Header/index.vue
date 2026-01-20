@@ -184,7 +184,7 @@
                     <span class="stat-value">{{ userStats.followerCount || 0 }}</span>
                     <span class="stat-label">粉丝</span>
                   </div>
-                  <div class="stat-item">
+                  <div class="stat-item" @click="goToArticles">
                     <span class="stat-value">{{ userStats.articleCount || 0 }}</span>
                     <span class="stat-label">文章</span>
                   </div>
@@ -210,6 +210,10 @@
                   <div class="menu-item" @click="handleCommand('vip')">
                     <el-icon><Medal /></el-icon>
                     <span>会员中心</span>
+                  </div>
+                  <div class="menu-item" @click="handleCommand('skin')">
+                    <el-icon><Picture /></el-icon>
+                    <span>我的皮肤</span>
                   </div>
                   <div class="menu-item" @click="handleCommand('settings')">
                     <el-icon><Setting /></el-icon>
@@ -326,7 +330,7 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell } from '@element-plus/icons-vue'
+import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
@@ -414,6 +418,12 @@ function goToFollowing() {
 function goToFollowers() {
   showUserCard.value = false
   router.push(`/user/${userStore.userInfo?.id}/followers`)
+}
+
+// 跳转到文章列表
+function goToArticles() {
+  showUserCard.value = false
+  router.push('/user/articles')
 }
 
 // 格式化VIP到期时间
@@ -611,6 +621,9 @@ function handleCommand(command) {
     case 'vip':
       router.push('/vip/center')
       break
+    case 'skin':
+      router.push('/user/skin')
+      break
     case 'articles':
       router.push('/user/articles')
       break
@@ -635,7 +648,7 @@ function handleCommand(command) {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(24, 24, 27, 0.85);
+  background: rgba(24, 24, 27, 0.5);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-color);
@@ -643,7 +656,7 @@ function handleCommand(command) {
 }
 
 :root[data-theme="light"] .header {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .header-container {
@@ -1389,10 +1402,14 @@ function handleCommand(command) {
 /* 用户头像悬浮卡片 */
 .user-avatar-wrapper {
   position: relative;
+  z-index: 101;
 }
 
 .user-avatar-trigger {
   cursor: pointer;
+  position: relative;
+  z-index: 101;
+  pointer-events: auto;
 }
 
 .user-avatar {
@@ -1407,6 +1424,8 @@ function handleCommand(command) {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   position: relative;
+  z-index: 101;
+  pointer-events: auto;
   
   img {
     width: 100%;
@@ -1518,10 +1537,11 @@ function handleCommand(command) {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 1001;
   overflow: hidden;
   padding-top: 12px;
   margin-top: 0;
+  pointer-events: auto;
   
   &::before {
     content: '';

@@ -16,6 +16,9 @@ public class User {
     private String avatar;
     private String intro;
     private String website;
+    private String themeMode;
+    private String darkSkin;
+    private String lightSkin;
     private Integer status;
     private String loginIp;
     private LocalDateTime loginTime;

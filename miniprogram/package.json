@@ -1,0 +1,17 @@
+{
+  "name": "smart-blog-miniprogram",
+  "version": "1.0.0",
+  "description": "智能博客系统微信小程序",
+  "main": "app.js",
+  "scripts": {},
+  "keywords": [
+    "miniprogram",
+    "blog",
+    "wechat"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@vant/weapp": "^1.11.6"
+  }
+}

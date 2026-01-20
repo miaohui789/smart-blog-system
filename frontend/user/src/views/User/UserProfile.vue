@@ -104,11 +104,11 @@
         <div class="section-header">
           <h3>
             <el-icon><Document /></el-icon>
-            TA的文章
+            {{ isSelf ? '我的文章' : 'TA的文章' }}
           </h3>
           <div class="header-actions">
             <!-- 搜索框 -->
-            <div class="search-box">
+            <div class="search-box transparent-input">
               <el-input
                 v-model="searchKeyword"
                 placeholder="搜索文章..."
@@ -116,10 +116,11 @@
                 clearable
                 @keyup.enter="handleSearch"
                 @clear="handleSearch"
+                class="transparent-bg"
               />
             </div>
             <!-- 排序 -->
-            <el-select v-model="sortBy" @change="fetchArticles" class="sort-select">
+            <el-select v-model="sortBy" @change="fetchArticles" class="sort-select transparent-input transparent-bg">
               <el-option label="最新发布" value="latest" />
               <el-option label="最多阅读" value="view" />
               <el-option label="最多点赞" value="like" />
@@ -639,6 +640,7 @@ onMounted(() => {
 .header-actions {
   display: flex;
   gap: 12px;
+  align-items: center;
   
   @media (max-width: 768px) {
     width: 100%;
@@ -649,13 +651,117 @@ onMounted(() => {
 .search-box {
   width: 200px;
   
+  :deep(.el-input__wrapper) {
+    border-radius: 24px !important;
+    padding: 8px 16px !important;
+    height: 36px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid var(--border-color) !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+    
+    &:hover {
+      border-color: rgba(59, 130, 246, 0.4) !important;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+      background: rgba(59, 130, 246, 0.03) !important;
+    }
+    
+    &.is-focus {
+      background: transparent !important;
+    }
+  }
+  
+  :deep(.el-input__inner) {
+    color: var(--text-primary) !important;
+    font-size: 13px !important;
+    height: 100% !important;
+    line-height: 36px !important;
+    background: transparent !important;
+  }
+  
+  :deep(.el-input__prefix) {
+    color: var(--text-muted) !important;
+  }
+  
+  :deep(.el-input__prefix-inner) {
+    display: flex !important;
+    align-items: center !important;
+  }
+  
   @media (max-width: 768px) {
     width: 100%;
   }
 }
 
+// 强制覆盖全局样式 - 透明背景
+.transparent-input {
+  :deep(.el-input__wrapper) {
+    background: transparent !important;
+  }
+}
+
+.transparent-bg {
+  :deep(.el-input__wrapper) {
+    background: transparent !important;
+  }
+  
+  :deep(.el-input__inner) {
+    background: transparent !important;
+  }
+}
+
+.user-profile-page .search-box :deep(.el-input__wrapper) {
+  background: transparent !important;
+}
+
+.user-profile-page .sort-select :deep(.el-input__wrapper) {
+  background: transparent !important;
+}
+
 .sort-select {
   width: 120px;
+  
+  :deep(.el-input__wrapper) {
+    border-radius: 24px !important;
+    padding: 8px 16px !important;
+    height: 36px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid var(--border-color) !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+    
+    &:hover {
+      border-color: rgba(59, 130, 246, 0.4) !important;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+      background: rgba(59, 130, 246, 0.03) !important;
+    }
+    
+    &.is-focus {
+      background: transparent !important;
+    }
+  }
+  
+  :deep(.el-input__inner) {
+    color: var(--text-primary) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    height: 100% !important;
+    line-height: 36px !important;
+    background: transparent !important;
+  }
+  
+  :deep(.el-input__suffix) {
+    color: var(--text-muted) !important;
+  }
+  
+  :deep(.el-input__suffix-inner) {
+    display: flex !important;
+    align-items: center !important;
+  }
   
   @media (max-width: 768px) {
     width: 100%;

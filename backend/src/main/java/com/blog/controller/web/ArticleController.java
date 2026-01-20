@@ -51,7 +51,7 @@ public class ArticleController {
 
     @Operation(summary = "文章列表")
     @GetMapping
-    public Result<PageResult<Article>> list(
+    public Result<PageResult<ArticleVO>> list(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Long categoryId,
@@ -60,29 +60,14 @@ public class ArticleController {
             @RequestParam(required = false) Integer excludeTop,
             @RequestParam(required = false) Integer onlyTop) {
         
-        // 尝试从缓存获取（只缓存最新排序且无特殊筛选）
-        String cacheKey = RedisService.CACHE_ARTICLE_LIST + page + ":" + pageSize + ":" + (categoryId != null ? categoryId : "all") + ":" + sortBy + ":" + sortOrder;
-        if (("latest".equals(sortBy) || "default".equals(sortBy)) && excludeTop == null && onlyTop == null) {
-            try {
-                Object cached = redisService.get(cacheKey);
-                if (cached != null) {
-                    return Result.success((PageResult<Article>) cached);
-                }
-            } catch (Exception e) {
-                // 缓存获取失败，继续从数据库查询
-            }
-        }
-        
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
                 .eq(categoryId != null, Article::getCategoryId, categoryId);
         
         // 处理置顶筛选
         if (onlyTop != null && onlyTop == 1) {
-            // 只获取置顶文章
             wrapper.eq(Article::getIsTop, 1);
         } else if (excludeTop != null && excludeTop == 1) {
-            // 排除置顶文章
             wrapper.eq(Article::getIsTop, 0);
         }
         
@@ -90,12 +75,10 @@ public class ArticleController {
         boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
         switch (sortBy) {
             case "latest":
-                // 最新排序：置顶优先，然后按发布时间
                 wrapper.orderByDesc(Article::getIsTop)
                        .orderByDesc(Article::getPublishTime);
                 break;
             case "heat":
-                // 热度排序
                 if (isAsc) {
                     wrapper.orderByAsc(Article::getHeatCount);
                 } else {
@@ -103,7 +86,6 @@ public class ArticleController {
                 }
                 break;
             case "view":
-                // 阅览量排序
                 if (isAsc) {
                     wrapper.orderByAsc(Article::getViewCount);
                 } else {
@@ -111,7 +93,6 @@ public class ArticleController {
                 }
                 break;
             case "comment":
-                // 评论数排序
                 if (isAsc) {
                     wrapper.orderByAsc(Article::getCommentCount);
                 } else {
@@ -119,7 +100,6 @@ public class ArticleController {
                 }
                 break;
             case "like":
-                // 点赞数排序
                 if (isAsc) {
                     wrapper.orderByAsc(Article::getLikeCount);
                 } else {
@@ -127,48 +107,53 @@ public class ArticleController {
                 }
                 break;
             case "favorite":
-                // 收藏数排序
                 if (isAsc) {
                     wrapper.orderByAsc(Article::getFavoriteCount);
                 } else {
                     wrapper.orderByDesc(Article::getFavoriteCount);
                 }
                 break;
-            case "comprehensive":
-                // 综合排序：多因素加权，数据量大的排前面
-                // 公式：热度*0.25 + 阅览量*0.001 + 点赞*0.15 + 收藏*0.2 + 评论*0.15 + 时间衰减
-                wrapper.last("ORDER BY (" +
-                    "COALESCE(heat_count,0) * 0.25 + " +
-                    "COALESCE(view_count,0) * 0.001 + " +
-                    "COALESCE(like_count,0) * 0.15 + " +
-                    "COALESCE(favorite_count,0) * 0.2 + " +
-                    "COALESCE(comment_count,0) * 0.15 + " +
-                    "DATEDIFF(publish_time, '2020-01-01') * 0.01" +
-                    ") DESC, publish_time DESC");
-                break;
             default:
-                // 默认按最新排序
                 wrapper.orderByDesc(Article::getIsTop)
                        .orderByDesc(Article::getPublishTime);
                 break;
         }
         
-        // 非综合和非最新排序时，添加次级排序
-        if (!"comprehensive".equals(sortBy) && !"latest".equals(sortBy) && !"default".equals(sortBy)) {
+        if (!"latest".equals(sortBy) && !"default".equals(sortBy)) {
             wrapper.orderByDesc(Article::getPublishTime);
         }
         
         Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
-        PageResult<Article> result = PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize);
         
-        // 只缓存最新排序
-        if ("latest".equals(sortBy) || "default".equals(sortBy)) {
-            try {
-                redisService.setWithMinutes(cacheKey, result, RedisService.EXPIRE_SHORT);
-            } catch (Exception e) {
-                // 缓存存储失败，忽略
+        // 转换为 VO 并填充作者信息
+        List<ArticleVO> voList = pageResult.getRecords().stream().map(article -> {
+            ArticleVO vo = new ArticleVO();
+            BeanUtils.copyProperties(article, vo);
+            
+            // 获取作者信息
+            User author = userService.getById(article.getUserId());
+            if (author != null) {
+                UserVO authorVO = new UserVO();
+                authorVO.setId(author.getId());
+                authorVO.setUsername(author.getUsername());
+                authorVO.setNickname(author.getNickname());
+                authorVO.setAvatar(author.getAvatar());
+                authorVO.setVipLevel(author.getVipLevel());
+                vo.setAuthor(authorVO);
             }
-        }
+            
+            // 获取分类名称
+            if (article.getCategoryId() != null) {
+                var category = categoryService.getById(article.getCategoryId());
+                if (category != null) {
+                    vo.setCategoryName(category.getName());
+                }
+            }
+            
+            return vo;
+        }).collect(Collectors.toList());
+        
+        PageResult<ArticleVO> result = PageResult.of(voList, pageResult.getTotal(), page, pageSize);
         
         return Result.success(result);
     }
@@ -383,10 +368,30 @@ public class ArticleController {
         
         Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
         
-        // 4. 为搜索结果添加标签信息
+        // 4. 为搜索结果添加作者和标签信息
         List<ArticleVO> voList = pageResult.getRecords().stream().map(article -> {
             ArticleVO vo = new ArticleVO();
             BeanUtils.copyProperties(article, vo);
+            
+            // 获取作者信息
+            User author = userService.getById(article.getUserId());
+            if (author != null) {
+                UserVO authorVO = new UserVO();
+                authorVO.setId(author.getId());
+                authorVO.setUsername(author.getUsername());
+                authorVO.setNickname(author.getNickname());
+                authorVO.setAvatar(author.getAvatar());
+                authorVO.setVipLevel(author.getVipLevel());
+                vo.setAuthor(authorVO);
+            }
+            
+            // 获取分类名称
+            if (article.getCategoryId() != null) {
+                var category = categoryService.getById(article.getCategoryId());
+                if (category != null) {
+                    vo.setCategoryName(category.getName());
+                }
+            }
             
             // 获取文章的标签
             List<ArticleTag> articleTags = articleTagService.list(
@@ -476,8 +481,13 @@ public class ArticleController {
             if (article != null && !article.getUserId().equals(userId)) {
                 notificationService.notifyArticleLiked(article.getUserId(), userId, id, article.getTitle());
             }
+            // 返回更新后的点赞数
+            Article updatedArticle = articleService.getById(id);
+            Map<String, Object> data = new HashMap<>();
+            data.put("likeCount", updatedArticle.getLikeCount());
+            return Result.success("点赞成功", data);
         }
-        return success ? Result.success("点赞成功") : Result.error("已经点赞过了");
+        return Result.error("已经点赞过了");
     }
 
     @Operation(summary = "取消点赞")
@@ -488,7 +498,14 @@ public class ArticleController {
             return Result.error(ResultCode.UNAUTHORIZED);
         }
         boolean success = articleLikeService.unlike(id, userId);
-        return success ? Result.success("取消点赞成功") : Result.error("未点赞");
+        if (success) {
+            // 返回更新后的点赞数
+            Article updatedArticle = articleService.getById(id);
+            Map<String, Object> data = new HashMap<>();
+            data.put("likeCount", updatedArticle.getLikeCount());
+            return Result.success("取消点赞成功", data);
+        }
+        return Result.error("未点赞");
     }
 
     @Operation(summary = "收藏文章")
@@ -505,8 +522,13 @@ public class ArticleController {
             if (article != null && !article.getUserId().equals(userId)) {
                 notificationService.notifyArticleFavorited(article.getUserId(), userId, id, article.getTitle());
             }
+            // 返回更新后的收藏数
+            Article updatedArticle = articleService.getById(id);
+            Map<String, Object> data = new HashMap<>();
+            data.put("favoriteCount", updatedArticle.getFavoriteCount());
+            return Result.success("收藏成功", data);
         }
-        return success ? Result.success("收藏成功") : Result.error("已经收藏过了");
+        return Result.error("已经收藏过了");
     }
 
     @Operation(summary = "取消收藏")
@@ -517,7 +539,14 @@ public class ArticleController {
             return Result.error(ResultCode.UNAUTHORIZED);
         }
         boolean success = articleFavoriteService.unfavorite(id, userId);
-        return success ? Result.success("取消收藏成功") : Result.error("未收藏");
+        if (success) {
+            // 返回更新后的收藏数
+            Article updatedArticle = articleService.getById(id);
+            Map<String, Object> data = new HashMap<>();
+            data.put("favoriteCount", updatedArticle.getFavoriteCount());
+            return Result.success("取消收藏成功", data);
+        }
+        return Result.error("未收藏");
     }
 
     @Operation(summary = "用户发布文章")

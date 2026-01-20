@@ -1,0 +1,133 @@
+/* pages/user/settings/index.wxss */
+
+.container {
+  min-height: 100vh;
+  background: var(--bg-dark);
+  padding-bottom: 40rpx;
+}
+
+/* 导航栏 */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
+  background: var(--bg-card);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 2rpx solid var(--border-color);
+}
+
+.nav-left, .nav-right {
+  width: 80rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* 设置列表 */
+.settings-list {
+  padding: 20rpx;
+}
+
+.section {
+  margin-bottom: 32rpx;
+}
+
+.section-title {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  padding: 0 24rpx 16rpx;
+  font-weight: 500;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  padding: 28rpx 24rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  transition: all 0.3s;
+}
+
+.setting-item:first-of-type {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.setting-item:last-of-type {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-bottom: none;
+}
+
+.setting-item:only-of-type {
+  border-radius: var(--radius-lg);
+  border-bottom: none;
+}
+
+.setting-item:active {
+  background: var(--bg-card-hover);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex: 1;
+}
+
+.item-label {
+  font-size: var(--font-md);
+  color: var(--text-primary);
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.item-value {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  max-width: 300rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 退出登录 */
+.logout-section {
+  padding: 40rpx 20rpx;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  background: rgba(239, 68, 68, 0.1);
+  border: 2rpx solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 28rpx;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: #ef4444;
+  transition: all 0.3s;
+}
+
+.logout-btn:active {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(0.98);
+}

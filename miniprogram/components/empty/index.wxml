@@ -1,0 +1,8 @@
+<!-- components/empty/index.wxml -->
+<view class="empty">
+  <view class="icon">{{icon}}</view>
+  <view class="text">{{text}}</view>
+  <button wx:if="{{buttonText}}" class="button" bindtap="handleButtonTap">
+    {{buttonText}}
+  </button>
+</view>

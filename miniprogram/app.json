@@ -1,0 +1,85 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/article/detail/index",
+    "pages/article/list/index",
+    "pages/category/index/index",
+    "pages/category/detail/index",
+    "pages/tag/index/index",
+    "pages/tag/detail/index",
+    "pages/user/profile/index",
+    "pages/user/detail/index",
+    "pages/user/following/index",
+    "pages/user/followers/index",
+    "pages/user/favorites/index",
+    "pages/user/likes/index",
+    "pages/user/comments/index",
+    "pages/user/settings/index",
+    "pages/message/list/index",
+    "pages/message/chat/index",
+    "pages/notification/index/index",
+    "pages/search/index/index",
+    "pages/login/index/index",
+    "pages/login/register/index",
+    "pages/login/forgot/index"
+  ],
+  "subPackages": [
+    {
+      "root": "packageVip",
+      "pages": [
+        "pages/activate/index",
+        "pages/center/index"
+      ]
+    },
+    {
+      "root": "packageAI",
+      "pages": [
+        "pages/chat/index"
+      ]
+    }
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#1a2942",
+    "navigationBarTitleText": "智能博客",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0a1628",
+    "enablePullDownRefresh": true
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#64748b",
+    "selectedColor": "#3b82f6",
+    "backgroundColor": "#1a2942",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/category/index/index",
+        "text": "分类"
+      },
+      {
+        "pagePath": "pages/message/list/index",
+        "text": "消息"
+      },
+      {
+        "pagePath": "pages/user/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于获取天气信息"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

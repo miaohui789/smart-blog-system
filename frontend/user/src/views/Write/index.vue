@@ -29,6 +29,10 @@
 
     <div class="write-body">
       <div class="editor-container">
+        <button class="fullscreen-btn" @click="toggleFullscreen" title="全屏编辑">
+          <el-icon><FullScreen /></el-icon>
+          <span>全屏</span>
+        </button>
         <MdEditor 
           v-model="form.content" 
           :theme="editorTheme"
@@ -36,10 +40,6 @@
           :code-theme="'atom'"
           @onUploadImg="handleUploadImg"
         />
-        <button class="fullscreen-btn" @click="toggleFullscreen" title="全屏编辑">
-          <el-icon><FullScreen /></el-icon>
-          <span>全屏</span>
-        </button>
       </div>
 
       <div class="settings-panel glass-card">
@@ -341,6 +341,14 @@ onMounted(async () => {
   top: 0;
   z-index: 100;
   transition: background-color 0.3s, border-color 0.3s;
+  
+  .title-input {
+    flex: 1;
+  }
+  
+  .header-actions {
+    flex-shrink: 0;
+  }
 }
 
 .title-input {
@@ -366,6 +374,7 @@ onMounted(async () => {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: $spacing-sm;
 }
 
@@ -458,7 +467,7 @@ onMounted(async () => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   
   :deep(.md-editor) {
     flex: 1;

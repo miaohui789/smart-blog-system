@@ -96,8 +96,13 @@
 
         <!-- 文章正文 -->
         <div class="article-body">
-          <div v-if="articleContent" class="content-html" v-html="articleContent"></div>
-          <div v-else-if="article.content" class="content-raw">{{ article.content }}</div>
+          <MdPreview 
+            v-if="article.content" 
+            :modelValue="article.content" 
+            :theme="editorTheme"
+            :showCodeRowNumber="true"
+            previewTheme="github"
+          />
           <el-empty v-else description="暂无内容" />
         </div>
 
@@ -389,17 +394,14 @@ import { viewArticle, leaveArticle, onNewComment } from '@/utils/websocket'
 import Loading from '@/components/Loading/index.vue'
 import VipBadge from '@/components/VipBadge/index.vue'
 import VipUsername from '@/components/VipUsername/index.vue'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/atom-one-dark.css'
-
-// 配置 highlight.js
-hljs.configure({
-  ignoreUnescapedHTML: true
-})
+import { MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/preview.css'
+import { useThemeStore } from '@/stores/theme'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const themeStore = useThemeStore()
 
 const article = ref(null)
 const comments = ref([])
@@ -410,6 +412,9 @@ const commentContent = ref('')
 const replyTo = ref(null)
 const vipInfo = ref({ isVip: false })
 const heatingArticle = ref(false)
+
+// 编辑器主题
+const editorTheme = computed(() => themeStore.isDark ? 'dark' : 'light')
 
 // 关注作者相关
 const isFollowingAuthor = ref(false)
@@ -490,308 +495,6 @@ function goUserProfile(userId) {
   }
 }
 
-// 兼容的复制方法（支持 HTTP）
-function copyToClipboard(text) {
-  return new Promise((resolve, reject) => {
-    // 优先使用 Clipboard API
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(resolve).catch(reject)
-    } else {
-      // 降级方案：使用 execCommand
-      const textArea = document.createElement('textarea')
-      textArea.value = text
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-9999px'
-      textArea.style.top = '-9999px'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
-      
-      try {
-        const successful = document.execCommand('copy')
-        document.body.removeChild(textArea)
-        if (successful) {
-          resolve()
-        } else {
-          reject(new Error('复制失败'))
-        }
-      } catch (err) {
-        document.body.removeChild(textArea)
-        reject(err)
-      }
-    }
-  })
-}
-
-// 代码高亮并添加复制按钮
-let highlightTimer = null
-function highlightCode() {
-  if (highlightTimer) clearTimeout(highlightTimer)
-  
-  highlightTimer = setTimeout(() => {
-    nextTick(() => {
-      const preElements = document.querySelectorAll('.article-body pre')
-      
-      preElements.forEach((pre) => {
-        // 如果已经有复制按钮，跳过
-        if (pre.querySelector('.copy-btn')) return
-        
-        // 获取 code 元素
-        let codeBlock = pre.querySelector('code')
-        
-        // 在高亮之前保存原始代码内容
-        let originalCode = ''
-        if (codeBlock) {
-          originalCode = codeBlock.textContent || ''
-        } else {
-          originalCode = pre.textContent || ''
-        }
-        originalCode = originalCode.trim()
-        
-        // 从 class 中提取语言
-        const langMatch = (codeBlock?.className || pre.className).match(/language-(\w+)/i)
-        const lang = langMatch ? langMatch[1] : ''
-        const langDisplay = getLanguageDisplay(lang)
-        
-        // 高亮代码
-        if (codeBlock && !codeBlock.classList.contains('hljs')) {
-          try { hljs.highlightElement(codeBlock) } catch (e) {}
-        }
-        
-        // 添加包装类
-        pre.classList.add('code-block-wrapper')
-        
-        // 创建或获取头部
-        let header = pre.querySelector('.code-header')
-        if (!header) {
-          header = document.createElement('div')
-          header.className = 'code-header'
-          header.innerHTML = `<span class="code-lang">${langDisplay}</span>`
-          pre.insertBefore(header, pre.firstChild)
-        }
-        
-        // 创建复制按钮
-        const copyBtn = document.createElement('button')
-        copyBtn.className = 'copy-btn'
-        copyBtn.type = 'button'
-        copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-text">复制代码</span>`
-        
-        // 将原始代码保存到按钮的 data 属性中
-        copyBtn.dataset.code = originalCode
-        
-        copyBtn.onclick = async (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          
-          if (!userStore.isLoggedIn) {
-            ElMessage.warning('请先登录后再复制代码')
-            router.push('/login')
-            return
-          }
-          
-          // 从 data 属性获取保存的原始代码
-          const code = copyBtn.dataset.code || ''
-          
-          if (!code) {
-            ElMessage.warning('代码内容为空')
-            return
-          }
-          
-          console.log('复制代码长度:', code.length, '行数:', code.split('\n').length)
-          
-          try {
-            await copyToClipboard(code)
-            copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="copy-text">已复制!</span>`
-            copyBtn.classList.add('copied')
-            ElMessage.success('代码复制成功')
-            
-            setTimeout(() => {
-              copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-text">复制代码</span>`
-              copyBtn.classList.remove('copied')
-            }, 2000)
-          } catch (err) {
-            ElMessage.error('复制失败')
-          }
-        }
-        
-        header.appendChild(copyBtn)
-      })
-    })
-  }, 200)
-}
-
-// 计算属性：处理文章内容
-const articleContent = computed(() => {
-  if (!article.value) return ''
-  
-  const content = article.value.content
-  const contentHtml = article.value.contentHtml
-  
-  // 优先使用原始 markdown content 进行解析（确保代码块和表格正确渲染）
-  if (content && content.trim()) {
-    return parseMarkdown(content)
-  }
-  
-  // 如果没有 content，使用 contentHtml
-  if (contentHtml && contentHtml.trim()) {
-    return contentHtml
-  }
-  
-  return ''
-})
-
-// 获取语言显示名称
-function getLanguageDisplay(lang) {
-  if (!lang) return '代码'
-  const langMap = {
-    'js': 'JavaScript',
-    'javascript': 'JavaScript',
-    'ts': 'TypeScript',
-    'typescript': 'TypeScript',
-    'java': 'Java',
-    'python': 'Python',
-    'py': 'Python',
-    'html': 'HTML',
-    'css': 'CSS',
-    'scss': 'SCSS',
-    'sass': 'Sass',
-    'less': 'Less',
-    'json': 'JSON',
-    'xml': 'XML',
-    'sql': 'SQL',
-    'bash': 'Bash',
-    'shell': 'Shell',
-    'sh': 'Shell',
-    'vue': 'Vue',
-    'jsx': 'JSX',
-    'tsx': 'TSX',
-    'go': 'Go',
-    'rust': 'Rust',
-    'c': 'C',
-    'cpp': 'C++',
-    'csharp': 'C#',
-    'cs': 'C#',
-    'php': 'PHP',
-    'ruby': 'Ruby',
-    'swift': 'Swift',
-    'kotlin': 'Kotlin',
-    'yaml': 'YAML',
-    'yml': 'YAML',
-    'markdown': 'Markdown',
-    'md': 'Markdown',
-    'dockerfile': 'Dockerfile',
-    'nginx': 'Nginx',
-    'text': '纯文本',
-    '': '纯文本'
-  }
-  return langMap[lang.toLowerCase()] || lang.toUpperCase()
-}
-
-// Markdown 解析函数
-function parseMarkdown(text) {
-  if (!text) return ''
-  
-  // 处理字面量 \n 转换为真正的换行
-  let content = text.replace(/\\n/g, '\n')
-  
-  // 处理代码块 - 支持多种格式
-  // 格式1: ```lang\ncode\n``` 或 ```\ncode\n```
-  content = content.replace(/```(\w*)\s*\n([\s\S]*?)\n```/g, (match, lang, code) => {
-    const trimmedCode = code.replace(/\s+$/, '')
-    const langDisplay = getLanguageDisplay(lang || 'text')
-    const langClass = lang ? `language-${lang}` : 'language-text'
-    return `<pre class="code-block-wrapper" data-lang="${lang || 'text'}"><div class="code-header"><span class="code-lang">${langDisplay}</span></div><code class="${langClass}">${escapeHtml(trimmedCode)}</code></pre>`
-  })
-  
-  // 格式2: ```lang code``` (单行或无换行)
-  content = content.replace(/```(\w*)\s*([\s\S]*?)```/g, (match, lang, code) => {
-    const trimmedCode = code.replace(/\s+$/, '').replace(/^\s+/, '')
-    const langDisplay = getLanguageDisplay(lang || 'text')
-    const langClass = lang ? `language-${lang}` : 'language-text'
-    return `<pre class="code-block-wrapper" data-lang="${lang || 'text'}"><div class="code-header"><span class="code-lang">${langDisplay}</span></div><code class="${langClass}">${escapeHtml(trimmedCode)}</code></pre>`
-  })
-  
-  // 处理行内代码
-  content = content.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-  
-  // 处理表格
-  content = content.replace(/^(\|.+\|)\r?\n(\|[-:\s|]+\|)\r?\n((?:\|.+\|\r?\n?)+)/gm, (match, header, separator, body) => {
-    // 解析表头
-    const headers = header.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
-    
-    // 解析对齐方式
-    const aligns = separator.split('|').filter(cell => cell.trim() !== '').map(cell => {
-      const trimmed = cell.trim()
-      if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center'
-      if (trimmed.endsWith(':')) return 'right'
-      return 'left'
-    })
-    
-    // 解析表体
-    const rows = body.trim().split('\n').map(row => 
-      row.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
-    )
-    
-    // 生成 HTML
-    let tableHtml = '<div class="table-wrapper"><table class="md-table">'
-    
-    // 表头
-    tableHtml += '<thead><tr>'
-    headers.forEach((cell, i) => {
-      const align = aligns[i] || 'left'
-      tableHtml += `<th style="text-align: ${align}">${cell}</th>`
-    })
-    tableHtml += '</tr></thead>'
-    
-    // 表体
-    tableHtml += '<tbody>'
-    rows.forEach(row => {
-      tableHtml += '<tr>'
-      row.forEach((cell, i) => {
-        const align = aligns[i] || 'left'
-        tableHtml += `<td style="text-align: ${align}">${cell}</td>`
-      })
-      tableHtml += '</tr>'
-    })
-    tableHtml += '</tbody></table></div>'
-    
-    return tableHtml
-  })
-  
-  // 处理标题
-  content = content.replace(/^### (.*$)/gm, '<h3>$1</h3>')
-  content = content.replace(/^## (.*$)/gm, '<h2>$1</h2>')
-  content = content.replace(/^# (.*$)/gm, '<h1>$1</h1>')
-  
-  // 处理粗体和斜体
-  content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  content = content.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-  
-  // 处理图片 ![alt](url) - 必须在链接之前处理
-  content = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-img" />')
-  
-  // 处理链接 [text](url)
-  content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-  
-  // 处理段落和换行
-  const paragraphs = content.split(/\n\n+/)
-  content = paragraphs.map(p => {
-    p = p.trim()
-    if (!p) return ''
-    if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol') || p.startsWith('<img') || p.startsWith('<div class="table-wrapper">')) {
-      return p
-    }
-    return `<p>${p.replace(/\n/g, '<br>')}</p>`
-  }).join('\n')
-  
-  return content
-}
-
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }
-  return text.replace(/[&<>"']/g, m => map[m])
-}
-
 // 获取文章详情
 async function fetchArticle() {
   loading.value = true
@@ -799,10 +502,6 @@ async function fetchArticle() {
     const res = await getArticleDetail(route.params.id)
     if (res && res.data) {
       article.value = res.data
-      // 文章加载成功后，延迟执行代码高亮
-      setTimeout(() => {
-        highlightCode()
-      }, 200)
     }
   } catch (e) {
     console.error('获取文章失败:', e)
@@ -912,13 +611,23 @@ async function handleLike() {
   }
   try {
     if (article.value.isLiked) {
-      await unlikeArticle(article.value.id)
+      const res = await unlikeArticle(article.value.id)
       article.value.isLiked = false
-      article.value.likeCount = Math.max(0, (article.value.likeCount || 1) - 1)
+      // 使用后端返回的实际数量
+      if (res.data && typeof res.data.likeCount === 'number') {
+        article.value.likeCount = res.data.likeCount
+      } else {
+        article.value.likeCount = Math.max(0, (article.value.likeCount || 1) - 1)
+      }
     } else {
-      await likeArticle(article.value.id)
+      const res = await likeArticle(article.value.id)
       article.value.isLiked = true
-      article.value.likeCount = (article.value.likeCount || 0) + 1
+      // 使用后端返回的实际数量
+      if (res.data && typeof res.data.likeCount === 'number') {
+        article.value.likeCount = res.data.likeCount
+      } else {
+        article.value.likeCount = (article.value.likeCount || 0) + 1
+      }
     }
   } catch (e) {
     console.error(e)
@@ -933,13 +642,23 @@ async function handleFavorite() {
   }
   try {
     if (article.value.isFavorited) {
-      await unfavoriteArticle(article.value.id)
+      const res = await unfavoriteArticle(article.value.id)
       article.value.isFavorited = false
-      article.value.favoriteCount = Math.max(0, (article.value.favoriteCount || 1) - 1)
+      // 使用后端返回的实际数量
+      if (res.data && typeof res.data.favoriteCount === 'number') {
+        article.value.favoriteCount = res.data.favoriteCount
+      } else {
+        article.value.favoriteCount = Math.max(0, (article.value.favoriteCount || 1) - 1)
+      }
     } else {
-      await favoriteArticle(article.value.id)
+      const res = await favoriteArticle(article.value.id)
       article.value.isFavorited = true
-      article.value.favoriteCount = (article.value.favoriteCount || 0) + 1
+      // 使用后端返回的实际数量
+      if (res.data && typeof res.data.favoriteCount === 'number') {
+        article.value.favoriteCount = res.data.favoriteCount
+      } else {
+        article.value.favoriteCount = (article.value.favoriteCount || 0) + 1
+      }
     }
   } catch (e) {
     console.error(e)
@@ -1130,13 +849,6 @@ watch(() => route.params.id, (newId) => {
     fetchArticle()
   }
 })
-
-// 监听文章内容变化，执行代码高亮
-watch(articleContent, (newVal) => {
-  if (newVal) {
-    highlightCode()
-  }
-}, { immediate: true })
 
 // 存储取消订阅函数
 let unsubscribeNewComment = null
@@ -1548,265 +1260,187 @@ function addNewCommentToList(newComment) {
 }
 
 .article-body {
-  color: var(--text-secondary);
-  font-size: 16px;
-  line-height: 1.9;
   min-height: 200px;
-
-  .content-raw {
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  :deep(h1), :deep(h2), :deep(h3) {
-    color: var(--text-primary);
-    margin: 28px 0 16px;
-    font-weight: 600;
-  }
-  :deep(h1) { font-size: 26px; }
-  :deep(h2) { 
-    font-size: 22px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-  }
-  :deep(h3) { font-size: 18px; }
-  :deep(p) { margin-bottom: 16px; }
   
-  // 代码块容器样式
-  :deep(.code-block-wrapper),
-  :deep(pre) {
-    background: #1e1e1e !important;
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 16px 0;
-    position: relative;
-    border: 1px solid #333;
+  // md-editor-v3 预览组件样式覆盖
+  :deep(.md-editor-preview-wrapper) {
+    padding: 0;
+    background: var(--bg-card) !important;
+  }
+  
+  :deep(.md-editor-preview) {
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1.9;
+    background: var(--bg-card) !important;
     
-    // 代码头部（语言标签 + 复制按钮）
-    .code-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 16px;
-      background: #2d2d2d;
-      border-bottom: 1px solid #404040;
-      
-      .code-lang {
-        font-size: 12px;
-        font-weight: 600;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      
-      .copy-btn {
-        display: inline-flex !important;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        background: #3a3a3a;
-        border: 1px solid #555;
-        border-radius: 6px;
-        color: #ccc;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-        
-        svg {
-          width: 14px;
-          height: 14px;
-          flex-shrink: 0;
-        }
-        
-        span, .copy-text {
-          display: inline !important;
-          font-size: 12px !important;
-          color: inherit !important;
-        }
-        
-        &:hover {
-          background: #4a4a4a;
-          border-color: #777;
-          color: #fff;
-        }
-        
-        &.copied {
-          background: rgba(34, 197, 94, 0.2);
-          border-color: #22c55e;
-          color: #22c55e;
-        }
-      }
-    }
-    
-    code {
-      display: block;
-      padding: 16px;
-      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      background: transparent !important;
-      color: #d4d4d4;
-      white-space: pre;
-      overflow-x: auto;
-    }
-  }
-  
-  // 没有头部的旧代码块兼容
-  :deep(pre:not(.code-block-wrapper)) {
-    padding: 16px;
-    
-    .copy-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      opacity: 0;
-    }
-    &:hover .copy-btn {
-      opacity: 1;
-    }
-  }
-  
-  // highlight.js 语法高亮颜色 - VS Code Dark+ 主题风格
-  :deep(.hljs) {
-    background: transparent !important;
-    color: #d4d4d4 !important;
-  }
-  
-  :deep(.hljs-keyword),
-  :deep(.hljs-selector-tag),
-  :deep(.hljs-literal),
-  :deep(.hljs-section),
-  :deep(.hljs-link) {
-    color: #569cd6 !important;
-  }
-  
-  :deep(.hljs-function) {
-    color: #dcdcaa !important;
-  }
-  
-  :deep(.hljs-string),
-  :deep(.hljs-attr),
-  :deep(.hljs-symbol),
-  :deep(.hljs-bullet),
-  :deep(.hljs-addition) {
-    color: #ce9178 !important;
-  }
-  
-  :deep(.hljs-title),
-  :deep(.hljs-title.function_) {
-    color: #dcdcaa !important;
-  }
-  
-  :deep(.hljs-number) {
-    color: #b5cea8 !important;
-  }
-  
-  :deep(.hljs-variable),
-  :deep(.hljs-template-variable) {
-    color: #9cdcfe !important;
-  }
-  
-  :deep(.hljs-tag) {
-    color: #569cd6 !important;
-  }
-  
-  :deep(.hljs-comment),
-  :deep(.hljs-quote),
-  :deep(.hljs-deletion),
-  :deep(.hljs-meta) {
-    color: #6a9955 !important;
-  }
-  
-  :deep(.hljs-params) {
-    color: #9cdcfe !important;
-  }
-  
-  :deep(.hljs-built_in) {
-    color: #4ec9b0 !important;
-  }
-  
-  :deep(.hljs-name),
-  :deep(.hljs-attribute) {
-    color: #9cdcfe !important;
-  }
-  
-  :deep(.hljs-class) {
-    color: #4ec9b0 !important;
-  }
-  
-  :deep(.hljs-property) {
-    color: #9cdcfe !important;
-  }
-  
-  :deep(.inline-code) {
-    background: rgba(59, 130, 246, 0.15);
-    color: var(--primary-color);
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 13px;
-  }
-  :deep(a) {
-    color: var(--primary-color);
-    text-decoration: underline;
-  }
-  :deep(strong) {
-    color: var(--text-primary);
-  }
-  
-  // 文章内图片样式
-  :deep(.article-img),
-  :deep(img:not(.el-avatar img)) {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 16px 0;
-    display: block;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  // 表格样式
-  :deep(.table-wrapper) {
-    overflow-x: auto;
-    margin: 20px 0;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-  }
-  
-  :deep(.md-table) {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    
-    th, td {
-      padding: 12px 16px;
-      border: 1px solid var(--border-color);
-      word-break: break-word;
-    }
-    
-    th {
-      background: var(--bg-card-hover);
+    // 标题样式
+    h1, h2, h3, h4, h5, h6 {
       color: var(--text-primary);
+      margin: 28px 0 16px;
       font-weight: 600;
-      white-space: nowrap;
     }
     
-    td {
-      background: var(--bg-card);
+    h1 { font-size: 26px; }
+    h2 { 
+      font-size: 22px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    h3 { font-size: 18px; }
+    
+    // 段落
+    p {
+      margin-bottom: 16px;
       color: var(--text-secondary);
     }
     
-    tbody tr:hover td {
-      background: rgba(59, 130, 246, 0.05);
+    // 代码块样式
+    pre {
+      border-radius: 10px;
+      margin: 16px 0;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      
+      code {
+        background: transparent !important;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre;
+        overflow-x: auto;
+      }
+    }
+  }
+}
+
+// 暗色主题代码块背景
+:root[data-theme="dark"] {
+  .article-body {
+    :deep(.md-editor-preview) {
+      pre {
+        background: #1e1e1e !important;
+      }
+    }
+  }
+}
+
+// 亮色主题代码块背景
+:root[data-theme="light"] {
+  .article-body {
+    :deep(.md-editor-preview) {
+      pre {
+        background: #f4f4f5 !important;
+      }
     }
     
-    tbody tr:nth-child(even) td {
-      background: var(--bg-card-hover);
+    // 行内代码
+    code:not(pre code) {
+      background: rgba(59, 130, 246, 0.15) !important;
+      color: var(--primary-color) !important;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 13px;
     }
     
-    tbody tr:nth-child(even):hover td {
-      background: rgba(59, 130, 246, 0.08);
+    // 链接
+    a {
+      color: var(--primary-color);
+      text-decoration: underline;
+      
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+    
+    // 粗体
+    strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    
+    // 图片
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 16px 0;
+      display: block;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    // 表格
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 20px 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      
+      th, td {
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        word-break: break-word;
+      }
+      
+      th {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      
+      td {
+        background: transparent;
+        color: var(--text-secondary);
+      }
+      
+      tbody tr:hover td {
+        background: rgba(59, 130, 246, 0.05);
+      }
+      
+      tbody tr:nth-child(even) td {
+        background: var(--bg-card-hover);
+      }
+      
+      tbody tr:nth-child(even):hover td {
+        background: rgba(59, 130, 246, 0.08);
+      }
+    }
+    
+    // 列表
+    ul, ol {
+      margin: 16px 0;
+      padding-left: 24px;
+      color: var(--text-secondary);
+      
+      li {
+        margin: 8px 0;
+        line-height: 1.7;
+      }
+    }
+    
+    // 引用
+    blockquote {
+      margin: 16px 0;
+      padding: 12px 20px;
+      border-left: 4px solid var(--primary-color);
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      
+      p {
+        margin: 0;
+      }
+    }
+    
+    // 分隔线
+    hr {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: 24px 0;
     }
   }
 }

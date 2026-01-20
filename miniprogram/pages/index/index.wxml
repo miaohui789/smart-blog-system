@@ -1,0 +1,125 @@
+<!-- pages/index/index.wxml -->
+<view class="container">
+  <!-- 顶部搜索栏 -->
+  <view class="top-bar">
+    <view class="search-box" bindtap="goToSearch">
+      <van-icon name="search" size="16px" color="#64748b" />
+      <text class="search-placeholder">搜索文章、标签、用户...</text>
+    </view>
+    <view class="refresh-icon {{refreshing ? 'rotating' : ''}}" bindtap="handleRefresh">
+      <van-icon name="replay" size="20px" color="#64748b" />
+    </view>
+  </view>
+
+  <!-- 轮播图 -->
+  <view class="banner-section">
+    <swiper 
+      class="banner-swiper" 
+      indicator-dots="{{true}}"
+      indicator-color="rgba(255, 255, 255, 0.3)"
+      indicator-active-color="#3b82f6"
+      autoplay="{{true}}"
+      interval="{{5000}}"
+      duration="{{500}}"
+      circular="{{true}}"
+    >
+      <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap" data-url="{{item.url}}">
+        <image class="banner-image" src="{{item.image}}" mode="aspectFill" />
+        <view class="banner-overlay">
+          <text class="banner-title">{{item.title}}</text>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="quick-entry">
+    <view class="entry-item" wx:for="{{quickEntries}}" wx:key="id" bindtap="onEntryTap" data-path="{{item.path}}">
+      <view class="entry-icon" style="background: {{item.bgColor}}">
+        <van-icon name="{{item.icon}}" size="40px" color="#fff" />
+      </view>
+      <text class="entry-name">{{item.name}}</text>
+    </view>
+  </view>
+
+  <!-- 推荐文章标题 -->
+  <view class="section-header">
+    <view class="section-title">
+      <van-icon name="fire-o" size="18px" color="#3b82f6" />
+      <text>推荐文章</text>
+    </view>
+    <view class="section-more" bindtap="goToMore">
+      <text>热门</text>
+      <van-icon name="arrow" size="14px" color="#64748b" />
+    </view>
+  </view>
+
+  <!-- 文章列表 -->
+  <view class="article-list">
+    <view 
+      class="article-card" 
+      wx:for="{{articles}}" 
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+    >
+      <!-- 左侧内容 -->
+      <view class="card-left">
+        <!-- 作者信息 -->
+        <view class="author-row">
+          <image class="author-avatar" src="{{item.author ? item.author.avatar : 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'}}" mode="aspectFill" />
+          <text class="author-name">{{item.author ? item.author.nickname : '匿名用户'}}</text>
+          <view class="vip-badge" wx:if="{{item.author && item.author.vipLevel > 0}}">VIP</view>
+        </view>
+        
+        <!-- 标题 -->
+        <view class="article-title">{{item.title}}</view>
+        
+        <!-- 摘要 -->
+        <view class="article-summary">{{item.summary}}</view>
+        
+        <!-- 底部信息 -->
+        <view class="card-footer">
+          <view class="footer-left">
+            <view class="category-tag">{{item.categoryName || '前端开发'}}</view>
+            <text class="publish-time">{{item.createTime || '刚刚'}}</text>
+          </view>
+          <view class="article-stats">
+            <view class="stat-item">
+              <van-icon name="eye-o" size="12px" color="#64748b" />
+              <text>{{item.viewCount}}</text>
+            </view>
+            <view class="stat-item">
+              <van-icon name="good-job-o" size="12px" color="#64748b" />
+              <text>{{item.likeCount}}</text>
+            </view>
+            <view class="stat-item">
+              <van-icon name="chat-o" size="12px" color="#64748b" />
+              <text>{{item.commentCount}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 右侧封面 -->
+      <image class="card-cover" src="{{item.cover}}" mode="aspectFill" wx:if="{{item.cover}}" />
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading && !refreshing}}">
+    <van-loading type="spinner" color="#3b82f6" />
+    <text>加载中...</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && articles.length > 0}}">
+    <text>没有更多了</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+    <van-icon name="notes-o" size="80px" color="#64748b" />
+    <text class="empty-text">暂无文章</text>
+  </view>
+</view>

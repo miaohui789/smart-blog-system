@@ -1,0 +1,147 @@
+<!-- pages/category/index/index.wxml -->
+<view class="container">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">分类标签</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 标签切换 -->
+  <view class="tabs">
+    <view class="tab-item {{activeTab === 'category' ? 'active' : ''}}" bindtap="switchTab" data-tab="category">
+      <text>分类</text>
+    </view>
+    <view class="tab-item {{activeTab === 'tag' ? 'active' : ''}}" bindtap="switchTab" data-tab="tag">
+      <text>标签</text>
+    </view>
+  </view>
+
+  <!-- 浮动切换按钮 -->
+  <view class="float-btn" bindtap="toggleViewMode">
+    <van-icon name="{{viewMode === 'grid' ? 'apps-o' : 'bars'}}" size="24px" color="#fff" />
+  </view>
+
+  <!-- 分类网格 -->
+  <view class="category-grid" wx:if="{{activeTab === 'category' && !loading && viewMode === 'grid'}}">
+    <view 
+      class="category-card" 
+      wx:for="{{categories}}" 
+      wx:key="id"
+      bindtap="goToCategoryDetail"
+      data-id="{{item.id}}"
+      style="background: {{item.bgColor}};"
+    >
+      <view class="card-icon">
+        <van-icon name="{{item.icon}}" size="60px" color="#fff" />
+      </view>
+      <view class="card-info">
+        <view class="card-name">{{item.name}}</view>
+        <view class="card-count">{{item.articleCount}} 篇文章</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分类列表 -->
+  <view class="category-list" wx:if="{{activeTab === 'category' && !loading && viewMode === 'list'}}">
+    <view 
+      class="category-list-item" 
+      wx:for="{{categories}}" 
+      wx:key="id"
+    >
+      <!-- 分类头部 -->
+      <view class="list-item-header" bindtap="goToCategoryDetail" data-id="{{item.id}}">
+        <view class="header-left">
+          <view class="category-icon" style="background: {{item.bgColor}};">
+            <van-icon name="{{item.icon}}" size="28px" color="#fff" />
+          </view>
+          <view class="category-info">
+            <text class="category-name">{{item.name}}</text>
+            <text class="category-count">{{item.articleCount}} 篇文章</text>
+          </view>
+        </view>
+        <van-icon name="arrow" size="16px" color="#64748b" />
+      </view>
+
+      <!-- 热门文章 -->
+      <view class="hot-articles" wx:if="{{item.hotArticles && item.hotArticles.length > 0}}">
+        <view class="hot-articles-header">
+          <van-icon name="fire-o" size="14px" color="#64748b" />
+          <text>热门文章</text>
+        </view>
+        <view 
+          class="hot-article-item" 
+          wx:for="{{item.hotArticles}}" 
+          wx:key="id"
+          wx:for-item="article"
+          bindtap="goToArticleDetail"
+          data-id="{{article.id}}"
+        >
+          <text class="article-title">{{article.title}}</text>
+          <text class="article-views">{{article.viewCount}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 标签网格 -->
+  <view class="tag-container" wx:if="{{activeTab === 'tag' && !loading}}">
+    <!-- 热门标签 -->
+    <view class="tag-section" wx:if="{{hotTags.length > 0}}">
+      <view class="section-header">
+        <van-icon name="fire-o" size="18px" color="#f59e0b" />
+        <text class="section-title">热门标签</text>
+      </view>
+      <view class="hot-tags">
+        <view 
+          class="hot-tag-item" 
+          wx:for="{{hotTags}}" 
+          wx:key="id"
+          bindtap="goToTagDetail"
+          data-id="{{item.id}}"
+        >
+          <text class="tag-name">#{{item.name}}</text>
+          <text class="tag-count">{{item.articleCount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 全部标签 -->
+    <view class="tag-section">
+      <view class="section-header">
+        <text class="section-title">全部标签</text>
+      </view>
+      <view class="all-tags">
+        <view 
+          class="all-tag-item" 
+          wx:for="{{tags}}" 
+          wx:key="id"
+          bindtap="goToTagDetail"
+          data-id="{{item.id}}"
+        >
+          <text class="tag-name">#{{item.name}}</text>
+          <text class="tag-count">{{item.articleCount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提示 -->
+    <view class="tag-tip">
+      <van-icon name="info-o" size="16px" color="#64748b" />
+      <text>点击标签可以查看相关文章，标签大小代表文章数量</text>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <van-loading type="spinner" color="#3b82f6" size="40px" />
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && ((activeTab === 'category' && categories.length === 0) || (activeTab === 'tag' && tags.length === 0))}}">
+    <van-icon name="{{activeTab === 'category' ? 'apps-o' : 'label-o'}}" size="80px" color="#64748b" />
+    <text>暂无{{activeTab === 'category' ? '分类' : '标签'}}</text>
+  </view>
+</view>

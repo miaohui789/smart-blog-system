@@ -1,0 +1,74 @@
+<!--pages/message/chat/index.wxml-->
+<view class="container">
+  <!-- 消息列表 -->
+  <scroll-view
+    class="message-list"
+    scroll-y
+    scroll-into-view="{{scrollToView}}"
+    scroll-with-animation
+  >
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+      <text wx:if="{{!loadingMore}}">加载更多</text>
+      <text wx:else>加载中...</text>
+    </view>
+
+    <!-- 消息项 -->
+    <block wx:for="{{messages}}" wx:key="id">
+      <!-- 时间分割线 -->
+      <view class="time-divider" wx:if="{{item.showTime}}">
+        {{item.timeText}}
+      </view>
+
+      <!-- 撤回消息提示 -->
+      <view class="withdrawn-notice" wx:if="{{item.isWithdrawn}}">
+        {{item.isSelf ? '你撤回了一条消息' : '对方撤回了一条消息'}}
+      </view>
+
+      <!-- 正常消息 -->
+      <view
+        class="message-item {{item.isSelf ? 'self' : 'other'}}"
+        wx:else
+        id="msg-{{item.id}}"
+        bindlongpress="showMessageMenu"
+        data-message="{{item}}"
+      >
+        <!-- 头像 -->
+        <image
+          class="avatar"
+          src="{{item.isSelf ? userInfo.avatar : targetUser.avatar}}"
+          mode="aspectFill"
+        />
+
+        <!-- 消息气泡 -->
+        <view class="message-bubble">
+          <text>{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <!-- 输入框 -->
+  <view class="input-bar">
+    <input
+      class="message-input"
+      type="text"
+      value="{{inputText}}"
+      placeholder="说点什么..."
+      bindinput="onInputChange"
+      confirm-type="send"
+      bindconfirm="sendMessage"
+    />
+    <view class="send-btn" bindtap="sendMessage">
+      <van-icon name="arrow" size="24px" color="#fff" />
+    </view>
+  </view>
+</view>
+
+<!-- 消息菜单 -->
+<van-action-sheet
+  show="{{ showMenu }}"
+  actions="{{ menuActions }}"
+  bind:select="onMenuSelect"
+  bind:close="closeMenu"
+/>

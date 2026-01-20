@@ -1,0 +1,162 @@
+<!-- pages/login/forgot/index.wxml -->
+<view class="container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <van-icon name="arrow-left" size="24px" color="#cbd5e1" />
+  </view>
+
+  <!-- 步骤指示器 -->
+  <view class="steps">
+    <view class="step-item {{step >= 1 ? 'active' : ''}}">
+      <view class="step-circle">1</view>
+      <text class="step-text">滑动验证</text>
+    </view>
+    <view class="step-line {{step >= 2 ? 'active' : ''}}"></view>
+    <view class="step-item {{step >= 2 ? 'active' : ''}}">
+      <view class="step-circle">2</view>
+      <text class="step-text">邮箱验证</text>
+    </view>
+    <view class="step-line {{step >= 3 ? 'active' : ''}}"></view>
+    <view class="step-item {{step >= 3 ? 'active' : ''}}">
+      <view class="step-circle">3</view>
+      <text class="step-text">重置密码</text>
+    </view>
+  </view>
+
+  <!-- 步骤1: 滑动验证 -->
+  <view class="step-content" wx:if="{{step === 1}}">
+    <view class="step-icon">
+      <van-icon name="passed" size="80px" color="#f59e0b" />
+    </view>
+    <text class="step-title">安全验证</text>
+    <text class="step-desc">请完成滑动验证以继续</text>
+
+    <!-- 滑块验证 -->
+    <view class="slider-container">
+      <view class="slider-track">
+        <view class="slider-fill" style="width: {{sliderLeft}}px;"></view>
+        <view class="slider-text">{{sliderSuccess ? '验证成功' : '向右滑动完成验证'}}</view>
+      </view>
+      <view 
+        class="slider-btn {{sliderSuccess ? 'success' : ''}}" 
+        style="left: {{sliderLeft}}px;"
+        bindtouchstart="onSliderStart"
+        bindtouchmove="onSliderMove"
+        bindtouchend="onSliderEnd"
+      >
+        <van-icon name="{{sliderSuccess ? 'success' : 'arrow'}}" size="24px" color="#fff" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤2: 邮箱验证 -->
+  <view class="step-content" wx:if="{{step === 2}}">
+    <view class="step-icon">
+      <van-icon name="envelop-o" size="80px" color="#a855f7" />
+    </view>
+    <text class="step-title">邮箱验证</text>
+    <text class="step-desc">请输入您的注册邮箱</text>
+
+    <view class="form">
+      <!-- 邮箱地址 -->
+      <view class="form-item">
+        <text class="form-label">邮箱地址</text>
+        <view class="input-wrapper">
+          <van-icon name="envelop-o" size="20px" color="#64748b" />
+          <input 
+            class="form-input" 
+            type="text"
+            placeholder="请输入邮箱地址" 
+            value="{{email}}"
+            bindinput="onEmailInput"
+          />
+        </view>
+      </view>
+
+      <!-- 验证码 -->
+      <view class="form-item">
+        <text class="form-label">邮箱验证码</text>
+        <view class="input-wrapper code-wrapper">
+          <van-icon name="shield-o" size="20px" color="#64748b" />
+          <input 
+            class="form-input" 
+            type="text"
+            placeholder="请输入验证码" 
+            value="{{code}}"
+            bindinput="onCodeInput"
+          />
+          <button 
+            class="code-btn {{codeSending || countdown > 0 ? 'disabled' : ''}}" 
+            bindtap="sendCode"
+            disabled="{{codeSending || countdown > 0}}"
+          >
+            {{countdown > 0 ? countdown + 's' : '获取验证码'}}
+          </button>
+        </view>
+      </view>
+
+      <button class="next-btn" bindtap="verifyCode" loading="{{loading}}">
+        下一步
+      </button>
+    </view>
+  </view>
+
+  <!-- 步骤3: 重置密码 -->
+  <view class="step-content" wx:if="{{step === 3}}">
+    <view class="step-icon">
+      <van-icon name="success" size="80px" color="#10b981" />
+    </view>
+    <text class="step-title">重置密码</text>
+    <text class="step-desc">请设置新密码</text>
+
+    <view class="form">
+      <!-- 新密码 -->
+      <view class="form-item">
+        <text class="form-label">新密码</text>
+        <view class="input-wrapper">
+          <van-icon name="lock" size="20px" color="#64748b" />
+          <input 
+            class="form-input" 
+            password="{{!showPassword}}"
+            placeholder="请输入新密码（至少6位）" 
+            value="{{password}}"
+            bindinput="onPasswordInput"
+          />
+          <van-icon 
+            name="{{showPassword ? 'eye-o' : 'closed-eye'}}" 
+            size="20px" 
+            color="#64748b"
+            bindtap="togglePassword"
+            class="eye-icon"
+          />
+        </view>
+      </view>
+
+      <!-- 确认密码 -->
+      <view class="form-item">
+        <text class="form-label">确认密码</text>
+        <view class="input-wrapper">
+          <van-icon name="lock" size="20px" color="#64748b" />
+          <input 
+            class="form-input" 
+            password="{{!showConfirmPassword}}"
+            placeholder="请再次输入密码" 
+            value="{{confirmPassword}}"
+            bindinput="onConfirmPasswordInput"
+          />
+          <van-icon 
+            name="{{showConfirmPassword ? 'eye-o' : 'closed-eye'}}" 
+            size="20px" 
+            color="#64748b"
+            bindtap="toggleConfirmPassword"
+            class="eye-icon"
+          />
+        </view>
+      </view>
+
+      <button class="next-btn" bindtap="resetPassword" loading="{{loading}}">
+        完成重置
+      </button>
+    </view>
+  </view>
+</view>

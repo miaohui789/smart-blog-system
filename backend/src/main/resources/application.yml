@@ -8,6 +8,9 @@ server:
     max-connections: 2000
     accept-count: 100
     connection-timeout: 10000
+    # 减少内存占用
+    max-http-header-size: 8KB
+    max-swallow-size: 2MB
   # 开启响应压缩
   compression:
     enabled: true
@@ -34,13 +37,19 @@ spring:
           starttls:
             enable: true
             required: true
-  # Jackson优化
+  # Jackson优化 - 减少序列化内存
   jackson:
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
+      indent-output: false
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+    # 减少内存占用
+    generator:
+      write-numbers-as-strings: false
+    parser:
+      allow-comments: false
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -49,6 +58,12 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     # 生产环境关闭SQL日志
     log-impl: ${MYBATIS_LOG:org.apache.ibatis.logging.stdout.StdOutImpl}
+    # 减少内存占用
+    cache-enabled: true
+    lazy-loading-enabled: true
+    aggressive-lazy-loading: false
+    # 设置合理的超时时间
+    default-statement-timeout: 25
   global-config:
     db-config:
       # 逻辑删除配置

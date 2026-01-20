@@ -34,6 +34,12 @@ public class Message {
     /** 是否已撤回：0否 1是 */
     private Integer isWithdrawn;
     
+    /** 发送者是否删除：0否 1是 */
+    private Integer senderDeleted;
+    
+    /** 接收者是否删除：0否 1是 */
+    private Integer receiverDeleted;
+    
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     

@@ -1,0 +1,92 @@
+<!-- pages/login/index/index.wxml -->
+<view class="container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <van-icon name="arrow-left" size="24px" color="#cbd5e1" />
+  </view>
+
+  <!-- Logo -->
+  <view class="logo">
+    <view class="logo-icon">
+      <van-icon name="user-circle-o" size="60px" color="#fff" />
+    </view>
+    <text class="logo-title">欢迎回来</text>
+    <text class="logo-subtitle">登录继续精彩内容</text>
+  </view>
+
+  <!-- 登录表单 -->
+  <view class="login-form">
+    <!-- 用户名 -->
+    <view class="form-item">
+      <text class="form-label">用户名</text>
+      <view class="input-wrapper">
+        <van-icon name="contact" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          type="text"
+          placeholder="请输入用户名" 
+          value="{{username}}"
+          bindinput="onUsernameInput"
+        />
+      </view>
+    </view>
+
+    <!-- 密码 -->
+    <view class="form-item">
+      <text class="form-label">密码</text>
+      <view class="input-wrapper">
+        <van-icon name="lock" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          password="{{!showPassword}}"
+          placeholder="请输入密码" 
+          value="{{password}}"
+          bindinput="onPasswordInput"
+        />
+        <van-icon 
+          name="{{showPassword ? 'eye-o' : 'closed-eye'}}" 
+          size="20px" 
+          color="#64748b"
+          bindtap="togglePassword"
+          class="eye-icon"
+        />
+      </view>
+    </view>
+
+    <!-- 忘记密码 -->
+    <view class="forgot-password" bindtap="goToForgotPassword">
+      <text>忘记密码?</text>
+    </view>
+
+    <!-- 登录按钮 -->
+    <button 
+      class="login-btn" 
+      bindtap="handleLogin"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+    >
+      登录
+    </button>
+  </view>
+
+  <!-- 其他登录方式 -->
+  <view class="other-login">
+    <view class="divider">
+      <text>其他登录方式</text>
+    </view>
+    <view class="other-methods">
+      <view class="method-item" bindtap="handleWxLogin">
+        <van-icon name="wechat" size="28px" color="#09bb07" />
+      </view>
+      <view class="method-item">
+        <van-icon name="lock" size="28px" color="#f59e0b" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 注册提示 -->
+  <view class="register-tip">
+    <text>还没有账号？</text>
+    <text class="link" bindtap="goToRegister">立即注册</text>
+  </view>
+</view>

@@ -1,0 +1,5 @@
+<!-- components/vip-badge/index.wxml -->
+<view class="vip-badge level-{{level}} size-{{size}}">
+  <text class="icon">👑</text>
+  <text wx:if="{{showText}}" class="text">{{levelText[level]}}</text>
+</view>

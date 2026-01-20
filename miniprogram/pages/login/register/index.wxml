@@ -1,0 +1,141 @@
+<!-- pages/login/register/index.wxml -->
+<view class="container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <van-icon name="arrow-left" size="24px" color="#cbd5e1" />
+  </view>
+
+  <!-- 标题 -->
+  <view class="header">
+    <view class="logo-icon">
+      <van-icon name="add-o" size="60px" color="#fff" />
+    </view>
+    <text class="title">创建账号</text>
+    <text class="subtitle">开启你的技术分享之旅</text>
+  </view>
+
+  <!-- 注册表单 -->
+  <view class="register-form">
+    <!-- 邮箱地址 -->
+    <view class="form-item">
+      <text class="form-label">邮箱地址</text>
+      <view class="input-wrapper">
+        <van-icon name="envelop-o" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          type="text"
+          placeholder="请输入邮箱地址" 
+          value="{{email}}"
+          bindinput="onEmailInput"
+        />
+      </view>
+    </view>
+
+    <!-- 邮箱验证码 -->
+    <view class="form-item">
+      <text class="form-label">邮箱验证码</text>
+      <view class="input-wrapper code-wrapper">
+        <van-icon name="certificate" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          type="text"
+          placeholder="请输入验证码" 
+          value="{{code}}"
+          bindinput="onCodeInput"
+        />
+        <button 
+          class="code-btn {{codeSending || countdown > 0 ? 'disabled' : ''}}" 
+          bindtap="sendCode"
+          disabled="{{codeSending || countdown > 0}}"
+        >
+          {{countdown > 0 ? countdown + 's' : '获取验证码'}}
+        </button>
+      </view>
+    </view>
+
+    <!-- 用户名 -->
+    <view class="form-item">
+      <text class="form-label">用户名</text>
+      <view class="input-wrapper">
+        <van-icon name="contact" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          type="text"
+          placeholder="请输入用户名（用于登录）" 
+          value="{{username}}"
+          bindinput="onUsernameInput"
+        />
+      </view>
+    </view>
+
+    <!-- 设置密码 -->
+    <view class="form-item">
+      <text class="form-label">设置密码</text>
+      <view class="input-wrapper">
+        <van-icon name="lock" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          password="{{!showPassword}}"
+          placeholder="请输入密码（至少6位）" 
+          value="{{password}}"
+          bindinput="onPasswordInput"
+        />
+        <van-icon 
+          name="{{showPassword ? 'eye-o' : 'closed-eye'}}" 
+          size="20px" 
+          color="#64748b"
+          bindtap="togglePassword"
+          class="eye-icon"
+        />
+      </view>
+    </view>
+
+    <!-- 确认密码 -->
+    <view class="form-item">
+      <text class="form-label">确认密码</text>
+      <view class="input-wrapper">
+        <van-icon name="lock" size="20px" color="#64748b" />
+        <input 
+          class="form-input" 
+          password="{{!showConfirmPassword}}"
+          placeholder="请再次输入密码" 
+          value="{{confirmPassword}}"
+          bindinput="onConfirmPasswordInput"
+        />
+        <van-icon 
+          name="{{showConfirmPassword ? 'eye-o' : 'closed-eye'}}" 
+          size="20px" 
+          color="#64748b"
+          bindtap="toggleConfirmPassword"
+          class="eye-icon"
+        />
+      </view>
+    </view>
+
+    <!-- 协议 -->
+    <view class="agreement">
+      <van-checkbox value="{{agreed}}" bind:change="onAgreeChange" checked-color="#3b82f6">
+        <text class="agreement-text">我已阅读并同意</text>
+        <text class="link">《用户协议》</text>
+        <text class="agreement-text">和</text>
+        <text class="link">《隐私政策》</text>
+      </van-checkbox>
+    </view>
+
+    <!-- 注册按钮 -->
+    <button 
+      class="register-btn" 
+      bindtap="handleRegister"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+    >
+      立即注册
+    </button>
+  </view>
+
+  <!-- 登录提示 -->
+  <view class="login-tip">
+    <text>已有账号？</text>
+    <text class="link" bindtap="goToLogin">立即登录</text>
+  </view>
+</view>

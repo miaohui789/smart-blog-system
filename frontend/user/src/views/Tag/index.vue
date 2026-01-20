@@ -64,6 +64,18 @@ onMounted(async () => {
 
 .page-header {
   margin-bottom: 32px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  transition: all 0.3s;
+  
+  // 自定义背景下强制透明
+  body.has-custom-bg & {
+    background: rgba(var(--bg-card-rgb), 0.65) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
 .page-title {
@@ -108,9 +120,16 @@ onMounted(async () => {
   padding: 20px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 20px;
   text-decoration: none;
   transition: all 0.3s ease;
+
+  // 自定义背景下强制透明
+  body.has-custom-bg & {
+    background: rgba(var(--bg-card-rgb), 0.65) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 
   &:hover {
     border-color: var(--tag-color);
@@ -136,7 +155,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   background: var(--bg-card-hover);
-  border-radius: 10px;
+  border-radius: 14px;
   color: var(--tag-color);
   font-size: 20px;
   transition: all 0.3s;

@@ -1,0 +1,74 @@
+<!-- pages/notification/index/index.wxml -->
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">消息通知</view>
+    <view class="nav-right" bindtap="handleMarkAllRead">
+      <text class="action-text">全部已读</text>
+    </view>
+  </view>
+
+  <!-- 未读提示 -->
+  <view class="unread-tip" wx:if="{{unreadCount > 0}}">
+    <van-icon name="info-o" size="16px" color="#3b82f6" />
+    <text>您有 {{unreadCount}} 条未读通知</text>
+  </view>
+
+  <!-- 通知列表 -->
+  <view class="notification-list">
+    <view 
+      class="notification-item {{item.isRead ? '' : 'unread'}}" 
+      wx:for="{{notifications}}" 
+      wx:key="id"
+      bindtap="handleNotificationClick"
+      data-item="{{item}}"
+      data-id="{{item.id}}"
+      data-read="{{item.isRead}}"
+    >
+      <view class="icon-wrapper {{item.type}}">
+        <van-icon 
+          name="{{item.type === 'COMMENT' ? 'comment-o' : item.type === 'LIKE' ? 'good-job-o' : 'friends-o'}}" 
+          size="20px" 
+          color="#fff" 
+        />
+      </view>
+      
+      <view class="content">
+        <view class="title">{{item.title}}</view>
+        <view class="message">{{item.content}}</view>
+        <view class="time">{{item.createTime}}</view>
+      </view>
+
+      <view class="actions" catchtap="">
+        <view class="delete-btn" catchtap="handleDelete" data-id="{{item.id}}">
+          <van-icon name="delete-o" size="16px" color="#ef4444" />
+        </view>
+      </view>
+
+      <view class="unread-dot" wx:if="{{!item.isRead}}"></view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <van-loading type="spinner" color="#3b82f6" />
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && notifications.length === 0}}">
+    <van-icon name="bell" size="80px" color="#64748b" />
+    <text class="empty-text">暂无通知</text>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="footer-actions" wx:if="{{notifications.length > 0}}">
+    <view class="clear-btn" bindtap="handleClear">
+      <van-icon name="delete-o" size="16px" color="#ef4444" />
+      <text>清空通知</text>
+    </view>
+  </view>
+</view>

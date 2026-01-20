@@ -1,0 +1,60 @@
+/* components/vip-badge/index.wxss */
+
+.vip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+}
+
+.vip-badge.size-small {
+  padding: 2rpx 8rpx;
+}
+
+.vip-badge.size-small .icon {
+  font-size: 20rpx;
+}
+
+.vip-badge.size-small .text {
+  font-size: 20rpx;
+}
+
+.vip-badge.size-medium {
+  padding: 4rpx 12rpx;
+}
+
+.vip-badge.size-medium .icon {
+  font-size: 24rpx;
+}
+
+.vip-badge.size-medium .text {
+  font-size: 24rpx;
+}
+
+.vip-badge.size-large {
+  padding: 8rpx 16rpx;
+}
+
+.vip-badge.size-large .icon {
+  font-size: 28rpx;
+}
+
+.vip-badge.size-large .text {
+  font-size: 28rpx;
+}
+
+.vip-badge.level-1 {
+  background: linear-gradient(135deg, #cd7f32 0%, #b8860b 100%);
+  color: #fff;
+}
+
+.vip-badge.level-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
+  color: #333;
+}
+
+.vip-badge.level-3 {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  color: #333;
+}

@@ -169,6 +169,7 @@ onMounted(() => {
 
 .page-card {
   padding: 24px;
+  border-radius: 20px;
 }
 
 .page-header {
@@ -176,8 +177,10 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 20px;
+  background: var(--bg-card-hover);
+  border-radius: 16px;
+  border: none;
   
   h2 {
     font-size: 18px;
@@ -189,6 +192,13 @@ onMounted(() => {
     font-size: 14px;
     color: var(--text-muted);
   }
+}
+
+// 自定义背景下的透明效果
+body.has-custom-bg .page-header {
+  background: rgba(var(--bg-card-rgb), 0.65) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .user-list {

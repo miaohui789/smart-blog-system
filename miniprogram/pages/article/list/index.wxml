@@ -1,0 +1,39 @@
+<!-- pages/article/list/index.wxml -->
+<view class="container">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">{{title}}</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <!-- 文章列表 -->
+  <view class="article-list">
+    <article-card 
+      wx:for="{{articles}}" 
+      wx:key="id"
+      article="{{item}}"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+    />
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading && !refreshing}}">
+    <van-loading type="spinner" color="#3b82f6" />
+    <text>加载中...</text>
+  </view>
+
+  <!-- 没有更多 -->
+  <view class="no-more" wx:if="{{!hasMore && articles.length > 0}}">
+    <text>没有更多了</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && articles.length === 0}}">
+    <van-icon name="notes-o" size="80px" color="#64748b" />
+    <text class="empty-text">暂无文章</text>
+  </view>
+</view>

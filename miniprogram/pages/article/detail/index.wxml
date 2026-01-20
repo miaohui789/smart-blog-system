@@ -1,0 +1,321 @@
+<!-- pages/article/detail/index.wxml -->
+<view class="container" wx:if="{{!loading && article}}">
+  <!-- 顶部导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <van-icon name="arrow-left" size="20px" color="#cbd5e1" />
+    </view>
+    <view class="nav-title">文章详情</view>
+    <view class="nav-right" bindtap="showMenu">
+      <van-icon name="ellipsis" size="20px" color="#cbd5e1" />
+    </view>
+  </view>
+
+  <!-- 文章标题 -->
+  <view class="article-title">{{article.title}}</view>
+
+  <!-- 作者信息 -->
+  <view class="author-section" bindtap="goToUserDetail">
+    <image class="author-avatar" src="{{article.author.avatar}}" mode="aspectFill" />
+    <view class="author-info">
+      <view class="author-name">
+        <text>{{article.author.nickname}}</text>
+        <view class="vip-badge" wx:if="{{article.author.vipLevel > 0}}">VIP</view>
+      </view>
+      <view class="article-meta">
+        <text>{{article.createTime}}</text>
+        <text class="dot">·</text>
+        <text>{{article.viewCount}} 阅读</text>
+      </view>
+    </view>
+    <view class="follow-btn {{isFollowing ? 'following' : ''}}" catchtap="handleFollow">
+      <text>{{isFollowing ? '已关注' : '+ 关注'}}</text>
+    </view>
+  </view>
+
+  <!-- 文章标签 -->
+  <view class="tags-section" wx:if="{{article.tags && article.tags.length > 0}}">
+    <view 
+      class="tag-item" 
+      wx:for="{{article.tags}}" 
+      wx:key="id"
+      bindtap="goToTag"
+      data-id="{{item.id}}"
+    >
+      <text>#{{item.name}}</text>
+    </view>
+    <view 
+      class="tag-item" 
+      wx:for="{{article.categories}}" 
+      wx:key="id"
+    >
+      <text>#{{item.name}}</text>
+    </view>
+  </view>
+
+  <!-- 文章统计 -->
+  <view class="stats-section">
+    <view class="stat-item">
+      <van-icon name="eye-o" size="14px" color="#64748b" />
+      <text>{{article.viewCount || 0}}</text>
+    </view>
+    <view class="stat-item">
+      <van-icon name="good-job-o" size="14px" color="#64748b" />
+      <text>{{article.likeCount || 0}}</text>
+    </view>
+    <view class="stat-item">
+      <van-icon name="star-o" size="14px" color="#64748b" />
+      <text>{{article.favoriteCount || 0}}</text>
+    </view>
+    <view class="stat-item">
+      <van-icon name="comment-o" size="14px" color="#64748b" />
+      <text>{{article.commentCount || 0}}</text>
+    </view>
+  </view>
+
+  <!-- 分割线 -->
+  <view class="divider"></view>
+
+  <!-- 文章内容 -->
+  <view class="article-content">
+    <rich-text nodes="{{article.contentHtml}}"></rich-text>
+  </view>
+
+  <!-- 评论区 -->
+  <view class="comment-section">
+    <view class="section-title">评论 {{article.commentCount || 0}}</view>
+    
+    <!-- 评论列表 -->
+    <view class="comment-list" wx:if="{{comments.length > 0}}">
+      <view 
+        class="comment-item" 
+        wx:for="{{comments}}" 
+        wx:key="id" 
+        wx:for-index="commentIndex"
+        bindlongpress="onCommentLongPress"
+        data-id="{{item.id}}"
+        data-index="{{commentIndex}}"
+        data-user-id="{{item.user.id}}"
+        data-content="{{item.content}}"
+      >
+        <image class="comment-avatar" src="{{item.user.avatar}}" mode="aspectFill" />
+        <view class="comment-right">
+          <view class="comment-header">
+            <view class="comment-user">
+              <text class="comment-nickname">{{item.user.nickname}}</text>
+              <view class="vip-badge" wx:if="{{item.user.vipLevel > 0}}">VIP</view>
+            </view>
+            <view class="comment-like" bindtap="likeComment" data-id="{{item.id}}" data-index="{{commentIndex}}">
+              <van-icon 
+                name="{{item.isLiked ? 'good-job' : 'good-job-o'}}" 
+                size="14px" 
+                color="{{item.isLiked ? '#3b82f6' : '#64748b'}}" 
+              />
+              <text class="{{item.isLiked ? 'liked' : ''}}">{{item.likeCount || 0}}</text>
+            </view>
+          </view>
+          <view class="comment-text">{{item.content}}</view>
+          <view class="comment-footer">
+            <text class="comment-time">{{item.createTime}}</text>
+            <text 
+              class="reply-btn" 
+              bindtap="replyComment" 
+              data-id="{{item.id}}" 
+              data-nickname="{{item.user.nickname}}"
+              data-index="{{commentIndex}}"
+            >
+              回复
+            </text>
+          </view>
+
+          <!-- 回复列表 -->
+          <block wx:if="{{item.replies && item.replies.length > 0}}">
+            <!-- 展开/收起按钮 -->
+            <view 
+              class="toggle-replies-btn" 
+              bindtap="toggleReplies"
+              data-index="{{commentIndex}}"
+            >
+              <text>{{item.showAllReplies ? '收起' : '展开'}}回复（{{item.replies.length}}条）</text>
+              <van-icon name="{{item.showAllReplies ? 'arrow-up' : 'arrow-down'}}" size="14px" color="#3b82f6" />
+            </view>
+
+            <!-- 回复列表（展开时显示） -->
+            <view class="reply-list" wx:if="{{item.showAllReplies}}">
+              <block wx:for="{{item.replies}}" wx:key="id" wx:for-item="replyItem" wx:for-index="replyIdx">
+                <view 
+                  class="reply-item"
+                  bindlongpress="onReplyLongPress"
+                  data-id="{{replyItem.id}}"
+                  data-comment-index="{{commentIndex}}"
+                  data-reply-index="{{replyIdx}}"
+                  data-user-id="{{replyItem.user.id}}"
+                  data-content="{{replyItem.content}}"
+                >
+                  <image class="reply-avatar" src="{{replyItem.user.avatar}}" mode="aspectFill" />
+                  <view class="reply-right">
+                    <view class="reply-header">
+                      <view class="reply-user">
+                        <text class="reply-nickname">{{replyItem.user.nickname}}</text>
+                        <view class="vip-badge" wx:if="{{replyItem.user.vipLevel > 0}}">VIP</view>
+                        <text class="reply-to" wx:if="{{replyItem.replyToUser}}">回复 @{{replyItem.replyToUser.nickname}}</text>
+                      </view>
+                      <view class="reply-like" bindtap="likeReply" data-id="{{replyItem.id}}" data-comment-index="{{commentIndex}}" data-reply-index="{{replyIdx}}">
+                        <van-icon 
+                          name="{{replyItem.isLiked ? 'good-job' : 'good-job-o'}}" 
+                          size="12px" 
+                          color="{{replyItem.isLiked ? '#3b82f6' : '#64748b'}}" 
+                        />
+                        <text class="{{replyItem.isLiked ? 'liked' : ''}}">{{replyItem.likeCount || 0}}</text>
+                      </view>
+                    </view>
+                    <view class="reply-text">{{replyItem.content}}</view>
+                    <view class="reply-footer">
+                      <text class="reply-time">{{replyItem.createTime}}</text>
+                      <text 
+                        class="reply-btn" 
+                        bindtap="replyToReply" 
+                        data-id="{{replyItem.id}}" 
+                        data-nickname="{{replyItem.user.nickname}}"
+                        data-comment-index="{{commentIndex}}"
+                        data-parent-id="{{item.id}}"
+                      >
+                        回复
+                      </text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多评论 -->
+    <view class="load-more" wx:if="{{hasMoreComments && comments.length > 0}}" bindtap="loadMoreComments">
+      <text>加载更多评论</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-comment" wx:if="{{comments.length === 0}}">
+      <van-icon name="comment-o" size="60px" color="#64748b" />
+      <text>暂无评论，快来抢沙发吧~</text>
+    </view>
+  </view>
+</view>
+
+<!-- 加载中 -->
+<view class="loading-container" wx:if="{{loading}}">
+  <van-loading type="spinner" color="#3b82f6" size="40px" />
+</view>
+
+<!-- 底部操作栏 -->
+<view class="bottom-bar" wx:if="{{!loading && article}}">
+  <view class="input-box" bindtap="focusInput">
+    <text class="placeholder">说点什么...</text>
+  </view>
+  <view class="action-btns">
+    <view class="action-btn" bindtap="handleLike">
+      <van-icon 
+        name="{{isLiked ? 'good-job' : 'good-job-o'}}" 
+        size="20px" 
+        color="{{isLiked ? '#3b82f6' : '#64748b'}}" 
+      />
+      <text class="{{isLiked ? 'active' : ''}}">{{article.likeCount}}</text>
+    </view>
+    <view class="action-btn" bindtap="handleFavorite">
+      <van-icon 
+        name="{{isFavorited ? 'star' : 'star-o'}}" 
+        size="20px" 
+        color="{{isFavorited ? '#f59e0b' : '#64748b'}}" 
+      />
+      <text class="{{isFavorited ? 'active' : ''}}">收藏</text>
+    </view>
+    <view class="action-btn" bindtap="handleShare">
+      <van-icon name="share-o" size="20px" color="#64748b" />
+      <text>分享</text>
+    </view>
+  </view>
+</view>
+
+<!-- 评论输入弹窗 -->
+<van-popup 
+  show="{{showCommentInput}}" 
+  position="bottom" 
+  bind:close="closeCommentInput"
+  custom-style="background: var(--bg-card); border-radius: 24rpx 24rpx 0 0;"
+>
+  <view class="comment-popup">
+    <view class="popup-header">
+      <text>发表评论</text>
+      <van-icon name="cross" size="20px" color="#64748b" bindtap="closeCommentInput" />
+    </view>
+    <textarea 
+      class="comment-textarea" 
+      placeholder="说点什么..." 
+      value="{{commentContent}}"
+      bindinput="onCommentInput"
+      auto-focus
+      maxlength="500"
+    />
+    <view class="popup-footer">
+      <text class="char-count">{{commentContent.length}}/500</text>
+      <button class="send-btn" bindtap="handleComment">发送</button>
+    </view>
+  </view>
+</van-popup>
+
+<!-- 回复输入弹窗 -->
+<van-popup 
+  show="{{showReplyInput}}" 
+  position="bottom" 
+  bind:close="closeReplyInput"
+  custom-style="background: var(--bg-card); border-radius: 24rpx 24rpx 0 0;"
+>
+  <view class="comment-popup">
+    <view class="popup-header">
+      <text>回复 @{{replyTo ? replyTo.nickname : ''}}</text>
+      <van-icon name="cross" size="20px" color="#64748b" bindtap="closeReplyInput" />
+    </view>
+    <textarea 
+      class="comment-textarea" 
+      placeholder="说点什么..." 
+      value="{{replyContent}}"
+      bindinput="onReplyInput"
+      auto-focus
+      maxlength="500"
+    />
+    <view class="popup-footer">
+      <text class="char-count">{{replyContent.length}}/500</text>
+      <button class="send-btn" bindtap="handleReply">发送</button>
+    </view>
+  </view>
+</van-popup>
+
+<!-- 编辑输入弹窗 -->
+<van-popup 
+  show="{{showEditInput}}" 
+  position="bottom" 
+  bind:close="closeEditInput"
+  custom-style="background: var(--bg-card); border-radius: 24rpx 24rpx 0 0;"
+>
+  <view class="comment-popup">
+    <view class="popup-header">
+      <text>修改{{editingComment && editingComment.type === 'comment' ? '评论' : '回复'}}</text>
+      <van-icon name="cross" size="20px" color="#64748b" bindtap="closeEditInput" />
+    </view>
+    <textarea 
+      class="comment-textarea" 
+      placeholder="说点什么..." 
+      value="{{editContent}}"
+      bindinput="onEditInput"
+      auto-focus
+      maxlength="500"
+    />
+    <view class="popup-footer">
+      <text class="char-count">{{editContent.length}}/500</text>
+      <button class="send-btn" bindtap="handleEdit">保存</button>
+    </view>
+  </view>
+</van-popup>

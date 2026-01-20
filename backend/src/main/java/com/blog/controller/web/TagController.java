@@ -4,16 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
+import com.blog.dto.response.ArticleVO;
 import com.blog.dto.response.TagVO;
+import com.blog.dto.response.UserVO;
 import com.blog.entity.Article;
 import com.blog.entity.ArticleTag;
+import com.blog.entity.User;
 import com.blog.service.ArticleService;
 import com.blog.service.ArticleTagService;
+import com.blog.service.CategoryService;
 import com.blog.service.RedisService;
 import com.blog.service.TagService;
+import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +35,8 @@ public class TagController {
     private final TagService tagService;
     private final ArticleService articleService;
     private final ArticleTagService articleTagService;
+    private final UserService userService;
+    private final CategoryService categoryService;
     private final RedisService redisService;
 
     @Operation(summary = "标签列表")
@@ -94,7 +102,35 @@ public class TagController {
                         .orderByDesc(Article::getPublishTime)
         );
         
-        PageResult<Article> result = PageResult.of(pageResult.getRecords(), pageResult.getTotal(), page, pageSize);
+        // 转换为 VO 并填充作者信息
+        List<ArticleVO> voList = pageResult.getRecords().stream().map(article -> {
+            ArticleVO vo = new ArticleVO();
+            BeanUtils.copyProperties(article, vo);
+            
+            // 获取作者信息
+            User author = userService.getById(article.getUserId());
+            if (author != null) {
+                UserVO authorVO = new UserVO();
+                authorVO.setId(author.getId());
+                authorVO.setUsername(author.getUsername());
+                authorVO.setNickname(author.getNickname());
+                authorVO.setAvatar(author.getAvatar());
+                authorVO.setVipLevel(author.getVipLevel());
+                vo.setAuthor(authorVO);
+            }
+            
+            // 获取分类名称
+            if (article.getCategoryId() != null) {
+                var category = categoryService.getById(article.getCategoryId());
+                if (category != null) {
+                    vo.setCategoryName(category.getName());
+                }
+            }
+            
+            return vo;
+        }).collect(Collectors.toList());
+        
+        PageResult<ArticleVO> result = PageResult.of(voList, pageResult.getTotal(), page, pageSize);
         
         // 存入 Redis 缓存（5分钟）
         redisService.setWithMinutes(cacheKey, result, RedisService.EXPIRE_SHORT);

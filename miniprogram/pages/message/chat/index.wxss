@@ -1,0 +1,132 @@
+/* pages/message/chat/index.wxss */
+
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0a1628;
+}
+
+/* 消息列表 */
+.message-list {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 200rpx; /* 为浮动输入框预留更多空间 */
+  overflow-y: auto;
+}
+
+/* 加载更多 */
+.load-more {
+  text-align: center;
+  padding: 24rpx;
+  font-size: 28rpx;
+  color: #8e8e93;
+}
+
+/* 时间分割线 */
+.time-divider {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #8e8e93;
+}
+
+/* 撤回消息提示 */
+.withdrawn-notice {
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 24rpx;
+  color: #8e8e93;
+}
+
+/* 消息项 */
+.message-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 32rpx;
+}
+
+/* 对方消息 */
+.message-item.other {
+  flex-direction: row;
+}
+
+/* 自己的消息 */
+.message-item.self {
+  flex-direction: row-reverse;
+}
+
+/* 头像 */
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  background: #48484a;
+  flex-shrink: 0;
+}
+
+/* 消息气泡 */
+.message-bubble {
+  max-width: 480rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.message-item.other .message-bubble {
+  margin-left: 16rpx;
+  background: #3a3a3c;
+  color: #fff;
+  border-radius: 12rpx 12rpx 12rpx 4rpx;
+}
+
+.message-item.self .message-bubble {
+  margin-right: 16rpx;
+  background: #0a84ff;
+  color: #fff;
+  border-radius: 12rpx 12rpx 4rpx 12rpx;
+}
+
+/* 输入框区域 - 浮动在底部 */
+.input-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); /* 适配iPhone底部 */
+  background: rgba(44, 44, 46, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.message-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 24rpx;
+  background: rgba(58, 58, 60, 0.8);
+  border-radius: 36rpx;
+  border: none;
+  font-size: 28rpx;
+  color: #fff;
+}
+
+.send-btn {
+  width: 72rpx;
+  height: 72rpx;
+  margin-left: 16rpx;
+  background: linear-gradient(135deg, #0a84ff 0%, #0066cc 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 12rpx rgba(10, 132, 255, 0.4);
+  transition: all 0.3s;
+  active-opacity: 0.8;
+}
