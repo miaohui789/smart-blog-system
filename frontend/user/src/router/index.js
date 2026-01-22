@@ -55,6 +55,12 @@ const routes = [
         meta: { title: '关于' }
       },
       {
+        path: 'version-history',
+        name: 'VersionHistory',
+        component: () => import('@/views/About/VersionHistory.vue'),
+        meta: { title: '版本历史' }
+      },
+      {
         path: 'search',
         name: 'Search',
         component: () => import('@/views/Search/index.vue'),

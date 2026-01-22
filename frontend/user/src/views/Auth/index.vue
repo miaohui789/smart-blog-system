@@ -4,6 +4,7 @@
     <div class="bg-animation">
       <div class="gradient-orb orb-1"></div>
       <div class="gradient-orb orb-2"></div>
+      <div class="gradient-orb orb-3"></div>
     </div>
 
     <!-- 左侧装饰区 -->
@@ -47,9 +48,45 @@
               <h2>欢迎回来</h2>
               <p>登录你的账号继续探索</p>
             </div>
-            <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="auth-form">
+
+            <!-- 登录方式切换 -->
+            <div class="login-tabs">
+              <div 
+                class="tab-item" 
+                :class="{ active: loginMode === 'username' }"
+                @click="loginMode = 'username'"
+              >
+                <el-icon><User /></el-icon>
+                <span>账号</span>
+              </div>
+              <div 
+                class="tab-item" 
+                :class="{ active: loginMode === 'email' }"
+                @click="loginMode = 'email'"
+              >
+                <el-icon><Message /></el-icon>
+                <span>邮箱</span>
+              </div>
+              <div 
+                class="tab-item" 
+                :class="{ active: loginMode === 'emailCode' }"
+                @click="loginMode = 'emailCode'"
+              >
+                <el-icon><Key /></el-icon>
+                <span>验证码</span>
+              </div>
+            </div>
+
+            <!-- 用户名/邮箱密码登录 -->
+            <el-form v-if="loginMode !== 'emailCode'" :model="loginForm" :rules="loginRules" ref="loginFormRef" class="auth-form">
               <el-form-item prop="username">
-                <el-input v-model="loginForm.username" placeholder="用户名" :prefix-icon="User" size="large" class="custom-input" />
+                <el-input 
+                  v-model="loginForm.username" 
+                  :placeholder="loginMode === 'email' ? '邮箱地址' : '用户名'" 
+                  :prefix-icon="loginMode === 'email' ? Message : User" 
+                  size="large" 
+                  class="custom-input" 
+                />
               </el-form-item>
               <el-form-item prop="password">
                 <el-input v-model="loginForm.password" type="password" placeholder="密码" :prefix-icon="Lock" size="large" show-password class="custom-input" @keyup.enter="handleLogin" />
@@ -61,11 +98,47 @@
                 </button>
               </el-form-item>
             </el-form>
+
+            <!-- 邮箱验证码登录 -->
+            <el-form v-else :model="emailCodeForm" :rules="emailCodeRules" ref="emailCodeFormRef" class="auth-form">
+              <el-form-item prop="email">
+                <el-input v-model="emailCodeForm.email" placeholder="邮箱地址" :prefix-icon="Message" size="large" class="custom-input" />
+              </el-form-item>
+              <el-form-item prop="code">
+                <div class="code-group">
+                  <el-input v-model="emailCodeForm.code" placeholder="验证码" :prefix-icon="Key" size="large" class="custom-input" maxlength="6" @keyup.enter="handleEmailCodeLogin" />
+                  <button type="button" class="code-btn" :disabled="loginCountdown > 0" @click="handleSendLoginCode">
+                    {{ loginCountdown > 0 ? `${loginCountdown}s` : '获取验证码' }}
+                  </button>
+                </div>
+              </el-form-item>
+              <el-form-item>
+                <button type="button" class="submit-btn" :disabled="loginLoading" @click="handleEmailCodeLogin">
+                  <span v-if="!loginLoading">登录</span>
+                  <span v-else class="btn-loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+                </button>
+              </el-form-item>
+            </el-form>
+
             <div class="card-footer">
               <a href="javascript:;" class="link-btn" @click="switchTo('forgot')">忘记密码？</a>
+              
+              <!-- 游客访问按钮 -->
+              <div class="guest-access">
+                <button class="guest-btn" @click="handleGuestAccess">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="icon" viewBox="0 0 24 24">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                  <span class="text">游客访问</span>
+                </button>
+              </div>
+              
               <div class="footer-register">
                 <span>还没有账号？</span>
                 <a href="javascript:;" class="link-primary" @click="switchTo('register')">立即注册</a>
+              </div>
+              <div class="version-info">
+                MyBlog系统于2026年1月22日17:20:04 正式1.0版上线
               </div>
             </div>
           </div>
@@ -187,10 +260,10 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Lock, Message, Key, Edit, ChatDotRound, Star, ArrowLeft } from '@element-plus/icons-vue'
+import { User, Lock, Message, Key, Edit, ChatDotRound, Star, ArrowLeft, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { register, sendEmailCode, sendResetCode, resetPassword } from '@/api/user'
+import { register, sendEmailCode, sendResetCode, resetPassword, sendLoginCode } from '@/api/user'
 import PuzzleCaptcha from './PuzzleCaptcha.vue'
 
 const router = useRouter()
@@ -200,6 +273,9 @@ const userStore = useUserStore()
 // 当前视图
 const currentView = ref('login')
 const transitionName = ref('slide-right')
+
+// 登录模式
+const loginMode = ref('username') // 'username' | 'email' | 'emailCode'
 
 // 根据路由初始化视图
 watch(() => route.path, (path) => {
@@ -226,24 +302,95 @@ function switchTo(view) {
 
 // ========== 登录 ==========
 const loginFormRef = ref()
+const emailCodeFormRef = ref()
 const loginLoading = ref(false)
+const loginCountdown = ref(0)
 const loginForm = reactive({ username: '', password: '' })
+const emailCodeForm = reactive({ email: '', code: '' })
+
 const loginRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名或邮箱', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+const emailCodeRules = {
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
 async function handleLogin() {
   await loginFormRef.value.validate()
   loginLoading.value = true
   try {
-    await userStore.login(loginForm)
+    await userStore.login(loginForm, loginMode.value === 'email' ? 'username' : 'username')
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
     // 错误已处理
   } finally {
     loginLoading.value = false
+  }
+}
+
+// 游客访问
+function handleGuestAccess() {
+  ElMessageBox.confirm(
+    '游客模式下，你可以浏览文章和内容，但无法进行评论、点赞、收藏等互动操作。是否继续？',
+    '游客访问',
+    {
+      confirmButtonText: '继续访问',
+      cancelButtonText: '取消',
+      type: 'info',
+    }
+  ).then(() => {
+    ElMessage.success('欢迎访问')
+    router.push('/')
+  }).catch(() => {
+    // 用户取消
+  })
+}
+
+async function handleEmailCodeLogin() {
+  await emailCodeFormRef.value.validate()
+  loginLoading.value = true
+  try {
+    await userStore.login(emailCodeForm, 'emailCode')
+    ElMessage.success('登录成功')
+    router.push('/')
+  } catch (e) {
+    // 错误已处理
+  } finally {
+    loginLoading.value = false
+  }
+}
+
+async function handleSendLoginCode() {
+  if (!emailCodeForm.email) {
+    ElMessage.warning('请先输入邮箱')
+    return
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(emailCodeForm.email)) {
+    ElMessage.warning('请输入正确的邮箱格式')
+    return
+  }
+  
+  startCountdown('login')
+  
+  try {
+    const res = await sendLoginCode(emailCodeForm.email)
+    if (res.code === 200) {
+      ElMessageBox.alert('验证码已发送到您的邮箱，请注意查收', '发送成功', {
+        confirmButtonText: '我知道了',
+        type: 'success'
+      })
+    }
+  } catch (e) {
+    console.log('发送验证码请求异常')
   }
 }
 
@@ -415,7 +562,13 @@ async function handleResetPassword() {
 
 // 倒计时
 function startCountdown(type) {
-  if (type === 'reg') {
+  if (type === 'login') {
+    loginCountdown.value = 60
+    const timer = setInterval(() => {
+      loginCountdown.value--
+      if (loginCountdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } else if (type === 'reg') {
     regCountdown.value = 90
     const timer = setInterval(() => {
       regCountdown.value--
@@ -446,36 +599,116 @@ function startCountdown(type) {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .gradient-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.15;
+  filter: blur(80px);
+  opacity: 0.2;
   animation: float 20s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .orb-1 {
-  width: 600px;
-  height: 600px;
-  background: $primary-color;
-  top: -200px;
-  left: -100px;
+  width: 700px;
+  height: 700px;
+  background: linear-gradient(135deg, $primary-color 0%, #ec4899 50%, $primary-color 100%);
+  top: -250px;
+  left: -150px;
+  animation: float1 20s ease-in-out infinite, pulse1 6s ease-in-out infinite;
 }
 
 .orb-2 {
-  width: 500px;
-  height: 500px;
-  background: #22c55e;
-  bottom: -200px;
-  right: -100px;
-  animation-delay: -10s;
+  width: 600px;
+  height: 600px;
+  background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #22c55e 100%);
+  bottom: -250px;
+  right: -150px;
+  animation: float2 25s ease-in-out infinite, pulse2 7s ease-in-out infinite;
 }
 
-@keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, 30px); }
+.orb-3 {
+  width: 550px;
+  height: 550px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #3b82f6 100%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: float3 30s ease-in-out infinite, pulse3 8s ease-in-out infinite;
+}
+
+@keyframes float1 {
+  0%, 100% { 
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  25% { 
+    transform: translate(80px, -50px) rotate(90deg) scale(1.15);
+  }
+  50% { 
+    transform: translate(50px, 60px) rotate(180deg) scale(0.9);
+  }
+  75% { 
+    transform: translate(-60px, 30px) rotate(270deg) scale(1.1);
+  }
+}
+
+@keyframes float2 {
+  0%, 100% { 
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% { 
+    transform: translate(-80px, 60px) rotate(120deg) scale(1.12);
+  }
+  66% { 
+    transform: translate(60px, -70px) rotate(240deg) scale(0.88);
+  }
+}
+
+@keyframes pulse1 {
+  0%, 100% { 
+    opacity: 0.2;
+    filter: blur(80px) brightness(1);
+  }
+  50% { 
+    opacity: 0.35;
+    filter: blur(100px) brightness(1.3);
+  }
+}
+
+@keyframes pulse2 {
+  0%, 100% { 
+    opacity: 0.2;
+    filter: blur(80px) brightness(1);
+  }
+  50% { 
+    opacity: 0.32;
+    filter: blur(95px) brightness(1.25);
+  }
+}
+
+@keyframes float3 {
+  0%, 100% { 
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  33% { 
+    transform: translate(-30%, -70%) rotate(120deg) scale(1.18);
+  }
+  66% { 
+    transform: translate(-70%, -30%) rotate(240deg) scale(0.82);
+  }
+}
+
+@keyframes pulse3 {
+  0%, 100% { 
+    opacity: 0.18;
+    filter: blur(80px) brightness(1);
+  }
+  50% { 
+    opacity: 0.28;
+    filter: blur(90px) brightness(1.22);
+  }
 }
 
 .auth-left {
@@ -560,6 +793,8 @@ function startCountdown(type) {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
@@ -568,6 +803,47 @@ function startCountdown(type) {
   
   h2 { font-size: 26px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
   p { color: var(--text-muted); font-size: 14px; }
+}
+
+/* 登录方式切换 */
+.login-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: var(--bg-input);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  .el-icon {
+    font-size: 15px;
+  }
+  
+  &:hover {
+    color: var(--text-secondary);
+    background: rgba($primary-color, 0.05);
+  }
+  
+  &.active {
+    color: white;
+    background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
+    box-shadow: 0 3px 10px rgba($primary-color, 0.3);
+  }
 }
 
 /* 步骤指示器 */
@@ -706,6 +982,55 @@ function startCountdown(type) {
   gap: 4px;
 }
 
+// 游客访问按钮
+.guest-access {
+  margin: 16px 0;
+}
+
+.guest-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px solid #3b82f6;
+  border-radius: 9999px;
+  background-color: #3b82f6;
+  padding: 0.5rem 1.25rem;
+  text-align: center;
+  color: #fff;
+  outline: 0;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  .icon {
+    height: 1.1rem;
+    width: 1.1rem;
+    transition: transform 0.2s ease;
+  }
+  
+  &:hover .icon {
+    transform: scale(1.1);
+  }
+  
+  .text {
+    line-height: 1;
+  }
+}
+
 .footer-register {
   margin-top: 12px;
   color: var(--text-muted);
@@ -717,6 +1042,16 @@ function startCountdown(type) {
   font-weight: 600;
   margin-left: 4px;
   &:hover { text-decoration: underline; }
+}
+
+.version-info {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-disabled);
+  font-size: 11px;
+  line-height: 1.6;
+  opacity: 0.7;
 }
 
 /* 过渡动画 */

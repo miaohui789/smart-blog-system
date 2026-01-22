@@ -2,10 +2,12 @@ package com.blog.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
@@ -26,7 +28,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
         
         // 配置上传文件的访问路径
+        // 优化：添加缓存控制，图片和头像缓存30天
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + absolutePath + "/");
+                .addResourceLocations("file:" + absolutePath + "/")
+                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS)
+                        .cachePublic()
+                        .mustRevalidate())
+                .resourceChain(true);  // 启用资源链，提升性能
     }
 }

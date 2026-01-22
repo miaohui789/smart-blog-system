@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, logout as logoutApi, getUserInfo } from '@/api/user'
+import { login as loginApi, loginByEmailCode, logout as logoutApi, getUserInfo } from '@/api/user'
 import { getToken, setToken, removeToken, getUser, setUser, removeUser } from '@/utils/auth'
 import { initWebSocket, closeWebSocket } from '@/utils/websocket'
 
@@ -10,8 +10,15 @@ export const useUserStore = defineStore('user', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
-  async function login(loginForm) {
-    const res = await loginApi(loginForm)
+  async function login(loginForm, loginType = 'username') {
+    let res
+    if (loginType === 'emailCode') {
+      // 邮箱验证码登录
+      res = await loginByEmailCode(loginForm.email, loginForm.code)
+    } else {
+      // 用户名密码登录或邮箱密码登录
+      res = await loginApi(loginForm)
+    }
     token.value = res.data.token
     setToken(res.data.token)
     await fetchUserInfo()

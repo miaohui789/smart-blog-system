@@ -69,8 +69,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;
-  position: sticky;
-  top: 88px;
+  // 移除sticky定位，因为已在父容器设置
+  // position: sticky;
+  // top: 88px;
 }
 
 .sidebar-card {

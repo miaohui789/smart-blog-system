@@ -43,11 +43,54 @@
         <div class="login-header">
           <h2 class="login-title">欢迎回来</h2>
           <p class="login-subtitle">登录你的账号继续探索</p>
+          <!-- 调试信息 -->
+          <div style="color: red; font-size: 12px; margin-top: 10px;">
+            调试: loginMode = {{ loginMode }}
+          </div>
         </div>
-        <el-form :model="form" :rules="rules" ref="formRef" class="login-form">
+
+        <!-- 登录方式切换 -->
+        <div class="login-tabs" style="border: 2px solid red;">
+          <div 
+            class="tab-item" 
+            :class="{ active: loginMode === 'username' }"
+            @click="switchLoginMode('username')"
+            style="border: 1px solid blue;"
+          >
+            <el-icon><User /></el-icon>
+            <span>账号登录</span>
+          </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: loginMode === 'email' }"
+            @click="switchLoginMode('email')"
+            style="border: 1px solid blue;"
+          >
+            <el-icon><Message /></el-icon>
+            <span>邮箱登录</span>
+          </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: loginMode === 'emailCode' }"
+            @click="switchLoginMode('emailCode')"
+            style="border: 1px solid blue;"
+          >
+            <el-icon><ChatLineRound /></el-icon>
+            <span>验证码登录</span>
+          </div>
+        </div>
+
+        <!-- 用户名密码登录 -->
+        <el-form 
+          v-if="loginMode === 'username'" 
+          :model="usernameForm" 
+          :rules="usernameRules" 
+          ref="usernameFormRef" 
+          class="login-form"
+        >
           <el-form-item prop="username">
             <el-input 
-              v-model="form.username" 
+              v-model="usernameForm.username" 
               placeholder="用户名" 
               :prefix-icon="User"
               size="large"
@@ -56,7 +99,7 @@
           </el-form-item>
           <el-form-item prop="password">
             <el-input
-              v-model="form.password"
+              v-model="usernameForm.password"
               type="password"
               placeholder="密码"
               :prefix-icon="Lock"
@@ -77,6 +120,99 @@
             </button>
           </el-form-item>
         </el-form>
+
+        <!-- 邮箱密码登录 -->
+        <el-form 
+          v-if="loginMode === 'email'" 
+          :model="emailForm" 
+          :rules="emailRules" 
+          ref="emailFormRef" 
+          class="login-form"
+        >
+          <el-form-item prop="username">
+            <el-input 
+              v-model="emailForm.username" 
+              placeholder="邮箱地址" 
+              :prefix-icon="Message"
+              size="large"
+              class="custom-input"
+            />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input
+              v-model="emailForm.password"
+              type="password"
+              placeholder="密码"
+              :prefix-icon="Lock"
+              size="large"
+              show-password
+              class="custom-input"
+              @keyup.enter="handleLogin"
+            />
+          </el-form-item>
+          <el-form-item>
+            <button type="button" class="login-btn" :disabled="loading" @click="handleLogin">
+              <span v-if="!loading">登录</span>
+              <span v-else class="btn-loading">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </span>
+            </button>
+          </el-form-item>
+        </el-form>
+
+        <!-- 邮箱验证码登录 -->
+        <el-form 
+          v-if="loginMode === 'emailCode'" 
+          :model="emailCodeForm" 
+          :rules="emailCodeRules" 
+          ref="emailCodeFormRef" 
+          class="login-form"
+        >
+          <el-form-item prop="email">
+            <el-input 
+              v-model="emailCodeForm.email" 
+              placeholder="邮箱地址" 
+              :prefix-icon="Message"
+              size="large"
+              class="custom-input"
+            />
+          </el-form-item>
+          <el-form-item prop="code">
+            <div class="code-input-wrapper">
+              <el-input
+                v-model="emailCodeForm.code"
+                placeholder="验证码"
+                :prefix-icon="Key"
+                size="large"
+                class="custom-input code-input"
+                @keyup.enter="handleLogin"
+              />
+              <button 
+                type="button" 
+                class="send-code-btn" 
+                :disabled="countdown > 0 || sendingCode"
+                @click="handleSendCode"
+              >
+                <span v-if="countdown > 0">{{ countdown }}s</span>
+                <span v-else-if="sendingCode">发送中...</span>
+                <span v-else>获取验证码</span>
+              </button>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <button type="button" class="login-btn" :disabled="loading" @click="handleLogin">
+              <span v-if="!loading">登录</span>
+              <span v-else class="btn-loading">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </span>
+            </button>
+          </el-form-item>
+        </el-form>
+
         <div class="login-footer">
           <div class="footer-links">
             <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link>
@@ -92,40 +228,140 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Lock, Edit, ChatDotRound, Star } from '@element-plus/icons-vue'
+import { User, Lock, Edit, ChatDotRound, Star, Message, ChatLineRound, Key } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { sendLoginCode } from '@/api/user'
+
+console.log('=== Login Component Loaded ===')
 
 const router = useRouter()
 const userStore = useUserStore()
-const formRef = ref()
+const usernameFormRef = ref()
+const emailFormRef = ref()
+const emailCodeFormRef = ref()
 const loading = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+const loginMode = ref('username') // 'username' | 'email' | 'emailCode'
 
-const form = ref({
+console.log('loginMode初始值:', loginMode.value)
+
+onMounted(() => {
+  console.log('=== Login Component Mounted ===')
+  console.log('当前loginMode:', loginMode.value)
+  console.log('User图标:', User)
+  console.log('Message图标:', Message)
+  console.log('ChatLineRound图标:', ChatLineRound)
+})
+
+// 用户名密码登录表单
+const usernameForm = ref({
   username: '',
   password: ''
 })
 
-const rules = {
+const usernameRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+// 邮箱密码登录表单
+const emailForm = ref({
+  username: '',
+  password: ''
+})
+
+const emailRules = {
+  username: [
+    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+// 邮箱验证码登录表单
+const emailCodeForm = ref({
+  email: '',
+  code: ''
+})
+
+const emailCodeRules = {
+  email: [
+    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
+  ]
+}
+
+function switchLoginMode(mode) {
+  console.log('切换登录模式:', mode)
+  loginMode.value = mode
+  console.log('切换后loginMode:', loginMode.value)
+}
+
 async function handleLogin() {
-  await formRef.value.validate()
+  let formRef
+  let formData
+  let type = 'username'
+
+  if (loginMode.value === 'username') {
+    formRef = usernameFormRef.value
+    formData = usernameForm.value
+  } else if (loginMode.value === 'email') {
+    formRef = emailFormRef.value
+    formData = emailForm.value
+  } else {
+    formRef = emailCodeFormRef.value
+    formData = emailCodeForm.value
+    type = 'emailCode'
+  }
+
+  await formRef.validate()
   loading.value = true
   try {
-    await userStore.login(form.value)
+    await userStore.login(formData, type)
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
     // 错误已由 request.js 拦截器统一处理并显示
-    // 这里不需要额外处理，避免重复提示
   } finally {
     loading.value = false
   }
+}
+
+async function handleSendCode() {
+  try {
+    await emailCodeFormRef.value.validateField('email')
+  } catch {
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    await sendLoginCode(emailCodeForm.value.email)
+    ElMessage.success('验证码已发送，请查收邮件')
+    startCountdown()
+  } catch (error) {
+    ElMessage.error(error.message || '发送验证码失败')
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+function startCountdown() {
+  countdown.value = 60
+  const timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
 }
 </script>
 
@@ -285,7 +521,7 @@ async function handleLogin() {
 
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .login-title {
@@ -300,6 +536,46 @@ async function handleLogin() {
   font-size: 14px;
 }
 
+.login-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 4px;
+  background: var(--bg-input);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  .el-icon {
+    font-size: 16px;
+  }
+  
+  &:hover {
+    color: var(--text-secondary);
+    background: rgba($primary-color, 0.05);
+  }
+  
+  &.active {
+    color: white;
+    background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
+    box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+  }
+}
+
 .login-form {
   :deep(.el-form-item) {
     margin-bottom: 20px;
@@ -307,6 +583,47 @@ async function handleLogin() {
   
   :deep(.el-form-item__error) {
     padding-top: 4px;
+  }
+}
+
+.code-input-wrapper {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  
+  .code-input {
+    flex: 1;
+  }
+}
+
+.send-code-btn {
+  flex-shrink: 0;
+  padding: 0 20px;
+  height: 48px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: $primary-color;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  
+  &:hover:not(:disabled) {
+    border-color: $primary-color;
+    background: rgba($primary-color, 0.05);
+    transform: translateY(-1px);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--text-disabled);
   }
 }
 

@@ -9,6 +9,10 @@ import java.util.List;
 public interface UserService extends IService<User> {
     User getByUsername(String username);
     
+    User getByEmail(String email);
+    
+    User getByUsernameOrEmail(String usernameOrEmail);
+    
     /**
      * 搜索用户
      * @param keyword 关键词（匹配用户名或昵称）

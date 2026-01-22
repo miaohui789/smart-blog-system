@@ -16,7 +16,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userService.getByUsername(username);
+        // 支持用户名或邮箱登录
+        User user = userService.getByUsernameOrEmail(username);
         if (user == null) {
             throw new UsernameNotFoundException("用户不存在");
         }

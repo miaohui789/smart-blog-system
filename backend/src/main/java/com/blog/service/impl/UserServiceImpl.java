@@ -18,6 +18,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
     
     @Override
+    public User getByEmail(String email) {
+        return getOne(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
+    }
+    
+    @Override
+    public User getByUsernameOrEmail(String usernameOrEmail) {
+        return getOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, usernameOrEmail)
+                .or()
+                .eq(User::getEmail, usernameOrEmail)
+        );
+    }
+    
+    @Override
     public List<User> searchUsers(String keyword, int limit) {
         return list(new LambdaQueryWrapper<User>()
                 .eq(User::getStatus, 1)  // 只搜索正常状态的用户

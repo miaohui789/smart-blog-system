@@ -36,7 +36,8 @@
               v-model="form.username" 
               placeholder="用户名" 
               :prefix-icon="User" 
-              size="large" 
+              size="large"
+              autocomplete="off"
             />
           </el-form-item>
           <el-form-item prop="password">
@@ -46,7 +47,8 @@
               placeholder="密码" 
               :prefix-icon="Lock" 
               size="large" 
-              show-password 
+              show-password
+              autocomplete="new-password"
               @keyup.enter="handleLogin" 
             />
           </el-form-item>
@@ -62,15 +64,6 @@
             </el-button>
           </el-form-item>
         </el-form>
-        
-        <!-- 默认账号密码提示 -->
-        <div class="default-account">
-          <p class="account-title">默认账号</p>
-          <div class="account-info">
-            <span>用户名：<code>admin</code></span>
-            <span>密码：<code>admin123</code></span>
-          </div>
-        </div>
       </div>
       
       <!-- 主题切换 -->
@@ -96,7 +89,7 @@ const themeStore = useThemeStore()
 const formRef = ref()
 const loading = ref(false)
 
-const form = ref({ username: 'admin', password: 'admin123' })
+const form = ref({ username: '', password: '' })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
@@ -271,38 +264,6 @@ async function handleLogin() {
   
   &:hover {
     opacity: 0.9;
-  }
-}
-
-.default-account {
-  margin-top: 24px;
-  padding: 16px;
-  background: var(--bg-darker);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  transition: background-color 0.3s, border-color 0.3s;
-  
-  .account-title {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    text-align: center;
-  }
-  
-  .account-info {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    
-    code {
-      background: var(--bg-card);
-      padding: 2px 8px;
-      border-radius: 4px;
-      color: $primary-color;
-      font-family: monospace;
-    }
   }
 }
 

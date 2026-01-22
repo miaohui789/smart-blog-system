@@ -24,6 +24,14 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  # 静态资源缓存配置 - 优化图片加载速度
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 30d  # 缓存30天
+          cache-public: true
+          must-revalidate: true
   # 邮件配置
   mail:
     host: smtp.qq.com

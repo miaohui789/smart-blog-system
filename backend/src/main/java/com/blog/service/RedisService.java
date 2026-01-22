@@ -47,6 +47,8 @@ public class RedisService {
     public static final long EXPIRE_MEDIUM = 30;    // 30分钟
     public static final long EXPIRE_LONG = 60;      // 1小时
     public static final long EXPIRE_DAY = 1440;     // 1天
+    public static final long EXPIRE_WEEK = 10080;   // 7天 - 用于图片和头像缓存
+    public static final long EXPIRE_MONTH = 43200;  // 30天 - 用于静态资源
 
     public RedisService(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;

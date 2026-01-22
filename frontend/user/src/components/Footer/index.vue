@@ -14,6 +14,7 @@
       </div>
       <div class="footer-links">
         <router-link to="/about">关于</router-link>
+        <router-link to="/version-history">版本历史</router-link>
         <a href="#">隐私政策</a>
         <a href="#">联系我们</a>
       </div>

@@ -183,6 +183,7 @@ public class AdminAuthController {
             createMenu("Role", "/system/role", "System/Role/index", "Avatar", null),
             createMenu("Menu", "/system/menu", "System/Menu/index", "Menu", null),
             createMenu("Config", "/system/config", "System/Config/index", "Tools", null),
+            createMenu("SystemVersion", "/system/version", "System/Version", "Histogram", null),
             createMenu("Log", "/system/log", "System/Log/index", "Tickets", null)
         ));
         systemMenu.put("redirect", "/system/role");
@@ -263,6 +264,7 @@ public class AdminAuthController {
         titles.put("Role", "角色管理");
         titles.put("Menu", "菜单管理");
         titles.put("Config", "系统配置");
+        titles.put("SystemVersion", "版本管理");
         titles.put("Log", "操作日志");
         return titles.getOrDefault(name, name);
     }

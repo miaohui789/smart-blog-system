@@ -336,19 +336,6 @@ function loadThemeFromLocal() {
   overflow: hidden;
 }
 
-// 自定义背景下强制透明但保持圆角
-body.has-custom-bg .skin-page .page-header {
-  background: transparent !important;
-  border-radius: 20px !important;
-  
-  .header-content {
-    background: rgba(var(--bg-card-rgb), 0.65) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    border-radius: 20px !important;
-  }
-}
-
 .page-title {
   font-size: 28px;
   font-weight: 700;

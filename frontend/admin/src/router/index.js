@@ -72,6 +72,7 @@ const routes = [
           { path: 'role', name: 'Role', component: () => import('@/views/System/Role/index.vue'), meta: { title: '角色管理', requiresAdmin: true } },
           { path: 'menu', name: 'Menu', component: () => import('@/views/System/Menu/index.vue'), meta: { title: '菜单管理', requiresAdmin: true } },
           { path: 'config', name: 'Config', component: () => import('@/views/System/Config/index.vue'), meta: { title: '系统配置', requiresAdmin: true } },
+          { path: 'version', name: 'SystemVersion', component: () => import('@/views/System/Version.vue'), meta: { title: '版本管理', requiresAdmin: true } },
           { path: 'log', name: 'Log', component: () => import('@/views/System/Log/index.vue'), meta: { title: '操作日志', requiresAdmin: true } }
         ]
       },

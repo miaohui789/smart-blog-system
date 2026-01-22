@@ -32,14 +32,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, shallowRef, defineAsyncComponent } from 'vue'
+import { ref, onMounted, onUnmounted, shallowRef, defineAsyncComponent, watch } from 'vue'
 import Header from '@/components/Header/index.vue'
 import Footer from '@/components/Footer/index.vue'
 import Sidebar from '@/components/Sidebar/index.vue'
 import BackToTop from '@/components/BackToTop/index.vue'
 import { useThemeStore } from '@/stores/theme'
+import { useUserStore } from '@/stores/user'
 
 const themeStore = useThemeStore()
+const userStore = useUserStore()
 const cachedViews = ref(['Home', 'Category', 'Tag', 'Archive', 'About'])
 const currentBgComponent = shallowRef(null)
 
@@ -55,6 +57,13 @@ const bgComponents = {
 
 // 加载当前皮肤
 function loadCurrentSkin() {
+  // 只有登录用户才加载自定义皮肤
+  if (!userStore.isLoggedIn) {
+    console.log('未登录，不加载自定义皮肤')
+    currentBgComponent.value = null
+    return
+  }
+  
   const theme = themeStore.isDark ? 'dark' : 'light'
   const skinData = localStorage.getItem(`${theme}Skin`)
   
@@ -83,6 +92,12 @@ function loadCurrentSkin() {
 
 // 监听皮肤切换事件
 function handleSkinChange(event) {
+  // 只有登录用户才能切换皮肤
+  if (!userStore.isLoggedIn) {
+    console.log('未登录，忽略皮肤切换事件')
+    return
+  }
+  
   console.log('收到皮肤切换事件:', event.detail)
   const { theme, component } = event.detail
   const currentTheme = themeStore.isDark ? 'dark' : 'light'
@@ -117,6 +132,19 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('skin-change', handleSkinChange)
   window.removeEventListener('theme-changed', handleThemeChange)
+})
+
+// 监听登录状态变化
+watch(() => userStore.isLoggedIn, (isLoggedIn) => {
+  if (!isLoggedIn) {
+    // 用户退出登录时，清除背景
+    console.log('用户退出登录，清除自定义背景')
+    currentBgComponent.value = null
+  } else {
+    // 用户登录时，重新加载皮肤
+    console.log('用户登录，重新加载皮肤')
+    loadCurrentSkin()
+  }
 })
 </script>
 
@@ -153,6 +181,13 @@ onUnmounted(() => {
 .content-sidebar {
   width: 320px;
   flex-shrink: 0;
+  position: sticky;
+  top: 80px;
+  align-self: flex-start;
+  transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡 */
+  // 移除滚动条和高度限制，让内容自然显示
+  // max-height: calc(100vh - 100px);
+  // overflow-y: auto;
 
   @media (max-width: 992px) {
     display: none;

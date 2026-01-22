@@ -173,7 +173,7 @@
         </h3>
 
         <!-- 发表评论 -->
-        <div class="comment-form">
+        <div ref="commentFormRef" class="comment-form">
           <el-avatar :size="40" :src="userStore.userInfo?.avatar">
             {{ userStore.userInfo?.nickname?.charAt(0) || 'U' }}
           </el-avatar>
@@ -293,78 +293,92 @@
             
             <!-- 子评论区域 -->
             <div v-if="comment.replies && comment.replies.length" class="replies-container">
-              <div class="replies-list">
-                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                  <div class="reply-avatar clickable" :class="{ 
-                    'vip-avatar': reply.user?.vipLevel > 0 && reply.user?.status !== 2, 
-                    ['vip-level-' + reply.user?.vipLevel]: reply.user?.vipLevel > 0 && reply.user?.status !== 2,
-                    'cancelled-user-avatar': reply.user?.status === 2
-                  }" @click="goUserProfile(reply.user?.id)">
-                    <el-avatar v-if="reply.user?.status === 2" :size="32" class="cancelled-avatar">
-                      <el-icon><UserFilled /></el-icon>
-                    </el-avatar>
-                    <el-avatar v-else :size="32" :src="reply.user?.avatar">
-                      {{ reply.user?.nickname?.charAt(0) || 'U' }}
-                    </el-avatar>
-                  </div>
-                  <div class="reply-content-wrapper">
-                    <div class="reply-meta">
-                      <template v-if="reply.user?.status === 2">
-                        <span class="cancelled-username">已注销用户</span>
-                      </template>
-                      <VipUsername 
-                        v-else
-                        :username="reply.user?.nickname || '匿名用户'" 
-                        :vip-level="reply.user?.vipLevel || 0" 
-                        size="small"
-                        class="clickable-name"
-                        @click="goUserProfile(reply.user?.id)"
-                      />
-                      <span v-if="reply.replyUser" class="reply-target">
-                        回复 <em class="clickable-name" @click="goUserProfile(reply.replyUser?.id)">@{{ reply.replyUser.status === 2 ? '已注销用户' : reply.replyUser.nickname }}</em>
-                      </span>
-                      <span class="reply-time">{{ formatRelativeTime(reply.createTime) }}</span>
+              <!-- 展开/收起按钮 -->
+              <div class="replies-toggle" @click="toggleReplies(comment.id)">
+                <el-icon class="toggle-icon" :class="{ expanded: expandedComments.has(comment.id) }">
+                  <ArrowRight />
+                </el-icon>
+                <span class="toggle-text">
+                  {{ expandedComments.has(comment.id) ? '收起' : '展开' }}
+                  {{ comment.replies.length }} 条回复
+                </span>
+              </div>
+              
+              <!-- 回复列表 - 使用过渡动画 -->
+              <transition name="replies-expand">
+                <div v-show="expandedComments.has(comment.id)" class="replies-list">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                    <div class="reply-avatar clickable" :class="{ 
+                      'vip-avatar': reply.user?.vipLevel > 0 && reply.user?.status !== 2, 
+                      ['vip-level-' + reply.user?.vipLevel]: reply.user?.vipLevel > 0 && reply.user?.status !== 2,
+                      'cancelled-user-avatar': reply.user?.status === 2
+                    }" @click="goUserProfile(reply.user?.id)">
+                      <el-avatar v-if="reply.user?.status === 2" :size="32" class="cancelled-avatar">
+                        <el-icon><UserFilled /></el-icon>
+                      </el-avatar>
+                      <el-avatar v-else :size="32" :src="reply.user?.avatar">
+                        {{ reply.user?.nickname?.charAt(0) || 'U' }}
+                      </el-avatar>
                     </div>
-                    
-                    <!-- 子评论编辑模式 -->
-                    <div v-if="editingCommentId === reply.id" class="comment-edit-form">
-                      <el-input
-                        v-model="editingContent"
-                        type="textarea"
-                        :rows="2"
-                        placeholder="编辑回复内容..."
-                        maxlength="500"
-                        show-word-limit
-                      />
-                      <div class="edit-actions">
-                        <el-button size="small" @click="cancelEdit">取消</el-button>
-                        <el-button size="small" type="primary" @click="submitEdit(reply)" :loading="editSubmitting">保存</el-button>
-                      </div>
-                    </div>
-                    
-                    <!-- 子评论正常显示 -->
-                    <template v-else>
-                      <p class="reply-text">{{ reply.content }}</p>
-                      <div class="reply-actions">
-                        <span class="action-btn" @click="handleReply(reply)">
-                          <el-icon><ChatDotRound /></el-icon>
-                          <em>回复</em>
-                        </span>
-                        <template v-if="userStore.userInfo?.id === reply.user?.id">
-                          <span class="action-btn edit" @click="startEdit(reply)">
-                            <el-icon><Edit /></el-icon>
-                            <em>编辑</em>
-                          </span>
-                          <span class="action-btn delete" @click="handleDeleteComment(reply, comment)">
-                            <el-icon><Delete /></el-icon>
-                            <em>删除</em>
-                          </span>
+                    <div class="reply-content-wrapper">
+                      <div class="reply-meta">
+                        <template v-if="reply.user?.status === 2">
+                          <span class="cancelled-username">已注销用户</span>
                         </template>
+                        <VipUsername 
+                          v-else
+                          :username="reply.user?.nickname || '匿名用户'" 
+                          :vip-level="reply.user?.vipLevel || 0" 
+                          size="small"
+                          class="clickable-name"
+                          @click="goUserProfile(reply.user?.id)"
+                        />
+                        <span v-if="reply.replyUser" class="reply-target">
+                          回复 <em class="clickable-name" @click="goUserProfile(reply.replyUser?.id)">@{{ reply.replyUser.status === 2 ? '已注销用户' : reply.replyUser.nickname }}</em>
+                        </span>
+                        <span class="reply-time">{{ formatRelativeTime(reply.createTime) }}</span>
                       </div>
-                    </template>
+                      
+                      <!-- 子评论编辑模式 -->
+                      <div v-if="editingCommentId === reply.id" class="comment-edit-form">
+                        <el-input
+                          v-model="editingContent"
+                          type="textarea"
+                          :rows="2"
+                          placeholder="编辑回复内容..."
+                          maxlength="500"
+                          show-word-limit
+                        />
+                        <div class="edit-actions">
+                          <el-button size="small" @click="cancelEdit">取消</el-button>
+                          <el-button size="small" type="primary" @click="submitEdit(reply)" :loading="editSubmitting">保存</el-button>
+                        </div>
+                      </div>
+                      
+                      <!-- 子评论正常显示 -->
+                      <template v-else>
+                        <p class="reply-text">{{ reply.content }}</p>
+                        <div class="reply-actions">
+                          <span class="action-btn" @click="handleReply(reply)">
+                            <el-icon><ChatDotRound /></el-icon>
+                            <em>回复</em>
+                          </span>
+                          <template v-if="userStore.userInfo?.id === reply.user?.id">
+                            <span class="action-btn edit" @click="startEdit(reply)">
+                              <el-icon><Edit /></el-icon>
+                              <em>编辑</em>
+                            </span>
+                            <span class="action-btn delete" @click="handleDeleteComment(reply, comment)">
+                              <el-icon><Delete /></el-icon>
+                              <em>删除</em>
+                            </span>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </transition>
             </div>
           </div>
         </div>
@@ -382,7 +396,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft, Download, Sunny, Edit, Delete, Plus, Check, WarningFilled, UserFilled } from '@element-plus/icons-vue'
+import { Calendar, View, ChatDotRound, Star, Close, PriceTag, Document, ArrowLeft, Download, Sunny, Edit, Delete, Plus, Check, WarningFilled, UserFilled, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getArticleDetail, likeArticle, unlikeArticle, favoriteArticle, unfavoriteArticle } from '@/api/article'
 import { getCommentList, createComment, likeComment, deleteComment, updateComment } from '@/api/comment'
@@ -407,11 +421,13 @@ const article = ref(null)
 const comments = ref([])
 const totalComments = ref(0)
 const loading = ref(true)
+const expandedComments = ref(new Set()) // 存储展开的评论ID
 const submitting = ref(false)
 const commentContent = ref('')
 const replyTo = ref(null)
 const vipInfo = ref({ isVip: false })
 const heatingArticle = ref(false)
+const commentFormRef = ref(null)
 
 // 编辑器主题
 const editorTheme = computed(() => themeStore.isDark ? 'dark' : 'light')
@@ -671,7 +687,13 @@ async function submitComment() {
   submitting.value = true
   
   const content = commentContent.value.trim()
-  const parentId = replyTo.value ? (replyTo.value.parentId || replyTo.value.id) : null
+  // 修复：正确获取parentId - 如果回复的是子评论，需要找到其根评论
+  let parentId = null
+  if (replyTo.value) {
+    // 如果replyTo有parentId，说明它是子评论，使用它的parentId
+    // 否则它是根评论，使用它的id
+    parentId = replyTo.value.parentId || replyTo.value.id
+  }
   const replyUserId = replyTo.value?.user?.id
   const replyUserInfo = replyTo.value?.user ? {
     id: replyTo.value.user.id,
@@ -707,7 +729,8 @@ async function submitComment() {
         id: userStore.userInfo?.id,
         nickname: userStore.userInfo?.nickname,
         avatar: userStore.userInfo?.avatar,
-        vipLevel: userStore.userInfo?.vipLevel || 0
+        vipLevel: userStore.userInfo?.vipLevel || 0,
+        status: userStore.userInfo?.status || 1
       },
       replyUser: replyUserInfo,
       replies: []
@@ -719,6 +742,9 @@ async function submitComment() {
       if (rootComment) {
         if (!rootComment.replies) rootComment.replies = []
         rootComment.replies.push(newComment)
+        // 自动展开该评论的回复列表
+        expandedComments.value.add(parentId)
+        expandedComments.value = new Set(expandedComments.value)
       }
     } else {
       // 顶级评论 - 添加到列表开头
@@ -736,15 +762,42 @@ async function submitComment() {
     ElMessage.error('评论失败')
     // 恢复输入内容
     commentContent.value = content
+    replyTo.value = savedReplyTo
   } finally {
     submitting.value = false
   }
+}
+
+// 切换回复展开/收起
+function toggleReplies(commentId) {
+  if (expandedComments.value.has(commentId)) {
+    expandedComments.value.delete(commentId)
+  } else {
+    expandedComments.value.add(commentId)
+  }
+  // 触发响应式更新
+  expandedComments.value = new Set(expandedComments.value)
 }
 
 // 回复评论
 function handleReply(comment) {
   replyTo.value = comment
   commentContent.value = ''
+  
+  // 滚动到评论框
+  nextTick(() => {
+    if (commentFormRef.value) {
+      commentFormRef.value.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      })
+      // 聚焦到输入框
+      const textarea = commentFormRef.value.querySelector('textarea')
+      if (textarea) {
+        setTimeout(() => textarea.focus(), 300)
+      }
+    }
+  })
 }
 
 // 取消回复
@@ -826,15 +879,24 @@ async function handleDeleteComment(comment, parentComment = null) {
       // 如果是主评论，从评论列表中移除
       const index = comments.value.findIndex(c => c.id === comment.id)
       if (index > -1) {
+        // 计算要删除的总评论数（包括所有子评论）
+        const deletedCount = 1 + (comments.value[index].replies?.length || 0)
         comments.value.splice(index, 1)
+        
+        // 更新总评论数
+        totalComments.value = Math.max(0, totalComments.value - deletedCount)
+        if (article.value) {
+          article.value.commentCount = Math.max(0, (article.value.commentCount || 0) - deletedCount)
+        }
+        return
       }
     }
     
-    // 更新评论数
+    // 更新评论数（子评论只减1）
+    totalComments.value = Math.max(0, totalComments.value - 1)
     if (article.value && article.value.commentCount > 0) {
       article.value.commentCount--
     }
-    totalComments.value = Math.max(0, totalComments.value - 1)
   } catch (e) {
     if (e !== 'cancel') {
       console.error(e)
@@ -886,49 +948,65 @@ function addNewCommentToList(newComment) {
     return
   }
   
+  console.log('[评论] 收到新评论，准备添加到列表:', newComment)
+  
   // 使用nextTick确保DOM更新
   nextTick(() => {
     if (newComment.parentId && newComment.parentId > 0) {
       // 子评论 - 找到根评论并添加
-      // 先在顶级评论中查找
-      let rootComment = comments.value.find(c => c.id === newComment.parentId)
-      
-      // 如果没找到，可能parentId指向的是另一个子评论，需要找到根评论
-      if (!rootComment) {
-        for (const comment of comments.value) {
-          if (comment.replies?.some(r => r.id === newComment.parentId)) {
-            rootComment = comment
-            break
-          }
-        }
-      }
+      const rootComment = comments.value.find(c => c.id === newComment.parentId)
       
       if (rootComment) {
         if (!rootComment.replies) {
           rootComment.replies = []
         }
-        // 检查是否已存在
-        if (!rootComment.replies.find(r => r.id === newComment.id)) {
+        // 检查是否已存在（避免重复）
+        const exists = rootComment.replies.find(r => r.id === newComment.id)
+        if (!exists) {
           rootComment.replies.push(newComment)
+          console.log('[评论] 子评论已添加到父评论:', newComment.parentId)
+          
+          // 自动展开该评论的回复列表，让用户看到新评论
+          if (!expandedComments.value.has(newComment.parentId)) {
+            expandedComments.value.add(newComment.parentId)
+            expandedComments.value = new Set(expandedComments.value)
+            console.log('[评论] 自动展开父评论:', newComment.parentId)
+          }
+          
+          // 更新总评论数和文章评论数
+          totalComments.value++
+          if (article.value) {
+            article.value.commentCount = (article.value.commentCount || 0) + 1
+          }
+        } else {
+          console.log('[评论] 子评论已存在，跳过添加')
         }
+      } else {
+        console.warn('[评论] 未找到父评论，parentId:', newComment.parentId)
       }
     } else {
       // 顶级评论 - 添加到列表开头
-      if (!comments.value.find(c => c.id === newComment.id)) {
+      const exists = comments.value.find(c => c.id === newComment.id)
+      if (!exists) {
         comments.value.unshift(newComment)
+        console.log('[评论] 顶级评论已添加')
+        
+        // 更新总评论数和文章评论数
         totalComments.value++
+        if (article.value) {
+          article.value.commentCount = (article.value.commentCount || 0) + 1
+        }
+      } else {
+        console.log('[评论] 顶级评论已存在，跳过添加')
       }
-    }
-    
-    // 更新文章评论数
-    if (article.value) {
-      article.value.commentCount = (article.value.commentCount || 0) + 1
     }
   })
 }
 </script>
 
 <style lang="scss" scoped>
+@import '@/assets/styles/variables.scss';
+
 .article-detail-page {
   max-width: 900px;
   margin: 0 auto;
@@ -1261,11 +1339,15 @@ function addNewCommentToList(newComment) {
 
 .article-body {
   min-height: 200px;
+  padding: 24px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
   
   // md-editor-v3 预览组件样式覆盖
   :deep(.md-editor-preview-wrapper) {
     padding: 0;
-    background: var(--bg-card) !important;
+    background: transparent !important;
   }
   
   :deep(.md-editor-preview) {
@@ -1273,6 +1355,15 @@ function addNewCommentToList(newComment) {
     font-size: 16px;
     line-height: 1.9;
     background: var(--bg-card) !important;
+    
+    // 隐藏md-editor代码块的所有滚动条
+    * {
+      &::-webkit-scrollbar {
+        display: none !important;
+      }
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
     
     // 标题样式
     h1, h2, h3, h4, h5, h6 {
@@ -1297,18 +1388,67 @@ function addNewCommentToList(newComment) {
     
     // 代码块样式
     pre {
-      border-radius: 10px;
-      margin: 16px 0;
+      border-radius: 16px;
+      margin: 20px 0;
+      padding: 20px;
       border: 1px solid var(--border-color);
-      overflow: hidden;
+      overflow: visible; /* 垂直方向不滚动，完整显示 */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  border-color 0.3s ease;
+      
+      &:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        border-color: rgba(168, 85, 247, 0.3);
+        // 移除 transform，避免微跳
+      }
       
       code {
         background: transparent !important;
         font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
         font-size: 14px;
-        line-height: 1.6;
-        white-space: pre;
-        overflow-x: auto;
+        line-height: 1.7;
+        white-space: pre; /* 保持pre，不自动换行 */
+        overflow-x: auto; /* 保留横向滚动 */
+        overflow-y: visible; /* 垂直方向完整显示 */
+        display: block;
+        padding: 0;
+        
+        // 横向滚动条美化
+        &::-webkit-scrollbar {
+          height: 8px;
+        }
+        
+        &::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 4px;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          background: rgba(168, 85, 247, 0.3);
+          border-radius: 4px;
+          
+          &:hover {
+            background: rgba(168, 85, 247, 0.5);
+          }
+        }
+      }
+    }
+    
+    // md-editor-v3 代码折叠动画优化
+    .code-block-wrapper {
+      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                  opacity 0.4s ease,
+                  transform 0.4s ease !important;
+      overflow: hidden;
+    }
+    
+    // 折叠按钮样式优化
+    .code-block-fold-btn {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      
+      &:hover {
+        transform: scale(1.1);
       }
     }
   }
@@ -1319,7 +1459,34 @@ function addNewCommentToList(newComment) {
   .article-body {
     :deep(.md-editor-preview) {
       pre {
-        background: #1e1e1e !important;
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+        border: 1px solid rgba(168, 85, 247, 0.2) !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        
+        &:hover {
+          box-shadow: 0 4px 20px rgba(168, 85, 247, 0.2);
+        }
+        
+        code {
+          // 暗色主题横向滚动条美化
+          &::-webkit-scrollbar {
+            height: 8px;
+          }
+          
+          &::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+          }
+          
+          &::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.4);
+            border-radius: 4px;
+            
+            &:hover {
+              background: rgba(168, 85, 247, 0.6);
+            }
+          }
+        }
       }
     }
   }
@@ -1330,18 +1497,27 @@ function addNewCommentToList(newComment) {
   .article-body {
     :deep(.md-editor-preview) {
       pre {
-        background: #f4f4f5 !important;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        border: 1px solid rgba(168, 85, 247, 0.15) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        
+        &:hover {
+          box-shadow: 0 4px 16px rgba(168, 85, 247, 0.15);
+          border-color: rgba(168, 85, 247, 0.25) !important;
+        }
       }
     }
     
     // 行内代码
     code:not(pre code) {
-      background: rgba(59, 130, 246, 0.15) !important;
-      color: var(--primary-color) !important;
-      padding: 2px 8px;
-      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(236, 72, 153, 0.12)) !important;
+      color: #7c3aed !important;
+      padding: 3px 8px;
+      border-radius: 6px;
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
       font-size: 13px;
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      font-weight: 500;
     }
     
     // 链接
@@ -1425,14 +1601,29 @@ function addNewCommentToList(newComment) {
     // 引用
     blockquote {
       margin: 16px 0;
-      padding: 12px 20px;
-      border-left: 4px solid var(--primary-color);
-      background: rgba(59, 130, 246, 0.1);
-      border-radius: 4px;
+      padding: 16px 20px;
+      border-left: 4px solid transparent;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(236, 72, 153, 0.08));
+      border-radius: 8px;
       color: var(--text-secondary);
+      border-left-color: #a855f7;
+      box-shadow: 0 2px 8px rgba(168, 85, 247, 0.1);
+      position: relative;
+      
+      &::before {
+        content: '"';
+        position: absolute;
+        top: 8px;
+        left: 12px;
+        font-size: 32px;
+        color: rgba(168, 85, 247, 0.3);
+        font-family: Georgia, serif;
+        line-height: 1;
+      }
       
       p {
         margin: 0;
+        padding-left: 20px;
       }
     }
     
@@ -1865,6 +2056,15 @@ function addNewCommentToList(newComment) {
 .reply-avatar {
   flex-shrink: 0;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 }
 
 .comment-avatar {
@@ -1880,8 +2080,8 @@ function addNewCommentToList(newComment) {
 /* VIP头像边框 */
 .comment-avatar.vip-avatar,
 .reply-avatar.vip-avatar {
-  padding: 2px;
-  box-sizing: content-box;
+  padding: 1.5px;
+  box-sizing: border-box;
   
   :deep(.el-avatar) {
     width: 100% !important;
@@ -2047,6 +2247,97 @@ function addNewCommentToList(newComment) {
 :root[data-theme="light"] .replies-list {
   background: #f8f9fa;
   border-color: #e9ecef;
+}
+
+/* 回复容器 */
+.replies-container {
+  margin-top: 16px;
+  margin-left: 52px;
+}
+
+/* 展开/收起按钮 */
+.replies-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+  margin-bottom: 12px;
+  
+  &:hover {
+    background: var(--bg-input);
+    border-color: $primary-color;
+    color: $primary-color;
+    
+    .toggle-icon {
+      color: $primary-color;
+    }
+  }
+  
+  .toggle-icon {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+    color: var(--text-muted);
+    
+    &.expanded {
+      transform: rotate(90deg);
+    }
+  }
+  
+  .toggle-text {
+    font-weight: 500;
+  }
+}
+
+/* 回复列表 */
+.replies-list {
+  padding: 12px 16px;
+  background: rgba(var(--bg-card-rgb), 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* 回复展开/收起动画 - 优化版本，使用高度过渡让侧边栏平滑移动 */
+.replies-expand-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.replies-expand-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.replies-expand-enter-from {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+}
+
+.replies-expand-enter-to {
+  opacity: 1;
+  max-height: 2000px; /* 足够大的值 */
+  transform: translateY(0);
+}
+
+.replies-expand-leave-from {
+  opacity: 1;
+  max-height: 2000px;
+  transform: translateY(0);
+}
+
+.replies-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
 }
 
 /* 子评论项 */

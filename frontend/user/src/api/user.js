@@ -1,8 +1,28 @@
 import request from '@/utils/request'
 
-// 用户登录
+// 用户名密码登录
 export function login(data) {
   return request({ url: '/auth/login', method: 'post', data })
+}
+
+// 邮箱验证码登录
+export function loginByEmailCode(email, code) {
+  return request({ 
+    url: '/auth/login/email', 
+    method: 'post', 
+    params: { email, code }
+  })
+}
+
+// 发送登录验证码
+export function sendLoginCode(email) {
+  return request({ 
+    url: '/auth/login/send-code', 
+    method: 'post', 
+    params: { email },
+    timeout: 60000,
+    showError: false
+  })
 }
 
 // 用户注册

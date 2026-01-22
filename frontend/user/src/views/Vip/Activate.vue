@@ -92,10 +92,16 @@
     <!-- 激活成功弹窗 -->
     <div v-if="showSuccess" class="success-modal" @click="showSuccess = false">
       <div class="success-content" @click.stop>
-        <div class="success-icon">🎊</div>
+        <div class="success-icon-wrapper">
+          <div class="success-icon-bg"></div>
+          <el-icon class="success-icon"><CircleCheck /></el-icon>
+        </div>
         <h3>激活成功！</h3>
         <p>恭喜您成为 <span :style="{ color: getLevelColor(activatedLevel) }">{{ getLevelName(activatedLevel) }}</span></p>
-        <button class="confirm-btn" @click="goToCenter">查看我的VIP</button>
+        <button class="confirm-btn" @click="goToCenter">
+          <span>查看我的VIP</span>
+          <el-icon><ArrowRight /></el-icon>
+        </button>
       </div>
     </div>
   </div>
@@ -104,7 +110,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Medal, Check } from '@element-plus/icons-vue'
+import { Medal, Check, CircleCheck, ArrowRight } from '@element-plus/icons-vue'
 import { activateVip } from '@/api/vip'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
@@ -461,41 +467,175 @@ const goToCenter = () => {
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .success-content {
   background: var(--bg-card);
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: 20px;
+  padding: 48px 40px;
   text-align: center;
-  animation: popIn 0.3s ease;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  max-width: 400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.success-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #a855f7, #ec4899, #ffd700);
 }
 
 @keyframes popIn {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  0% { 
+    transform: scale(0.8) translateY(20px); 
+    opacity: 0; 
+  }
+  60% { 
+    transform: scale(1.05) translateY(-5px); 
+  }
+  100% { 
+    transform: scale(1) translateY(0); 
+    opacity: 1; 
+  }
 }
 
-.success-icon { font-size: 60px; margin-bottom: 16px; }
-.success-content h3 { font-size: 24px; margin-bottom: 12px; color: var(--text-primary); }
-.success-content p { color: var(--text-secondary); margin-bottom: 24px; }
+.success-icon-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-icon-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.success-icon {
+  position: relative;
+  font-size: 60px;
+  color: #a855f7;
+  animation: checkmark 0.6s ease 0.3s both;
+  filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.4));
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.success-content h3 { 
+  font-size: 28px; 
+  margin-bottom: 12px; 
+  color: var(--text-primary);
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.success-content p { 
+  color: var(--text-secondary); 
+  margin-bottom: 32px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.success-content p span {
+  font-weight: 600;
+  font-size: 18px;
+}
 
 .confirm-btn {
-  padding: 12px 30px;
+  padding: 14px 32px;
   background: linear-gradient(135deg, #a855f7, #ec4899);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.confirm-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.confirm-btn:hover::before {
+  left: 100%;
 }
 
 .confirm-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.5);
+}
+
+.confirm-btn:active {
+  transform: translateY(0);
+}
+
+.confirm-btn .el-icon {
+  font-size: 18px;
+  transition: transform 0.3s;
+}
+
+.confirm-btn:hover .el-icon {
+  transform: translateX(4px);
 }
 
 @media (max-width: 768px) {

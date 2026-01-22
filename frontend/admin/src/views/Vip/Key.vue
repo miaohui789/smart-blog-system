@@ -139,6 +139,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { getKeyList, generateKeys, updateKeyStatus, deleteKey } from '@/api/vip'
 import { formatDateTime } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { copyWithMessage } from '@/utils/clipboard'
 
 const loading = ref(false)
 const generateLoading = ref(false)
@@ -252,15 +253,13 @@ const handleDelete = async (id) => {
   }
 }
 
-const copyKey = (key) => {
-  navigator.clipboard.writeText(key)
-  ElMessage.success('已复制')
+const copyKey = async (key) => {
+  await copyWithMessage(key, ElMessage, '已复制')
 }
 
-const copyAllKeys = () => {
+const copyAllKeys = async () => {
   const text = generatedKeys.value.map(k => k.keyCode).join('\n')
-  navigator.clipboard.writeText(text)
-  ElMessage.success('已复制全部密钥')
+  await copyWithMessage(text, ElMessage, '已复制全部密钥')
 }
 
 const getLevelName = (level) => {

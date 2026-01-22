@@ -48,8 +48,8 @@ public class UserController {
     @Operation(summary = "用户登录")
     @PostMapping("/login")
     public Result<?> login(@Validated @RequestBody LoginRequest request) {
-        // 先检查用户是否存在以及状态
-        User existingUser = userService.getByUsername(request.getUsername());
+        // 先检查用户是否存在以及状态（支持用户名或邮箱）
+        User existingUser = userService.getByUsernameOrEmail(request.getUsername());
         if (existingUser != null && existingUser.getStatus() != null && existingUser.getStatus() == 2) {
             return Result.error("该账号已注销");
         }
@@ -70,6 +70,74 @@ public class UserController {
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
         return Result.success(data);
+    }
+    
+    @Operation(summary = "邮箱验证码登录")
+    @PostMapping("/login/email")
+    public Result<?> loginByEmail(@RequestParam @Email(message = "邮箱格式不正确") String email,
+                                   @RequestParam String code) {
+        // 验证验证码
+        if (!emailService.verifyLoginCode(email, code)) {
+            return Result.error("验证码错误或已过期");
+        }
+        
+        // 查找用户
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, email);
+        User user = userService.getOne(wrapper);
+        
+        if (user == null) {
+            return Result.error("该邮箱未注册");
+        }
+        
+        // 检查用户状态
+        if (user.getStatus() != null && user.getStatus() == 2) {
+            return Result.error("该账号已注销");
+        }
+        
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            return Result.error("该账号已被冻结");
+        }
+        
+        // 检查用户是否有普通用户权限且角色未被禁用
+        if (!hasValidUserRole(user.getId())) {
+            return Result.error(ResultCode.NO_PERMISSION_OR_FROZEN);
+        }
+        
+        // 生成token
+        String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", token);
+        return Result.success(data);
+    }
+    
+    @Operation(summary = "发送登录验证码")
+    @PostMapping("/login/send-code")
+    public Result<?> sendLoginCode(@RequestParam @Email(message = "邮箱格式不正确") String email) {
+        // 检查邮箱是否已注册
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, email);
+        User user = userService.getOne(wrapper);
+        if (user == null) {
+            return Result.error("该邮箱未注册");
+        }
+        
+        // 检查用户状态
+        if (user.getStatus() != null && user.getStatus() == 2) {
+            return Result.error("该账号已注销");
+        }
+        
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            return Result.error("该账号已被冻结");
+        }
+        
+        boolean success = emailService.sendLoginCode(email);
+        if (success) {
+            return Result.success("验证码已发送");
+        } else {
+            return Result.error("发送过于频繁，请稍后再试");
+        }
     }
     
     /**
