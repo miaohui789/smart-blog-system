@@ -19,6 +19,11 @@ public class AiMessage {
     
     private String content;
     
+    /**
+     * 深度思考内容（推理过程）
+     */
+    private String thinkingContent;
+    
     private Integer tokens;
     
     @TableField(fill = FieldFill.INSERT)

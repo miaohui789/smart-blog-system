@@ -8,7 +8,13 @@
     <Header />
     <main class="main-content">
       <div class="container">
-        <div class="content-wrapper">
+        <div
+          class="content-wrapper"
+          :class="{
+            'is-study-layout': isStudyRoute,
+            'is-study-sidebar-collapsed': isStudyRoute && studySidebarCollapsed
+          }"
+        >
           <div class="content-main">
             <router-view v-slot="{ Component, route }">
               <transition name="page-fade" mode="out-in" appear>
@@ -18,8 +24,18 @@
               </transition>
             </router-view>
           </div>
-          <aside class="content-sidebar">
-            <Sidebar />
+          <aside
+            class="content-sidebar"
+            :class="{
+              'is-study-sidebar': isStudyRoute,
+              'is-collapsed': isStudyRoute && studySidebarCollapsed
+            }"
+          >
+            <Sidebar
+              :study-mode="isStudyRoute"
+              :collapsed="isStudyRoute && studySidebarCollapsed"
+              @toggle="handleSidebarToggle"
+            />
           </aside>
         </div>
       </div>
@@ -32,7 +48,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, shallowRef, defineAsyncComponent, watch } from 'vue'
+import { ref, onMounted, onUnmounted, shallowRef, defineAsyncComponent, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import Header from '@/components/Header/index.vue'
 import Footer from '@/components/Footer/index.vue'
 import Sidebar from '@/components/Sidebar/index.vue'
@@ -42,8 +60,47 @@ import { useUserStore } from '@/stores/user'
 
 const themeStore = useThemeStore()
 const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
 const cachedViews = ref(['Home', 'Category', 'Tag', 'Archive', 'About'])
 const currentBgComponent = shallowRef(null)
+const studySidebarCollapsed = ref(false)
+const isStudyRoute = computed(() => route.path.startsWith('/study'))
+
+// ========== 无操作自动退出 ==========
+const INACTIVE_TIMEOUT = 30 * 60 * 1000 // 30 分钟
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click']
+let inactivityTimer = null
+
+function resetInactivityTimer() {
+  if (!userStore.isLoggedIn) return
+  clearTimeout(inactivityTimer)
+  inactivityTimer = setTimeout(handleInactivityLogout, INACTIVE_TIMEOUT)
+}
+
+async function handleInactivityLogout() {
+  if (!userStore.isLoggedIn) return
+  try {
+    await ElMessageBox.alert(
+      '您已超过 30 分钟未操作，为保障账号安全，已自动退出登录。',
+      '自动退出',
+      { confirmButtonText: '重新登录', type: 'warning', showClose: false }
+    )
+  } catch (_) { /* 弹窗关闭 */ }
+  await userStore.logout()
+  router.push('/login')
+}
+
+function startInactivityWatch() {
+  ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, resetInactivityTimer, { passive: true }))
+  resetInactivityTimer()
+}
+
+function stopInactivityWatch() {
+  clearTimeout(inactivityTimer)
+  ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetInactivityTimer))
+}
+// =====================================
 
 // 背景组件映射 - 使用异步组件
 const bgComponents = {
@@ -52,7 +109,8 @@ const bgComponents = {
   HexagonPattern: defineAsyncComponent(() => import('@/components/Background/HexagonPattern.vue')),
   MovingDots: defineAsyncComponent(() => import('@/components/Background/MovingDots.vue')),
   GeometricPattern: defineAsyncComponent(() => import('@/components/Background/GeometricPattern.vue')),
-  PurpleDots: defineAsyncComponent(() => import('@/components/Background/PurpleDots.vue'))
+  PurpleDots: defineAsyncComponent(() => import('@/components/Background/PurpleDots.vue')),
+  StarSky: defineAsyncComponent(() => import('@/components/Background/StarSky.vue'))
 }
 
 // 加载当前皮肤
@@ -61,6 +119,9 @@ function loadCurrentSkin() {
   if (!userStore.isLoggedIn) {
     console.log('未登录，不加载自定义皮肤')
     currentBgComponent.value = null
+    // 确保清除透明类，避免游客看到组件透明
+    document.body.classList.remove('has-custom-bg')
+    themeStore.hasCustomBackground = false
     return
   }
   
@@ -123,29 +184,59 @@ function handleThemeChange() {
   loadCurrentSkin()
 }
 
+function handleSidebarToggle(nextValue) {
+  studySidebarCollapsed.value = nextValue
+}
+
 onMounted(() => {
   loadCurrentSkin()
   window.addEventListener('skin-change', handleSkinChange)
   window.addEventListener('theme-changed', handleThemeChange)
+  // 已登录则启动无操作计时器
+  if (userStore.isLoggedIn) {
+    startInactivityWatch()
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('skin-change', handleSkinChange)
   window.removeEventListener('theme-changed', handleThemeChange)
+  stopInactivityWatch()
 })
 
 // 监听登录状态变化
 watch(() => userStore.isLoggedIn, (isLoggedIn) => {
   if (!isLoggedIn) {
-    // 用户退出登录时，清除背景
+    // 用户退出登录时，清除背景并移除透明类，避免组件样式错乱
     console.log('用户退出登录，清除自定义背景')
     currentBgComponent.value = null
+    document.body.classList.remove('has-custom-bg')
+    themeStore.hasCustomBackground = false
+    // 停止无操作计时器
+    stopInactivityWatch()
   } else {
-    // 用户登录时，重新加载皮肤
+    // 用户登录时，重新加载皮肤并启动无操作计时器
     console.log('用户登录，重新加载皮肤')
     loadCurrentSkin()
+    startInactivityWatch()
   }
 })
+
+watch(
+  () => route.path,
+  (newPath, oldPath) => {
+    const nowStudy = newPath.startsWith('/study')
+    const wasStudy = oldPath?.startsWith('/study')
+    if (nowStudy && !wasStudy) {
+      studySidebarCollapsed.value = true
+      return
+    }
+    if (!nowStudy) {
+      studySidebarCollapsed.value = false
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="scss" scoped>
@@ -171,11 +262,46 @@ watch(() => userStore.isLoggedIn, (isLoggedIn) => {
 .content-wrapper {
   display: flex;
   gap: $spacing-xl;
+  align-items: flex-start;
+  overflow-anchor: none;
+}
+
+.content-wrapper.is-study-layout {
+  position: relative;
+  gap: 0;
 }
 
 .content-main {
   flex: 1;
   min-width: 0;
+  overflow-anchor: none;
+}
+
+.content-wrapper.is-study-layout .content-main {
+  position: relative;
+  width: 100%;
+  padding-right: 344px;
+}
+
+.content-wrapper.is-study-layout.is-study-sidebar-collapsed .content-main {
+  padding-right: 0;
+}
+
+.content-wrapper.is-study-layout .content-main::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 344px;
+  pointer-events: none;
+  background: linear-gradient(270deg, rgba(var(--bg-card-rgb), 0.72), rgba(var(--bg-card-rgb), 0.18), transparent);
+  transition: width 0.32s ease, opacity 0.22s ease;
+}
+
+.content-wrapper.is-study-layout.is-study-sidebar-collapsed .content-main::after {
+  width: 0;
+  opacity: 0;
 }
 
 .content-sidebar {
@@ -184,6 +310,8 @@ watch(() => userStore.isLoggedIn, (isLoggedIn) => {
   position: sticky;
   top: 80px;
   align-self: flex-start;
+  overflow: visible;
+  overflow-anchor: none;
   transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡 */
   // 移除滚动条和高度限制，让内容自然显示
   // max-height: calc(100vh - 100px);
@@ -193,4 +321,20 @@ watch(() => userStore.isLoggedIn, (isLoggedIn) => {
     display: none;
   }
 }
+
+.content-sidebar.is-study-sidebar {
+  position: fixed;
+  top: 112px;
+  right: 0;
+  right: max(16px, calc((100vw - 1200px) / 2 + 16px));
+  transition: width 0.32s ease, opacity 0.24s ease;
+  will-change: width, opacity;
+}
+
+.content-sidebar.is-study-sidebar.is-collapsed {
+  width: 0;
+  opacity: 1;
+  overflow: visible;
+}
+
 </style>

@@ -145,6 +145,7 @@ export const useThemeStore = defineStore('theme', () => {
         {
           duration: 500,
           easing: 'ease-out',
+          fill: 'forwards',  // 保持最终帧，防止动画结束后回退导致闪烁
           pseudoElement: isDark.value 
             ? '::view-transition-new(root)' 
             : '::view-transition-old(root)'

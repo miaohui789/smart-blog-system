@@ -100,7 +100,12 @@ function toggleTheme(event) {
 }
 
 async function handleLogin() {
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch (error) {
+    return
+  }
+  
   loading.value = true
   try {
     await userStore.login(form.value)
@@ -108,7 +113,8 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/dashboard')
   } catch (error) {
-    ElMessage.error(error.message || '登录失败')
+    // 错误已在 request.js 中处理并显示
+    console.error('登录失败:', error)
   } finally {
     loading.value = false
   }

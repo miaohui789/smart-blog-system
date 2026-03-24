@@ -5,6 +5,16 @@ export function getAiStatus() {
   return request({ url: '/ai/status', method: 'get' })
 }
 
+// 获取可用模型列表
+export function getAvailableModels() {
+  return request({ url: '/ai/models', method: 'get' })
+}
+
+// 切换AI模型
+export function switchAiModel(configId) {
+  return request({ url: '/ai/model/switch', method: 'put', data: { configId } })
+}
+
 // 获取会话列表
 export function getConversations() {
   return request({ url: '/ai/conversations', method: 'get' })

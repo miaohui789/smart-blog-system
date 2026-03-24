@@ -6,6 +6,9 @@
         <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <span>实时天气</span>
+      <div class="beijing-time">
+        <span class="time-text">{{ currentTime }}</span>
+      </div>
     </div>
     
     <div v-if="loading" class="weather-loading">
@@ -59,12 +62,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { getWeather } from '@/api/weather'
 
 const weather = ref(null)
 const loading = ref(true)
 const error = ref('')
+
+// ========== 北京实时时间 ==========
+const currentTime = ref('')
+let timeTimer = null
+
+function updateTime() {
+  const now = new Date()
+  // 转换为北京时间 (UTC+8)
+  const bjTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
+  const h = String(bjTime.getHours()).padStart(2, '0')
+  const m = String(bjTime.getMinutes()).padStart(2, '0')
+  const s = String(bjTime.getSeconds()).padStart(2, '0')
+  currentTime.value = `${h}:${m}:${s}`
+}
 
 // 天气SVG图标
 function getWeatherSvg(text) {
@@ -182,6 +199,16 @@ function getDefaultWeather() {
 
 onMounted(() => {
   fetchWeather()
+  // 启动时钟
+  updateTime()
+  timeTimer = setInterval(updateTime, 1000)
+})
+
+onUnmounted(() => {
+  if (timeTimer) {
+    clearInterval(timeTimer)
+    timeTimer = null
+  }
 })
 </script>
 
@@ -189,15 +216,39 @@ onMounted(() => {
 @import '@/assets/styles/variables.scss';
 
 .weather-card {
+  --weather-detail-bg: var(--bg-card-hover);
+  --weather-detail-border: transparent;
+  --weather-time-color: var(--text-secondary);
+  --weather-card-hover-border: rgba($primary-color, 0.2);
   padding: $spacing-lg;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
-  transition: all 0.2s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   
   &:hover {
-    border-color: rgba($primary-color, 0.2);
+    border-color: var(--weather-card-hover-border);
   }
+}
+
+:global(:root[data-theme='light']) .weather-card {
+  --weather-detail-bg: rgba(59, 130, 246, 0.06);
+  --weather-detail-border: rgba(59, 130, 246, 0.08);
+  --weather-time-color: #475569;
+  --weather-card-hover-border: rgba(59, 130, 246, 0.24);
+}
+
+:global(body.has-custom-bg) .weather-card {
+  --weather-detail-bg: rgba(var(--bg-card-rgb), 0.3);
+}
+
+:global(:root[data-theme='dark']) :global(body.has-custom-bg) .weather-card {
+  --weather-detail-bg: rgba(var(--bg-card-rgb), 0.15);
+}
+
+:global(:root[data-theme='light']) :global(body.has-custom-bg) .weather-card {
+  --weather-detail-bg: rgba(255, 255, 255, 0.42);
+  --weather-detail-border: rgba(148, 163, 184, 0.14);
 }
 
 .weather-header {
@@ -215,6 +266,18 @@ onMounted(() => {
     width: 18px;
     height: 18px;
     color: #fbbf24;
+  }
+
+  .beijing-time {
+    margin-left: auto;
+
+    .time-text {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: 'Courier New', 'Monaco', monospace;
+      color: var(--weather-time-color);
+      letter-spacing: 1px;
+    }
   }
 }
 
@@ -318,9 +381,13 @@ onMounted(() => {
   gap: 8px 16px;
   width: 100%;
   padding: 12px;
-  background: var(--bg-card-hover);
+  background: var(--weather-detail-bg);
+  border: 1px solid var(--weather-detail-border);
   border-radius: 8px;
   margin-top: 4px;
+  transition: background 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .detail-item {

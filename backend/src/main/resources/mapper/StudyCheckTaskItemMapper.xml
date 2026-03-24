@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.StudyCheckTaskItemMapper">
+
+    <select id="selectByIdForUpdate" resultType="com.blog.entity.StudyCheckTaskItem">
+        SELECT *
+        FROM study_check_task_item
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectDashboardFailedRecords" resultType="com.blog.dto.response.StudyDashboardFailedRecordVO">
+        SELECT
+            ti.task_id,
+            ti.id AS task_item_id,
+            ti.question_id,
+            t.task_name,
+            t.check_mode,
+            c.category_name,
+            ti.question_title_snapshot AS question_title,
+            ti.final_score,
+            ti.score_pass_mark,
+            ti.self_assessment_result,
+            ti.submit_time
+        FROM study_check_task_item ti
+        INNER JOIN study_check_task t ON t.id = ti.task_id
+        LEFT JOIN study_category c ON c.id = t.category_id
+        WHERE t.user_id = #{userId}
+          AND t.status IN (2, 3, 4)
+          AND ti.final_score IS NOT NULL
+          AND ti.final_score &lt;= COALESCE(ti.score_pass_mark, 60)
+        ORDER BY COALESCE(ti.submit_time, ti.update_time, ti.create_time) DESC, ti.id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

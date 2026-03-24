@@ -66,6 +66,42 @@ const routes = [
         component: () => import('@/views/Search/index.vue'),
         meta: { title: '搜索' }
       },
+      {
+        path: 'study',
+        name: 'Study',
+        component: () => import('@/views/Study/index.vue'),
+        meta: { title: '学习中心' }
+      },
+      {
+        path: 'study/learn',
+        name: 'StudyLearn',
+        component: () => import('@/views/Study/Learn.vue'),
+        meta: { title: '面试题学习' }
+      },
+      {
+        path: 'study/learn/:id',
+        name: 'StudyQuestionDetail',
+        component: () => import('@/views/Study/QuestionDetail.vue'),
+        meta: { title: '题目详情' }
+      },
+      {
+        path: 'study/check',
+        name: 'StudyCheck',
+        component: () => import('@/views/Study/Check.vue'),
+        meta: { title: '面试题抽查', requiresAuth: true }
+      },
+      {
+        path: 'study/check/:taskId',
+        name: 'StudyCheckTask',
+        component: () => import('@/views/Study/CheckTask.vue'),
+        meta: { title: '抽查任务', requiresAuth: true }
+      },
+      {
+        path: 'study/check/history',
+        name: 'StudyCheckHistory',
+        component: () => import('@/views/Study/CheckHistory.vue'),
+        meta: { title: '抽查历史', requiresAuth: true }
+      },
 
       {
         path: 'user',
@@ -77,6 +113,12 @@ const routes = [
             name: 'UserProfileSelf',
             component: () => import('@/views/User/Profile.vue'),
             meta: { title: '个人资料', requiresAuth: true }
+          },
+          {
+            path: 'study',
+            name: 'UserStudy',
+            component: () => import('@/views/User/Study.vue'),
+            meta: { title: '我的学习', requiresAuth: true }
           },
           {
             path: 'favorites',

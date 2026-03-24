@@ -1,69 +1,117 @@
-# 博客网站项目
+# Smart Blog System
 
-一个现代化的博客网站系统，采用前后端分离架构，包含用户端和管理端，支持深色/浅色主题切换。
+一个功能完善的现代化博客系统，采用前后端分离架构，支持 Web 端（用户端 + 管理端）和微信小程序端。
 
-## ✨ 功能特性
+## 功能特性
 
 ### 用户端
 - 文章浏览、搜索、分类、标签筛选
-- 用户注册/登录、个人中心
+- 用户注册/登录（支持邮箱验证码）
 - 文章点赞、收藏、评论
+- 私信系统（WebSocket 实时通信）
+- 通知系统
+- 文章发布（Markdown 编辑器）
+- AI 对话功能
+- VIP 会员系统
 - 深色/浅色主题切换（圆形扩散动画）
-- 响应式设计，支持移动端
+- 响应式设计
 
 ### 管理端
-- 仪表盘数据统计
-- 文章管理（创建、编辑、发布）
-- 分类/标签/评论管理
+- 数据统计仪表盘（ECharts 图表）
+- 文章/分类/标签/评论管理
 - 用户管理、角色权限控制
-- 系统配置
+- 私信与通知管理
+- VIP 会员管理
+- AI 配置管理
+- 系统配置与版本管理
+
+### 微信小程序
+- 文章浏览与详情
+- 用户中心（关注/粉丝/收藏/点赞）
+- 私信与通知
+- VIP 中心
+- AI 聊天
 
 ### 权限控制
-- **超级管理员**：全部功能权限
-- **内容编辑**：仅文章、分类、标签、评论管理
-- **普通用户**：注册自动分配，前台浏览和互动
+| 角色 | 权限范围 |
+|------|----------|
+| 超级管理员 | 全部功能权限 |
+| 内容编辑 | 文章、分类、标签、评论管理 |
+| 普通用户 | 前台浏览和互动 |
 
-## 🛠 技术栈
-
-### 前端
-- Vue 3 + Vue Router + Pinia
-- Element Plus + Vite
-- SCSS + 响应式布局
+## 技术栈
 
 ### 后端
-- Java 17 + Spring Boot 2.7
-- Spring Security + JWT
-- MyBatis Plus + MySQL 8 + Redis
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Java | 17 | 开发语言 |
+| Spring Boot | 2.7.15 | 核心框架 |
+| Spring Security | - | 安全认证 |
+| MyBatis Plus | 3.5.4 | ORM 框架 |
+| MySQL | 8.0 | 主数据库 |
+| Redis | 7.0+ | 缓存 |
+| JWT | 0.11.5 | Token 认证 |
+| WebSocket | - | 实时通信 |
+| Knife4j | 4.3.0 | API 文档 |
 
-## 📁 项目结构
+### 前端
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3.3.4 | 前端框架 |
+| Vue Router | 4.2.4 | 路由管理 |
+| Pinia | 2.1.4 | 状态管理 |
+| Element Plus | 2.4.4 | UI 组件库 |
+| Vite | 4.4.9 | 构建工具 |
+| ECharts | 5.4.3 | 图表（管理端） |
+| md-editor-v3 | 4.0.0 | Markdown 编辑器 |
+| SASS | 1.66.1 | CSS 预处理 |
+
+### 微信小程序
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| 原生小程序 | - | 开发框架 |
+| Vant Weapp | 1.11.6 | UI 组件库 |
+
+## 项目结构
 
 ```
-├── frontend/
-│   ├── user/              # 用户端 (端口 5173)
-│   │   └── src/
-│   │       ├── views/     # 页面组件
-│   │       ├── components/# 公共组件
-│   │       ├── stores/    # Pinia状态
-│   │       └── api/       # 接口请求
-│   └── admin/             # 管理端 (端口 5174)
-│       └── src/
-│           ├── views/     # 页面组件
-│           ├── layouts/   # 布局组件
-│           └── stores/    # Pinia状态
-├── backend/               # 后端服务 (端口 8080)
+smart-blog-system/
+├── backend/                    # 后端服务 (端口 8080)
 │   └── src/main/java/com/blog/
-│       ├── controller/    # 控制器
-│       ├── service/       # 业务逻辑
-│       ├── entity/        # 实体类
-│       └── security/      # 安全配置
+│       ├── controller/
+│       │   ├── admin/          # 管理端 API
+│       │   └── web/            # 用户端 API
+│       ├── service/            # 业务逻辑层
+│       ├── entity/             # 实体类
+│       ├── mapper/             # MyBatis 映射
+│       ├── security/           # 安全配置
+│       ├── config/             # 配置类
+│       └── websocket/          # WebSocket 服务
+├── frontend/
+│   ├── user/                   # 用户端 (端口 5173)
+│   │   └── src/
+│   │       ├── views/          # 页面组件
+│   │       ├── components/     # 公共组件
+│   │       ├── stores/         # Pinia 状态
+│   │       └── api/            # 接口请求
+│   └── admin/                  # 管理端 (端口 5174)
+│       └── src/
+│           ├── views/          # 页面组件
+│           ├── layouts/        # 布局组件
+│           └── stores/         # Pinia 状态
+├── miniprogram/                # 微信小程序
+│   ├── pages/                  # 主包页面
+│   ├── packageA/               # 分包 (VIP/AI)
+│   └── components/             # 组件
+├── deploy/                     # Docker 部署配置
 ├── docs/
 │   ├── database/
-│   │   └── blog_init.sql  # 数据库初始化脚本
+│   │   └── blog_init.sql       # 数据库初始化脚本
 │   └── 项目开发文档.md
-└── uploads/               # 上传文件目录
+└── uploads/                    # 上传文件目录
 ```
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 - Node.js 16+
@@ -73,8 +121,7 @@
 
 ### 1. 初始化数据库
 
-```sql
--- 创建数据库并导入初始数据
+```bash
 mysql -u root -p < docs/database/blog_init.sql
 ```
 
@@ -102,13 +149,11 @@ mvn spring-boot:run
 
 # 启动用户端
 cd frontend/user
-npm install
-npm run dev
+npm install && npm run dev
 
 # 启动管理端
 cd frontend/admin
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
 ### 4. 访问地址
@@ -117,50 +162,55 @@ npm run dev
 |------|------|
 | 用户端 | http://localhost:5173 |
 | 管理端 | http://localhost:5174 |
-| 后端API | http://localhost:8080 |
-| API文档 | http://localhost:8080/swagger-ui.html |
+| 后端 API | http://localhost:8080 |
+| API 文档 | http://localhost:8080/doc.html |
 
-## 👤 默认账号
+## 默认账号
 
-| 角色 | 用户名 | 密码 | 权限 |
-|------|--------|------|------|
-| 超级管理员 | admin | admin123 | 全部权限 |
-| 内容编辑 | editor | admin123 | 内容管理 |
-| 普通用户 | zhangsan | admin123 | 前台功能 |
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 超级管理员 | admin | admin123 |
+| 内容编辑 | editor | admin123 |
+| 普通用户 | zhangsan | admin123 |
 
-## 🎨 主题配置
+## Docker 部署
 
-项目支持深色/浅色主题切换，主题色可在 `variables.scss` 中配置：
+项目提供 Docker Compose 配置，针对 2 核 CPU + 2G 内存环境优化：
 
-```scss
-// 主色调
-$primary-color: #a855f7;
-$primary-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-
-// 深色主题
-$bg-dark: #0f0f0f;
-$bg-card: rgba(255, 255, 255, 0.03);
+```bash
+cd deploy
+docker-compose up -d
 ```
 
-## 📝 API 接口
+## 主题配置
 
-### 认证接口
+支持深色/浅色主题切换，主题色可在 `variables.scss` 中配置：
+
+```scss
+$primary-color: #a855f7;
+$primary-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+```
+
+## API 接口
+
+### 认证
 - `POST /api/auth/login` - 用户登录
 - `POST /api/auth/register` - 用户注册
 - `GET /api/auth/info` - 获取用户信息
 
-### 文章接口
+### 文章
 - `GET /api/articles` - 文章列表
 - `GET /api/articles/{id}` - 文章详情
-- `POST /api/articles/{id}/like` - 点赞文章
-- `POST /api/articles/{id}/favorite` - 收藏文章
+- `POST /api/articles/{id}/like` - 点赞
+- `POST /api/articles/{id}/favorite` - 收藏
 
-### 管理接口
+### 管理
 - `GET /api/admin/articles` - 文章管理
 - `GET /api/admin/users` - 用户管理
-- `GET /api/admin/roles` - 角色管理
+- `GET /api/admin/dashboard/stats` - 统计数据
 
-## 📄 License
+完整 API 文档请访问 http://localhost:8080/doc.html
+
+## License
 
 MIT License
-

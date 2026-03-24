@@ -112,6 +112,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { InfoFilled, Cpu } from '@element-plus/icons-vue'
+import { getArticleList } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 import { getTagList } from '@/api/tag'
 
@@ -123,10 +124,15 @@ const stats = ref({
 
 onMounted(async () => {
   try {
-    const [categoryRes, tagRes] = await Promise.all([
+    const [articleRes, categoryRes, tagRes] = await Promise.all([
+      getArticleList({
+        page: 1,
+        pageSize: 1
+      }),
       getCategoryList(),
       getTagList()
     ])
+    stats.value.articleCount = articleRes.data?.total || 0
     stats.value.categoryCount = categoryRes.data?.length || 0
     stats.value.tagCount = tagRes.data?.length || 0
   } catch (e) {

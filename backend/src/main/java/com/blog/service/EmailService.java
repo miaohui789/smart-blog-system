@@ -107,12 +107,27 @@ public class EmailService {
      * 通用验证码验证方法
      */
     private boolean verifyCodeInternal(String codeKey, String code) {
+        if (code == null || code.trim().isEmpty()) {
+            log.warn("验证码为空, key: {}", codeKey);
+            return false;
+        }
+        
+        // 去除前后空格
+        code = code.trim();
+        
         String savedCode = redisTemplate.opsForValue().get(codeKey);
+        log.info("验证码校验 - key: {}, 输入: {}, Redis中: {}", codeKey, code, savedCode);
         
         if (savedCode != null && savedCode.equals(code)) {
             // 验证成功后删除验证码
             redisTemplate.delete(codeKey);
             return true;
+        }
+        
+        if (savedCode == null) {
+            log.warn("验证码不存在或已过期, key: {}", codeKey);
+        } else {
+            log.warn("验证码不匹配, key: {}, 输入: [{}], 期望: [{}]", codeKey, code, savedCode);
         }
         return false;
     }

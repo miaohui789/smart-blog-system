@@ -5,10 +5,12 @@ import com.blog.entity.AiConfig;
 import com.blog.entity.AiConversation;
 import com.blog.entity.AiMessage;
 import com.blog.entity.AiUsage;
+import com.blog.entity.AiUserModel;
 import com.blog.mapper.AiConfigMapper;
 import com.blog.mapper.AiConversationMapper;
 import com.blog.mapper.AiMessageMapper;
 import com.blog.mapper.AiUsageMapper;
+import com.blog.mapper.AiUserModelMapper;
 import com.blog.service.AiChatService;
 import com.blog.service.RedisService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,10 +39,13 @@ public class AiChatServiceImpl implements AiChatService {
     private final AiConversationMapper conversationMapper;
     private final AiMessageMapper messageMapper;
     private final AiUsageMapper usageMapper;
+    private final AiUserModelMapper userModelMapper;
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
 
     private static final String CACHE_AI_CONFIG = "blog:ai:config";
+    private static final String CACHE_AI_CONFIGS = "blog:ai:configs";
+    private static final String CACHE_AI_USER_MODEL = "blog:ai:user:model:";
     
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -56,7 +61,19 @@ public class AiChatServiceImpl implements AiChatService {
             return (AiConfig) cached;
         }
         
-        AiConfig config = configMapper.selectOne(new LambdaQueryWrapper<AiConfig>().last("LIMIT 1"));
+        // 优先获取默认配置
+        AiConfig config = configMapper.selectOne(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getEnabled, 1)
+                .eq(AiConfig::getUseForChat, 1)
+                .eq(AiConfig::getIsDefault, 1)
+                .last("LIMIT 1"));
+        if (config == null) {
+            config = configMapper.selectOne(new LambdaQueryWrapper<AiConfig>()
+                    .eq(AiConfig::getEnabled, 1)
+                    .eq(AiConfig::getUseForChat, 1)
+                    .orderByAsc(AiConfig::getSortOrder)
+                    .last("LIMIT 1"));
+        }
         if (config != null) {
             redisService.setWithMinutes(CACHE_AI_CONFIG, config, RedisService.EXPIRE_LONG);
         }
@@ -64,18 +81,293 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
+    public AiConfig getStudyScoreConfig() {
+        List<AiConfig> scoreConfigs = configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getEnabled, 1)
+                .eq(AiConfig::getUseForStudyScore, 1)
+                .orderByDesc(AiConfig::getIsDefaultStudyScore)
+                .orderByDesc(AiConfig::getIsDefault)
+                .orderByAsc(AiConfig::getSortOrder));
+        if (!scoreConfigs.isEmpty()) {
+            return scoreConfigs.get(0);
+        }
+        AiConfig fallback = getConfig();
+        if (fallback != null && fallback.getEnabled() != null && fallback.getEnabled() == 1) {
+            return fallback;
+        }
+        return null;
+    }
+    
+    @Override
+    public AiConfig getConfigById(Long configId) {
+        if (configId == null) return getConfig();
+        return configMapper.selectById(configId);
+    }
+    
+    @Override
+    public List<AiConfig> getAllConfigs() {
+        return configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .orderByAsc(AiConfig::getSortOrder)
+                .orderByDesc(AiConfig::getIsDefault));
+    }
+    
+    @Override
+    public List<AiConfig> getEnabledConfigs() {
+        return configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getEnabled, 1)
+                .eq(AiConfig::getUseForChat, 1)
+                .orderByAsc(AiConfig::getSortOrder)
+                .orderByDesc(AiConfig::getIsDefault));
+    }
+    
+    @Override
+    public void addConfig(AiConfig config) {
+        if (config.getSortOrder() == null) config.setSortOrder(0);
+        if (config.getIsDefault() == null) config.setIsDefault(0);
+        if (config.getUseForChat() == null) config.setUseForChat(1);
+        if (config.getUseForStudyScore() == null) config.setUseForStudyScore(1);
+        if (config.getIsDefaultStudyScore() == null) config.setIsDefaultStudyScore(0);
+        if (config.getEnabled() == null) config.setEnabled(1);
+        if (config.getUseForStudyScore() == 1 && countStudyScoreDefaultConfigs() == 0) {
+            config.setIsDefaultStudyScore(1);
+        }
+        configMapper.insert(config);
+        if (config.getIsDefault() != null && config.getIsDefault() == 1) {
+            setDefaultConfig(config.getId());
+        }
+        if (config.getIsDefaultStudyScore() != null && config.getIsDefaultStudyScore() == 1) {
+            setDefaultStudyScoreConfig(config.getId());
+        }
+        ensureDefaultConfigs();
+        clearConfigCache();
+    }
+
+    @Override
     public void updateConfig(AiConfig config) {
         if (config.getId() == null) {
-            configMapper.insert(config);
+            addConfig(config);
         } else {
             configMapper.updateById(config);
+            if (config.getIsDefault() != null && config.getIsDefault() == 1) {
+                setDefaultConfig(config.getId());
+            }
+            if (config.getIsDefaultStudyScore() != null && config.getIsDefaultStudyScore() == 1) {
+                setDefaultStudyScoreConfig(config.getId());
+            }
+            ensureDefaultConfigs();
         }
+        clearConfigCache();
+    }
+    
+    @Override
+    public void deleteConfig(Long configId) {
+        AiConfig config = configMapper.selectById(configId);
+        if (config != null) {
+            // 不允许删除唯一配置
+            long count = configMapper.selectCount(null);
+            if (count <= 1) {
+                throw new RuntimeException("至少保留一个AI模型配置");
+            }
+            // 如果删除的是默认模型，将第一个设为默认
+            if (config.getIsDefault() != null && config.getIsDefault() == 1) {
+                AiConfig first = configMapper.selectOne(new LambdaQueryWrapper<AiConfig>()
+                        .ne(AiConfig::getId, configId)
+                        .orderByAsc(AiConfig::getSortOrder)
+                        .last("LIMIT 1"));
+                if (first != null) {
+                    first.setIsDefault(1);
+                    configMapper.updateById(first);
+                }
+            }
+            if (config.getIsDefaultStudyScore() != null && config.getIsDefaultStudyScore() == 1) {
+                AiConfig scoreFirst = configMapper.selectOne(new LambdaQueryWrapper<AiConfig>()
+                        .ne(AiConfig::getId, configId)
+                        .eq(AiConfig::getEnabled, 1)
+                        .eq(AiConfig::getUseForStudyScore, 1)
+                        .orderByAsc(AiConfig::getSortOrder)
+                        .last("LIMIT 1"));
+                if (scoreFirst != null) {
+                    scoreFirst.setIsDefaultStudyScore(1);
+                    configMapper.updateById(scoreFirst);
+                }
+            }
+            configMapper.deleteById(configId);
+            ensureDefaultConfigs();
+            clearConfigCache();
+        }
+    }
+    
+    @Override
+    public void setDefaultConfig(Long configId) {
+        AiConfig target = configMapper.selectById(configId);
+        if (target == null) {
+            throw new RuntimeException("模型配置不存在");
+        }
+        if (target.getEnabled() == null || target.getEnabled() != 1) {
+            throw new RuntimeException("请先启用该模型后再设置为默认");
+        }
+        if (target.getUseForChat() == null || target.getUseForChat() != 1) {
+            throw new RuntimeException("该模型未启用AI对话场景");
+        }
+        // 先把所有配置的isDefault设为0
+        List<AiConfig> all = configMapper.selectList(null);
+        for (AiConfig c : all) {
+            if (c.getIsDefault() != null && c.getIsDefault() == 1) {
+                c.setIsDefault(0);
+                configMapper.updateById(c);
+            }
+        }
+        // 设置目标为默认
+        target.setIsDefault(1);
+        configMapper.updateById(target);
+        clearConfigCache();
+    }
+
+    @Override
+    public void setDefaultStudyScoreConfig(Long configId) {
+        AiConfig target = configMapper.selectById(configId);
+        if (target == null) {
+            throw new RuntimeException("模型配置不存在");
+        }
+        if (target.getEnabled() == null || target.getEnabled() != 1) {
+            throw new RuntimeException("请先启用该模型后再设置为评分默认");
+        }
+        if (target.getUseForStudyScore() == null || target.getUseForStudyScore() != 1) {
+            throw new RuntimeException("该模型未启用学习模块AI评分");
+        }
+        List<AiConfig> scoreConfigs = configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getUseForStudyScore, 1));
+        for (AiConfig config : scoreConfigs) {
+            if (config.getIsDefaultStudyScore() != null && config.getIsDefaultStudyScore() == 1) {
+                config.setIsDefaultStudyScore(0);
+                configMapper.updateById(config);
+            }
+        }
+        target.setIsDefaultStudyScore(1);
+        configMapper.updateById(target);
+        clearConfigCache();
+    }
+    
+    @Override
+    public AiConfig getUserModelConfig(Long userId) {
+        // 先查缓存
+        Object cached = redisService.get(CACHE_AI_USER_MODEL + userId);
+        if (cached instanceof AiConfig) {
+            return (AiConfig) cached;
+        }
+        
+        // 查用户偏好
+        AiUserModel userModel = userModelMapper.selectOne(new LambdaQueryWrapper<AiUserModel>()
+                .eq(AiUserModel::getUserId, userId));
+        
+        AiConfig config = null;
+        if (userModel != null) {
+            config = configMapper.selectById(userModel.getConfigId());
+            // 如果用户选择的模型已被禁用或删除，回退到默认
+            if (config == null || config.getEnabled() != 1) {
+                config = null;
+            }
+            if (config != null && (config.getUseForChat() == null || config.getUseForChat() != 1)) {
+                config = null;
+            }
+        }
+        
+        // 回退到默认配置
+        if (config == null) {
+            config = getConfig();
+        }
+        
+        if (config != null) {
+            redisService.setWithMinutes(CACHE_AI_USER_MODEL + userId, config, RedisService.EXPIRE_LONG);
+        }
+        return config;
+    }
+    
+    @Override
+    public void switchUserModel(Long userId, Long configId) {
+        // 验证配置存在且已启用
+        AiConfig config = configMapper.selectById(configId);
+        if (config == null || config.getEnabled() != 1 || config.getUseForChat() == null || config.getUseForChat() != 1) {
+            throw new RuntimeException("该模型不可用");
+        }
+        
+        AiUserModel userModel = userModelMapper.selectOne(new LambdaQueryWrapper<AiUserModel>()
+                .eq(AiUserModel::getUserId, userId));
+        
+        if (userModel == null) {
+            userModel = new AiUserModel();
+            userModel.setUserId(userId);
+            userModel.setConfigId(configId);
+            userModelMapper.insert(userModel);
+        } else {
+            userModel.setConfigId(configId);
+            userModelMapper.updateById(userModel);
+        }
+        
+        // 清除用户模型缓存
+        redisService.delete(CACHE_AI_USER_MODEL + userId);
+    }
+    
+    private void clearConfigCache() {
         redisService.delete(CACHE_AI_CONFIG);
+        redisService.delete(CACHE_AI_CONFIGS);
+    }
+
+    private long countStudyScoreDefaultConfigs() {
+        return configMapper.selectCount(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getUseForStudyScore, 1)
+                .eq(AiConfig::getIsDefaultStudyScore, 1));
+    }
+
+    private void ensureDefaultConfigs() {
+        List<AiConfig> allConfigs = configMapper.selectList(null);
+        for (AiConfig config : allConfigs) {
+            boolean changed = false;
+            if (config.getIsDefault() != null && config.getIsDefault() == 1
+                    && (config.getEnabled() == null || config.getEnabled() != 1
+                    || config.getUseForChat() == null || config.getUseForChat() != 1)) {
+                config.setIsDefault(0);
+                changed = true;
+            }
+            if (config.getIsDefaultStudyScore() != null && config.getIsDefaultStudyScore() == 1
+                    && (config.getEnabled() == null || config.getEnabled() != 1
+                    || config.getUseForStudyScore() == null || config.getUseForStudyScore() != 1)) {
+                config.setIsDefaultStudyScore(0);
+                changed = true;
+            }
+            if (changed) {
+                configMapper.updateById(config);
+            }
+        }
+
+        List<AiConfig> chatConfigs = configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getEnabled, 1)
+                .eq(AiConfig::getUseForChat, 1)
+                .orderByAsc(AiConfig::getSortOrder)
+                .orderByAsc(AiConfig::getId));
+        boolean hasChatDefault = chatConfigs.stream().anyMatch(item -> item.getIsDefault() != null && item.getIsDefault() == 1);
+        if (!hasChatDefault && !chatConfigs.isEmpty()) {
+            AiConfig first = chatConfigs.get(0);
+            first.setIsDefault(1);
+            configMapper.updateById(first);
+        }
+
+        List<AiConfig> scoreConfigs = configMapper.selectList(new LambdaQueryWrapper<AiConfig>()
+                .eq(AiConfig::getEnabled, 1)
+                .eq(AiConfig::getUseForStudyScore, 1)
+                .orderByAsc(AiConfig::getSortOrder)
+                .orderByAsc(AiConfig::getId));
+        boolean hasScoreDefault = scoreConfigs.stream().anyMatch(item -> item.getIsDefaultStudyScore() != null && item.getIsDefaultStudyScore() == 1);
+        if (!hasScoreDefault && !scoreConfigs.isEmpty()) {
+            AiConfig first = scoreConfigs.get(0);
+            first.setIsDefaultStudyScore(1);
+            configMapper.updateById(first);
+        }
     }
 
     @Override
     public boolean checkDailyLimit(Long userId) {
-        AiConfig config = getConfig();
+        AiConfig config = getUserModelConfig(userId);
         if (config == null || config.getEnabled() != 1) {
             return false;
         }
@@ -97,6 +389,11 @@ public class AiChatServiceImpl implements AiChatService {
         AiConversation conversation = new AiConversation();
         conversation.setUserId(userId);
         conversation.setTitle(title != null ? title : "新对话");
+        // 记录当前用户选择的模型配置ID
+        AiConfig userConfig = getUserModelConfig(userId);
+        if (userConfig != null) {
+            conversation.setConfigId(userConfig.getId());
+        }
         conversationMapper.insert(conversation);
         return conversation;
     }
@@ -144,21 +441,30 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public void chat(Long userId, Long conversationId, String message, AiStreamCallback callback) {
-        AiConfig config = getConfig();
-        if (config == null || config.getEnabled() != 1) {
+        // 验证会话
+        AiConversation conversation = conversationMapper.selectById(conversationId);
+        if (conversation == null || !conversation.getUserId().equals(userId)) {
+            callback.onError("会话不存在");
+            return;
+        }
+        
+        // 始终使用用户当前选择的模型（支持会话中途切换模型）
+        AiConfig config = getUserModelConfig(userId);
+        
+        // 如果用户当前模型与会话记录不同，更新会话的configId
+        if (config != null && config.getId() != null 
+                && !config.getId().equals(conversation.getConfigId())) {
+            conversation.setConfigId(config.getId());
+            conversationMapper.updateById(conversation);
+        }
+        
+        if (config == null || config.getEnabled() != 1 || config.getUseForChat() == null || config.getUseForChat() != 1) {
             callback.onError("AI功能未启用");
             return;
         }
         
         if (!checkDailyLimit(userId)) {
             callback.onError("今日使用次数已达上限");
-            return;
-        }
-        
-        // 验证会话
-        AiConversation conversation = conversationMapper.selectById(conversationId);
-        if (conversation == null || !conversation.getUserId().equals(userId)) {
-            callback.onError("会话不存在");
             return;
         }
         
@@ -220,11 +526,18 @@ public class AiChatServiceImpl implements AiChatService {
             
             String baseUrl = config.getBaseUrl();
             if (baseUrl == null || baseUrl.isEmpty()) {
-                baseUrl = "https://api.deepseek.com";
+                baseUrl = "https://api.deepseek.com/v1";
+            }
+            // 去除尾部斜杠
+            if (baseUrl.endsWith("/")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
             }
             
+            String fullUrl = baseUrl + "/chat/completions";
+            log.info("调用AI API: {}, model: {}", fullUrl, config.getModel());
+            
             Request request = new Request.Builder()
-                    .url(baseUrl + "/v1/chat/completions")
+                    .url(fullUrl)
                     .addHeader("Authorization", "Bearer " + config.getApiKey())
                     .addHeader("Content-Type", "application/json")
                     .post(RequestBody.create(json, MediaType.parse("application/json")))
@@ -233,14 +546,18 @@ public class AiChatServiceImpl implements AiChatService {
             callback.onStart();
             
             StringBuilder fullResponse = new StringBuilder();
+            StringBuilder fullThinking = new StringBuilder();
+            // 判断该模型是否支持深度思考
+            boolean thinkingEnabled = config.getSupportThinking() != null && config.getSupportThinking() == 1;
             
             EventSource.Factory factory = EventSources.createFactory(httpClient);
             factory.newEventSource(request, new EventSourceListener() {
                 @Override
                 public void onEvent(EventSource eventSource, String id, String type, String data) {
                     if ("[DONE]".equals(data)) {
-                        // 保存AI回复
-                        saveAiResponse(conversationId, userId, fullResponse.toString());
+                        // 保存AI回复（包含思考内容）
+                        saveAiResponse(conversationId, userId, fullResponse.toString(), 
+                                fullThinking.length() > 0 ? fullThinking.toString() : null);
                         callback.onComplete(fullResponse.toString());
                         return;
                     }
@@ -250,10 +567,24 @@ public class AiChatServiceImpl implements AiChatService {
                         JsonNode choices = node.get("choices");
                         if (choices != null && choices.isArray() && choices.size() > 0) {
                             JsonNode delta = choices.get(0).get("delta");
-                            if (delta != null && delta.has("content")) {
-                                String content = delta.get("content").asText();
-                                fullResponse.append(content);
-                                callback.onToken(content);
+                            if (delta != null) {
+                                // 解析深度思考内容（reasoning_content）
+                                if (thinkingEnabled && delta.has("reasoning_content") 
+                                        && !delta.get("reasoning_content").isNull()) {
+                                    String reasoning = delta.get("reasoning_content").asText();
+                                    if (reasoning != null && !reasoning.isEmpty()) {
+                                        fullThinking.append(reasoning);
+                                        callback.onThinking(reasoning);
+                                    }
+                                }
+                                // 解析正常回复内容
+                                if (delta.has("content") && !delta.get("content").isNull()) {
+                                    String content = delta.get("content").asText();
+                                    if (content != null && !content.isEmpty()) {
+                                        fullResponse.append(content);
+                                        callback.onToken(content);
+                                    }
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -265,15 +596,19 @@ public class AiChatServiceImpl implements AiChatService {
                 public void onFailure(EventSource eventSource, Throwable t, Response response) {
                     String error = "AI服务请求失败";
                     if (response != null) {
+                        int code = response.code();
+                        String body = "";
                         try {
-                            error = response.body() != null ? response.body().string() : "未知错误";
+                            body = response.body() != null ? response.body().string() : "";
                         } catch (Exception e) {
-                            error = "读取错误响应失败";
+                            body = "读取错误响应失败";
                         }
+                        error = "HTTP " + code + ": " + (body.isEmpty() ? response.message() : body);
+                        log.error("AI API调用失败, HTTP {}, body: {}", code, body);
                     } else if (t != null) {
-                        error = t.getMessage();
+                        error = t.getClass().getSimpleName() + ": " + (t.getMessage() != null ? t.getMessage() : "连接失败");
+                        log.error("AI API调用异常", t);
                     }
-                    log.error("AI API调用失败: {}", error);
                     callback.onError(error);
                 }
             });
@@ -284,12 +619,13 @@ public class AiChatServiceImpl implements AiChatService {
         }
     }
     
-    private void saveAiResponse(Long conversationId, Long userId, String content) {
+    private void saveAiResponse(Long conversationId, Long userId, String content, String thinkingContent) {
         AiMessage aiMessage = new AiMessage();
         aiMessage.setConversationId(conversationId);
         aiMessage.setUserId(userId);
         aiMessage.setRole("assistant");
         aiMessage.setContent(content);
+        aiMessage.setThinkingContent(thinkingContent);
         aiMessage.setTokens(content.length() / 4); // 粗略估算token数
         messageMapper.insert(aiMessage);
         

@@ -89,3 +89,14 @@ knife4j:
   enable: ${KNIFE4J_ENABLE:true}
   setting:
     language: zh_cn
+
+blog:
+  cache:
+    study:
+      category-tree-minutes: 120
+      overview-minutes: 5
+      check-stats-minutes: 5
+  study:
+    check:
+      history-retention-days: 2
+      cleanup-cron: "0 20 3 * * ?"

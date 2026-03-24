@@ -6,6 +6,39 @@
   <link rel="icon" type="image/png" href="/favicon.png?v=2">
   <link rel="shortcut icon" type="image/png" href="/favicon.png?v=2">
   <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/qweather-icons@1.6.0/font/qweather-icons.css">
+  <style>
+    html,
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #18181b;
+      color: #a1a1aa;
+    }
+
+    #app {
+      min-height: 100vh;
+      background: inherit;
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem('theme')
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        var isDark = savedTheme ? savedTheme === 'dark' : prefersDark
+        var theme = isDark ? 'dark' : 'light'
+        var background = isDark ? '#18181b' : '#f4f4f5'
+        var textColor = isDark ? '#a1a1aa' : '#3f3f46'
+
+        document.documentElement.setAttribute('data-theme', theme)
+        document.documentElement.style.colorScheme = theme
+        document.documentElement.style.backgroundColor = background
+        document.documentElement.style.color = textColor
+      } catch (error) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    })()
+  </script>
   <title>我的博客</title>
 </head>
 <body>

@@ -6,6 +6,7 @@ import com.blog.entity.AiConversation;
 import com.blog.entity.AiMessage;
 import com.blog.security.SecurityUser;
 import com.blog.service.AiChatService;
+import com.blog.service.AiLogoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,26 +29,90 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiChatController {
 
+    private final AiLogoService aiLogoService;
+
     private final AiChatService aiChatService;
 
     @Operation(summary = "获取AI状态")
     @GetMapping("/status")
     public Result<?> getStatus(@AuthenticationPrincipal SecurityUser user) {
-        AiConfig config = aiChatService.getConfig();
         Map<String, Object> status = new HashMap<>();
-        status.put("enabled", config != null && config.getEnabled() == 1);
-        status.put("model", config != null ? config.getModel() : null);
         
         if (user != null) {
             Long userId = user.getUser().getId();
+            // 获取用户当前选择的模型
+            AiConfig userConfig = aiChatService.getUserModelConfig(userId);
+            status.put("enabled", userConfig != null && userConfig.getEnabled() == 1);
+            status.put("model", userConfig != null ? userConfig.getModel() : null);
+            status.put("modelName", userConfig != null ? userConfig.getDisplayName() : null);
+            status.put("currentConfigId", userConfig != null ? userConfig.getId() : null);
+            status.put("provider", userConfig != null ? userConfig.getProvider() : null);
+            
             int todayUsage = aiChatService.getTodayUsage(userId);
-            int dailyLimit = config != null ? config.getDailyLimit() : 0;
+            int dailyLimit = userConfig != null ? userConfig.getDailyLimit() : 0;
             status.put("todayUsage", todayUsage);
             status.put("dailyLimit", dailyLimit);
             status.put("remaining", Math.max(0, dailyLimit - todayUsage));
+        } else {
+            AiConfig config = aiChatService.getConfig();
+            status.put("enabled", config != null && config.getEnabled() == 1);
+            status.put("model", config != null ? config.getModel() : null);
+            status.put("modelName", config != null ? config.getDisplayName() : null);
         }
         
         return Result.success(status);
+    }
+
+    @Operation(summary = "获取可用模型列表")
+    @GetMapping("/models")
+    public Result<?> getAvailableModels(@AuthenticationPrincipal SecurityUser user) {
+        List<AiConfig> configs = aiChatService.getEnabledConfigs();
+        List<Map<String, Object>> models = new ArrayList<>();
+        
+        // 获取所有Logo的ID映射
+        Map<Long, String> logoIdMap = aiLogoService.getLogoIdMap();
+        
+        Long currentConfigId = null;
+        if (user != null) {
+            AiConfig userConfig = aiChatService.getUserModelConfig(user.getUser().getId());
+            if (userConfig != null) currentConfigId = userConfig.getId();
+        }
+        
+        for (AiConfig config : configs) {
+            Map<String, Object> model = new HashMap<>();
+            model.put("id", config.getId());
+            model.put("provider", config.getProvider());
+            model.put("model", config.getModel());
+            model.put("displayName", config.getDisplayName() != null ? config.getDisplayName() : config.getModel());
+            model.put("isDefault", config.getIsDefault());
+            model.put("selected", config.getId().equals(currentConfigId));
+            model.put("supportThinking", config.getSupportThinking() != null && config.getSupportThinking() == 1);
+            // 通过 logoId 获取 Logo URL
+            String logoUrl = config.getLogoId() != null ? logoIdMap.get(config.getLogoId()) : null;
+            model.put("logoUrl", logoUrl);
+            models.add(model);
+        }
+        
+        return Result.success(models);
+    }
+
+    @Operation(summary = "切换AI模型")
+    @PutMapping("/model/switch")
+    public Result<?> switchModel(@AuthenticationPrincipal SecurityUser user,
+                                  @RequestBody Map<String, Long> body) {
+        if (user == null) {
+            return Result.error(401, "请先登录");
+        }
+        Long configId = body.get("configId");
+        if (configId == null) {
+            return Result.error(400, "请选择模型");
+        }
+        try {
+            aiChatService.switchUserModel(user.getUser().getId(), configId);
+            return Result.success();
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     @Operation(summary = "获取会话列表")
@@ -146,6 +212,16 @@ public class AiChatController {
                     emitter.send(SseEmitter.event().name("start").data(""));
                 } catch (IOException e) {
                     log.error("SSE发送start失败", e);
+                }
+            }
+            
+            @Override
+            public void onThinking(String thinkingToken) {
+                try {
+                    String escapedToken = thinkingToken.replace("\n", "\\n").replace("\t", "\\t");
+                    emitter.send(SseEmitter.event().name("thinking").data(escapedToken));
+                } catch (IOException e) {
+                    log.error("SSE发送thinking失败", e);
                 }
             }
             

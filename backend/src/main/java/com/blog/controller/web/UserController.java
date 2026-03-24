@@ -18,6 +18,7 @@ import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 @Tag(name = "认证接口")
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -74,8 +76,14 @@ public class UserController {
     
     @Operation(summary = "邮箱验证码登录")
     @PostMapping("/login/email")
-    public Result<?> loginByEmail(@RequestParam @Email(message = "邮箱格式不正确") String email,
+    public Result<?> loginByEmail(@RequestParam String email,
                                    @RequestParam String code) {
+        // 去除前后空格
+        email = email != null ? email.trim() : "";
+        code = code != null ? code.trim() : "";
+        
+        log.info("邮箱验证码登录请求 - email: {}, code: {}", email, code);
+        
         // 验证验证码
         if (!emailService.verifyLoginCode(email, code)) {
             return Result.error("验证码错误或已过期");

@@ -13,6 +13,8 @@ public class AiConversation {
     
     private Long userId;
     
+    private Long configId;
+    
     private String title;
     
     @TableField(fill = FieldFill.INSERT)

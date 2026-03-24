@@ -200,6 +200,13 @@ body.has-custom-bg .page-header {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+// 暗色主题下进一步降低透明度，使背景可见
+:root[data-theme="dark"] body.has-custom-bg .page-header {
+  background: rgba(var(--bg-card-rgb), 0.25) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
 
 .user-list {
   display: flex;

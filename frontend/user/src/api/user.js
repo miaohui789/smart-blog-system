@@ -63,8 +63,8 @@ export function logout() {
 }
 
 // 获取用户信息
-export function getUserInfo() {
-  return request({ url: '/auth/info', method: 'get' })
+export function getUserInfo(config = {}) {
+  return request({ url: '/auth/info', method: 'get', ...config })
 }
 
 // 获取个人资料

@@ -47,6 +47,16 @@
         <span>评论管理</span>
       </el-menu-item>
       
+      <el-sub-menu index="/study" v-if="canManageContent">
+        <template #title>
+          <el-icon><Reading /></el-icon>
+          <span>学习模块</span>
+        </template>
+        <el-menu-item index="/study/category">学习分类</el-menu-item>
+        <el-menu-item index="/study/question">学习题库</el-menu-item>
+        <el-menu-item index="/study/check-record">抽查记录</el-menu-item>
+      </el-sub-menu>
+
       <!-- 用户管理 - 仅超级管理员可见 -->
       <el-menu-item index="/user" v-if="isAdmin">
         <el-icon><User /></el-icon>
@@ -77,10 +87,14 @@
       </el-sub-menu>
       
       <!-- AI配置 - 仅超级管理员可见 -->
-      <el-menu-item index="/ai" v-if="isAdmin">
-        <el-icon><MagicStick /></el-icon>
-        <span>AI配置</span>
-      </el-menu-item>
+      <el-sub-menu index="/ai" v-if="isAdmin">
+        <template #title>
+          <el-icon><MagicStick /></el-icon>
+          <span>AI配置</span>
+        </template>
+        <el-menu-item index="/ai/config">模型配置</el-menu-item>
+        <el-menu-item index="/ai/logo">Logo管理</el-menu-item>
+      </el-sub-menu>
       
       <!-- 系统管理 - 仅超级管理员可见 -->
       <el-sub-menu index="/system" v-if="isAdmin">
@@ -102,7 +116,7 @@
 import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useUserStore } from '@/stores/user'
-import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting, Medal, MagicStick, Connection } from '@element-plus/icons-vue'
+import { Odometer, Document, Folder, PriceTag, ChatDotRound, User, Setting, Medal, MagicStick, Connection, Reading } from '@element-plus/icons-vue'
 
 const settingsStore = useSettingsStore()
 const userStore = useUserStore()

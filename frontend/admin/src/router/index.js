@@ -23,6 +23,12 @@ const routes = [
         meta: { title: '仪表盘', icon: 'Odometer' }
       },
       {
+        path: 'redirect/:path(.*)',
+        name: 'Redirect',
+        component: () => import('@/views/Redirect/index.vue'),
+        meta: { hidden: true }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/Profile/index.vue'),
@@ -58,6 +64,17 @@ const routes = [
         meta: { title: '评论管理', icon: 'ChatDotRound', requiresContent: true }
       },
       {
+        path: 'study',
+        name: 'Study',
+        redirect: '/study/question',
+        meta: { title: '学习模块', icon: 'Reading', requiresContent: true },
+        children: [
+          { path: 'category', name: 'StudyCategory', component: () => import('@/views/Study/Category.vue'), meta: { title: '学习分类', requiresContent: true } },
+          { path: 'question', name: 'StudyQuestion', component: () => import('@/views/Study/Question.vue'), meta: { title: '学习题库', requiresContent: true } },
+          { path: 'check-record', name: 'StudyCheckRecord', component: () => import('@/views/Study/CheckRecord.vue'), meta: { title: '抽查记录', requiresContent: true } }
+        ]
+      },
+      {
         path: 'user',
         name: 'User',
         component: () => import('@/views/User/index.vue'),
@@ -90,9 +107,13 @@ const routes = [
       },
       {
         path: 'ai',
-        name: 'AiConfig',
-        component: () => import('@/views/AI/Config.vue'),
-        meta: { title: 'AI配置', icon: 'MagicStick', requiresAdmin: true }
+        name: 'AI',
+        redirect: '/ai/config',
+        meta: { title: 'AI配置', icon: 'MagicStick', requiresAdmin: true },
+        children: [
+          { path: 'config', name: 'AiConfig', component: () => import('@/views/AI/Config.vue'), meta: { title: '模型配置', requiresAdmin: true } },
+          { path: 'logo', name: 'AiLogo', component: () => import('@/views/AI/Logo.vue'), meta: { title: 'Logo管理', requiresAdmin: true } }
+        ]
       },
       {
         path: 'social',

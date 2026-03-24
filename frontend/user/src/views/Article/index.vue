@@ -1,5 +1,34 @@
 <template>
   <div class="article-detail-page">
+    <!-- 阅读进度条 -->
+    <div v-if="article && !loading" class="reading-progress-bar">
+      <div class="reading-progress-fill" :style="{ width: readProgress + '%' }"></div>
+    </div>
+
+    <!-- TOC 文章目录 -->
+    <transition name="toc-fade">
+      <div v-if="article && !loading && tocItems.length > 1" class="toc-panel glass-card">
+        <div class="toc-title">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+            <path d="M3 6h18M3 12h12M3 18h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>目录</span>
+          <span class="toc-progress-text">{{ Math.round(readProgress) }}%</span>
+        </div>
+        <nav class="toc-nav">
+          <a
+            v-for="item in tocItems"
+            :key="item.id"
+            class="toc-item"
+            :class="['toc-h' + item.level, { active: activeTocId === item.id }]"
+            @click.prevent="scrollToHeading(item)"
+            @mouseenter="handleTocItemMouseEnter"
+            @mouseleave="handleTocItemMouseLeave"
+          ><span class="toc-text">{{ item.text }}</span></a>
+        </nav>
+      </div>
+    </transition>
+
     <!-- 加载状态 -->
     <Loading v-if="loading" />
 
@@ -101,6 +130,8 @@
             :modelValue="article.content" 
             :theme="editorTheme"
             :showCodeRowNumber="true"
+            :codeFoldable="true"
+            :autoFoldThreshold="9999"
             previewTheme="github"
           />
           <el-empty v-else description="暂无内容" />
@@ -905,10 +936,137 @@ async function handleDeleteComment(comment, parentComment = null) {
   }
 }
 
-// 监听路由变化
+// ========== 阅读进度条 + TOC 目录 ==========
+const readProgress = ref(0)
+const tocItems = ref([])
+const activeTocId = ref('')
+let scrollHandler = null
+let scrollLockTimer = null  // 点击 TOC 后短暂禁止 scroll 覆盖高亮
+let isScrollLocked = false
+
+// 解析 TOC（从 MdPreview 渲染后的 DOM 中提取标题元素）
+async function parseToc() {
+  await nextTick()
+  // 等待 MdPreview 异步渲染完毕（兼容不同版本 md-editor-v3）
+  setTimeout(() => {
+    // md-editor-v3 渲染容器：先找 .md-editor-preview，兜底找 .article-body
+    const preview =
+      document.querySelector('.md-editor-preview') ||
+      document.querySelector('.article-body')
+    if (!preview) return
+
+    const headings = preview.querySelectorAll('h1, h2, h3')
+    if (headings.length === 0) return
+
+    const items = []
+    headings.forEach((el, index) => {
+      // md-editor-v3 会自动生成 id，如果没有则手动补充
+      if (!el.id) {
+        el.id = 'toc-h-' + index
+      }
+      items.push({
+        id: el.id,
+        text: el.textContent.trim(),
+        level: parseInt(el.tagName[1]),
+        el
+      })
+    })
+
+    tocItems.value = items
+    if (items.length > 0) activeTocId.value = items[0].id
+  }, 300)
+}
+
+// 点击 TOC 条目跳转
+function scrollToHeading(item) {
+  const el = document.getElementById(item.id)
+  if (!el) return
+
+  // 立即锁定高亮，防止 smooth scroll 过程中被 scroll 事件覆盖
+  isScrollLocked = true
+  activeTocId.value = item.id
+  if (scrollLockTimer) clearTimeout(scrollLockTimer)
+
+  const headerH = 72
+  const top = el.getBoundingClientRect().top + window.scrollY - headerH - 12
+  window.scrollTo({ top, behavior: 'smooth' })
+
+  // smooth scroll 动画约 500-800ms，结束后解锁
+  const distance = Math.abs(window.scrollY - top)
+  const duration = Math.min(800, Math.max(400, distance * 0.4))
+  scrollLockTimer = setTimeout(() => {
+    isScrollLocked = false
+    scrollLockTimer = null
+  }, duration)
+}
+
+// TOC 目录标题悬停滚动效果
+function handleTocItemMouseEnter(event) {
+  const el = event.currentTarget
+  const overflow = el.scrollWidth - el.clientWidth
+  if (overflow <= 2) return
+
+  const span = el.querySelector('.toc-text')
+  if (!span) return
+
+  // 滚动速度约 38px/s，最短 1.5s，延迟 0.4s 后开始
+  const duration = Math.max(1.5, overflow / 38)
+  span.style.transition = `transform ${duration}s 0.4s linear`
+  span.style.transform = `translateX(-${overflow}px)`
+}
+
+function handleTocItemMouseLeave(event) {
+  const el = event.currentTarget
+  const span = el.querySelector('.toc-text')
+  if (!span) return
+
+  span.style.transition = 'transform 0.3s ease'
+  span.style.transform = 'translateX(0)'
+}
+
+// 初始化滚动监听（进度条 + TOC 高亮）
+function initScrollListener() {
+  scrollHandler = () => {
+    // —— 阅读进度 ——
+    const articleEl = document.querySelector('.article-card')
+    if (articleEl) {
+      const scrolled = window.scrollY - articleEl.offsetTop
+      const total = articleEl.offsetHeight - window.innerHeight
+      readProgress.value = total > 0
+        ? Math.min(100, Math.max(0, (scrolled / total) * 100))
+        : 0
+    }
+
+    // —— TOC 当前章节高亮 ——
+    // 点击跳转期间锁定，不让 scroll 事件覆盖选中项
+    if (isScrollLocked || tocItems.value.length === 0) return
+    const offset = 100
+    let current = tocItems.value[0].id
+    for (const item of tocItems.value) {
+      const el = document.getElementById(item.id)
+      if (el && el.getBoundingClientRect().top <= offset) {
+        current = item.id
+      }
+    }
+    activeTocId.value = current
+  }
+  window.addEventListener('scroll', scrollHandler, { passive: true })
+}
+
+// 监听文章加载完成后解析 TOC
+watch(article, (val) => {
+  if (val?.content) {
+    parseToc()
+  }
+})
+
+// 监听路由 id 变化（从一篇文章跳另一篇）
 watch(() => route.params.id, (newId) => {
   if (newId) {
     fetchArticle()
+    tocItems.value = []
+    activeTocId.value = ''
+    readProgress.value = 0
   }
 })
 
@@ -917,10 +1075,9 @@ let unsubscribeNewComment = null
 
 onMounted(() => {
   fetchArticle()
-  
-  // 通知服务器正在浏览此文章
   viewArticle(route.params.id)
-  
+  initScrollListener()
+
   // 监听新评论（实时刷新）
   unsubscribeNewComment = onNewComment((newComment) => {
     if (String(newComment.articleId) === String(route.params.id)) {
@@ -931,13 +1088,18 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 通知服务器离开文章页面
   leaveArticle()
-  
-  // 取消订阅
   if (unsubscribeNewComment) {
     unsubscribeNewComment()
     unsubscribeNewComment = null
+  }
+  if (scrollHandler) {
+    window.removeEventListener('scroll', scrollHandler)
+    scrollHandler = null
+  }
+  if (scrollLockTimer) {
+    clearTimeout(scrollLockTimer)
+    scrollLockTimer = null
   }
 })
 
@@ -2462,5 +2624,162 @@ function addNewCommentToList(newComment) {
   &:hover {
     opacity: 0.8;
   }
+}
+
+// ========== 阅读进度条 ==========
+.reading-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.reading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color, #3b82f6) 0%, #8b5cf6 100%);
+  transition: width 0.12s linear;
+  border-radius: 0 2px 2px 0;
+}
+
+// ========== TOC 目录面板 ==========
+.toc-panel {
+  position: fixed;
+  left: calc((100vw - 1484px) / 2);
+  top: 90px;
+  width: 148px;
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 12px;
+  z-index: 100;
+  border-radius: 12px;
+  display: none;
+
+  @media (min-width: 1500px) {
+    display: block;
+  }
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.toc-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border-color);
+
+  svg {
+    color: var(--primary-color, #3b82f6);
+    flex-shrink: 0;
+  }
+
+  .toc-progress-text {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary-color, #3b82f6);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.toc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toc-text {
+  display: inline-block;
+  will-change: transform;
+}
+
+.toc-item {
+  position: relative;
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 5px 8px 5px 12px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, transform 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--text-secondary);
+    background: rgba(59, 130, 246, 0.05);
+    transform: translateX(2px);
+  }
+
+  &.active {
+    color: var(--primary-color, #3b82f6);
+    background: linear-gradient(
+      90deg,
+      rgba(59, 130, 246, 0.14) 0%,
+      rgba(59, 130, 246, 0.04) 100%
+    );
+    border-left-color: var(--primary-color, #3b82f6);
+    font-weight: 600;
+    transform: translateX(2px);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: -4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary-color, #3b82f6);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+    }
+  }
+
+  &.toc-h1 {
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+  &.toc-h2 {
+    padding-left: 20px;
+  }
+  &.toc-h3 {
+    padding-left: 30px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    opacity: 0.85;
+  }
+}
+
+// TOC 进入/离开动画
+.toc-fade-enter-active,
+.toc-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.toc-fade-enter-from,
+.toc-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-10px);
 }
 </style>

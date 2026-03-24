@@ -3,6 +3,8 @@ package com.blog.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
@@ -41,6 +43,11 @@ public class RedisService {
     public static final String CACHE_WEATHER = CACHE_PREFIX + "weather:";
     public static final String CACHE_USER_FOLLOW = CACHE_PREFIX + "user:follow:";
     public static final String CACHE_USER_FANS = CACHE_PREFIX + "user:fans:";
+    public static final String CACHE_STUDY_CATEGORY_TREE = CACHE_PREFIX + "study:category:tree:";
+    public static final String CACHE_STUDY_CATEGORY_TREE_ENABLED = CACHE_STUDY_CATEGORY_TREE + "enabled";
+    public static final String CACHE_STUDY_OVERVIEW = CACHE_PREFIX + "study:overview:";
+    public static final String CACHE_STUDY_OVERVIEW_VERSION = CACHE_PREFIX + "study:overview:version";
+    public static final String CACHE_STUDY_CHECK_STATS = CACHE_PREFIX + "study:check:stats:";
 
     // 缓存过期时间（分钟）
     public static final long EXPIRE_SHORT = 5;      // 5分钟
@@ -513,6 +520,103 @@ public class RedisService {
     }
 
     /**
+     * 清除学习分类树缓存
+     */
+    public void clearStudyCategoryCache() {
+        if (!redisAvailable) return;
+        try {
+            delete(CACHE_STUDY_CATEGORY_TREE_ENABLED);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除用户学习概览缓存
+     */
+    public void clearStudyOverviewCache(Long userId) {
+        if (!redisAvailable || userId == null) return;
+        try {
+            delete(buildStudyOverviewCacheKey(userId));
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除全部学习概览缓存
+     */
+    public void clearAllStudyOverviewCache() {
+        if (!redisAvailable) return;
+        try {
+            Long version = increment(CACHE_STUDY_OVERVIEW_VERSION);
+            if (version != null && version > 0) {
+                expire(CACHE_STUDY_OVERVIEW_VERSION, EXPIRE_MONTH, TimeUnit.MINUTES);
+            }
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除用户抽查统计缓存
+     */
+    public void clearStudyCheckStatsCache(Long userId) {
+        if (!redisAvailable || userId == null) return;
+        try {
+            delete(buildStudyCheckStatsCacheKey(userId));
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 清除用户学习模块缓存
+     */
+    public void clearStudyUserCache(Long userId) {
+        if (!redisAvailable || userId == null) return;
+        try {
+            clearStudyOverviewCache(userId);
+            clearStudyCheckStatsCache(userId);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
+    /**
+     * 构建学习概览缓存Key，使用版本号避免全量模糊删除
+     */
+    public String buildStudyOverviewCacheKey(Long userId) {
+        return CACHE_STUDY_OVERVIEW + getCacheVersion(CACHE_STUDY_OVERVIEW_VERSION) + ":" + userId;
+    }
+
+    /**
+     * 构建抽查统计缓存Key
+     */
+    public String buildStudyCheckStatsCacheKey(Long userId) {
+        return CACHE_STUDY_CHECK_STATS + userId;
+    }
+
+    /**
+     * 在事务提交后执行缓存操作，避免旧数据回填缓存
+     */
+    public void runAfterCommit(Runnable runnable) {
+        if (runnable == null) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    runnable.run();
+                }
+            });
+            return;
+        }
+        runnable.run();
+    }
+
+    /**
      * 清除所有缓存
      */
     public void clearAllCache() {
@@ -525,8 +629,39 @@ public class RedisService {
         }
     }
 
+    /**
+     * 应用启动时清除全部用户/管理员 Token 及 Token 黑名单
+     * 防止重启后旧 token 残留导致单设备互踢逻辑错乱
+     */
+    public void clearAllTokensOnStartup() {
+        if (!redisAvailable) return;
+        try {
+            long userCount   = deleteByPattern("blog:user:token:*");
+            long adminCount  = deleteByPattern("blog:admin:token:*");
+            long blackCount  = deleteByPattern("blog:token:blacklist:*");
+            log.info("服务启动 - 已清除 Token: 用户端={}, 管理端={}, 黑名单={}", userCount, adminCount, blackCount);
+        } catch (Exception e) {
+            handleRedisError(e);
+        }
+    }
+
     private void handleRedisError(Exception e) {
         log.warn("Redis操作失败: {}", e.getMessage());
         // 不再禁用Redis，只记录错误，下次操作继续尝试
+    }
+
+    private long getCacheVersion(String key) {
+        Object value = get(key);
+        if (value instanceof Number) {
+            return Math.max(1L, ((Number) value).longValue());
+        }
+        if (value != null) {
+            try {
+                return Math.max(1L, Long.parseLong(value.toString()));
+            } catch (NumberFormatException ignored) {
+                return 1L;
+            }
+        }
+        return 1L;
     }
 }

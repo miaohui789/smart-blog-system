@@ -21,7 +21,9 @@ export const useUserStore = defineStore('user', () => {
     }
     token.value = res.data.token
     setToken(res.data.token)
-    await fetchUserInfo()
+    // noAuthRedirect: 登录后立即拉取用户信息时，若服务端新token暂未生效返回401
+    // 不应触发退出重定向，避免与 router.push('/') 产生竞争
+    await fetchUserInfo({ noAuthRedirect: true })
     // 登录成功后建立WebSocket连接
     if (userInfo.value?.id) {
       initWebSocket(userInfo.value.id)
@@ -29,9 +31,9 @@ export const useUserStore = defineStore('user', () => {
     return res
   }
 
-  async function fetchUserInfo() {
+  async function fetchUserInfo({ noAuthRedirect = false } = {}) {
     try {
-      const res = await getUserInfo()
+      const res = await getUserInfo(noAuthRedirect ? { noAuthRedirect: true } : {})
       userInfo.value = res.data
       setUser(res.data)
       return res.data

@@ -34,8 +34,8 @@ service.interceptors.response.use(
         ElMessage.error(res.message || '请求失败')
       }
       
-      // Token过期或被挤下线
-      if (res.code === 401) {
+      // Token过期或被挤下线（登录流程中的请求跳过重定向，避免新token竞争问题）
+      if (res.code === 401 && !response.config?.noAuthRedirect) {
         ElMessage.warning('登录已失效，请重新登录')
         clearAuth()
         // 使用 location.href 强制刷新，确保状态完全重置
@@ -49,8 +49,8 @@ service.interceptors.response.use(
     console.error('响应错误:', error)
     const showError = error.config?.showError !== false
     
-    // 处理401错误（可能是被挤下线）
-    if (error.response && error.response.status === 401) {
+    // 处理401错误（可能是被挤下线，但登录流程中的请求跳过重定向）
+    if (error.response && error.response.status === 401 && !error.config?.noAuthRedirect) {
       ElMessage.warning('登录已失效，请重新登录')
       clearAuth()
       window.location.href = '/login'

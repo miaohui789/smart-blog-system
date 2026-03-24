@@ -57,6 +57,7 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
   --header-bg: #18181b;
   --search-overlay-bg: rgba(0, 0, 0, 0.75);
+  --page-loading-mask-bg: rgba(24, 24, 27, 0.72);
   
   // RGB格式用于透明度
   --bg-card-rgb: 26, 26, 26;
@@ -105,6 +106,7 @@
   --shadow-color: rgba(0, 0, 0, 0.08);
   --header-bg: #ffffff;
   --search-overlay-bg: rgba(0, 0, 0, 0.5);
+  --page-loading-mask-bg: rgba(244, 244, 245, 0.76);
   
   // RGB格式用于透明度
   --bg-card-rgb: 255, 255, 255;
@@ -140,7 +142,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
   line-height: 1.6;
@@ -149,6 +152,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s, color 0.3s;
+}
+
+html {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 a {
@@ -288,11 +299,24 @@ body.has-custom-bg {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
   }
+
+  .el-select__wrapper {
+    background: rgba(var(--bg-card-rgb), 0.6) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
   
   .el-textarea__inner {
     background: rgba(var(--bg-card-rgb), 0.6) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  .el-select-dropdown.el-popper,
+  .el-select__popper.el-popper {
+    background: rgba(var(--bg-card-rgb), 0.78) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
   }
   
   .el-dropdown-menu {
@@ -338,6 +362,96 @@ body.has-custom-bg {
   }
 }
 
+.el-select__wrapper {
+  background: rgba(var(--bg-card-rgb), 0.88) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 0 0 1px var(--border-color) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease !important;
+
+  &:hover {
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.34) !important;
+  }
+
+  &.is-focused {
+    box-shadow: inset 0 0 0 1px var(--primary-color) !important;
+  }
+}
+
+.el-select__placeholder,
+.el-select__input-wrapper,
+.el-select__selected-item,
+.el-select__selected-item span {
+  color: var(--text-secondary) !important;
+}
+
+.el-select__selected-item,
+.el-select__selected-item.el-select__placeholder.is-transparent,
+.el-select__input {
+  color: var(--text-primary) !important;
+}
+
+.el-select__caret,
+.el-select__icon,
+.el-select__tags-text,
+.el-select__tag-wrapper .el-tag__close {
+  color: var(--text-muted) !important;
+}
+
+.el-select__selection .el-tag {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.22) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-select-dropdown.el-popper,
+.el-select__popper.el-popper {
+  border: 1px solid var(--border-light) !important;
+  border-radius: 14px !important;
+  background: rgba(var(--bg-card-rgb), 0.94) !important;
+  box-shadow: 0 18px 40px var(--shadow-color) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+
+.el-select-dropdown.el-popper .el-popper__arrow::before,
+.el-select__popper.el-popper .el-popper__arrow::before {
+  background: rgba(var(--bg-card-rgb), 0.94) !important;
+  border-color: var(--border-light) !important;
+}
+
+.el-select-dropdown__wrap {
+  background: transparent !important;
+}
+
+.el-select-dropdown__list {
+  padding: 6px 0 !important;
+}
+
+.el-select-dropdown__item {
+  margin: 4px 8px !important;
+  border-radius: 10px !important;
+  color: var(--text-secondary) !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-select-dropdown__item.is-selected {
+  background: rgba(59, 130, 246, 0.18) !important;
+  color: var(--primary-color) !important;
+  font-weight: 600 !important;
+}
+
+.el-select-dropdown__item.is-disabled {
+  color: var(--text-disabled) !important;
+}
+
 .el-textarea__inner {
   background: var(--bg-input) !important;
   border-radius: 6px !important;
@@ -347,6 +461,46 @@ body.has-custom-bg {
   
   &:hover, &:focus {
     border-color: var(--border-light) !important;
+  }
+}
+
+.el-input-number {
+  width: 100%;
+}
+
+.el-input-number__decrease,
+.el-input-number__increase {
+  background: var(--bg-card-hover) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+
+  &:hover {
+    background: rgba($primary-color, 0.08) !important;
+    color: var(--text-primary) !important;
+  }
+}
+
+.el-input-number.is-controls-right {
+  .el-input-number__decrease,
+  .el-input-number__increase {
+    width: 34px;
+  }
+}
+
+.el-loading-mask {
+  background: var(--page-loading-mask-bg) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.el-loading-spinner {
+  .el-loading-text {
+    color: var(--text-secondary) !important;
+  }
+
+  .path {
+    stroke: $primary-color !important;
   }
 }
 
@@ -429,6 +583,101 @@ body.has-custom-bg {
         opacity: 0.4;
       }
     }
+  }
+}
+
+// ============================================================
+// 暗色主题自定义背景专项覆盖
+// 暗色卡片(26,26,26)叠在深色背景上视觉无差异，需大幅降低透明度
+// 使星空/动效等背景能穿透显示
+// ============================================================
+:root[data-theme="dark"] body.has-custom-bg {
+  .glass-card {
+    background: rgba(var(--bg-card-rgb), 0.25) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .article-card,
+  .comment-section,
+  .profile-card,
+  .articles-section {
+    background: rgba(var(--bg-card-rgb), 0.3) !important;
+  }
+
+  .header {
+    background: rgba(var(--bg-card-rgb), 0.35) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+  }
+
+  .el-card {
+    background: rgba(var(--bg-card-rgb), 0.25) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-textarea__inner,
+  .el-input-number__decrease,
+  .el-input-number__increase {
+    background: rgba(var(--bg-card-rgb), 0.2) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  .el-dropdown-menu {
+    background: rgba(var(--bg-card-rgb), 0.4) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .el-select-dropdown.el-popper,
+  .el-select__popper.el-popper {
+    background: rgba(var(--bg-card-rgb), 0.4) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .sidebar-card,
+  .weather-card {
+    background: rgba(var(--bg-card-rgb), 0.25) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .el-pagination {
+    .el-pager li {
+      background: rgba(var(--bg-card-rgb), 0.25) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+
+      &.is-active {
+        background: $primary-color !important;
+        backdrop-filter: none !important;
+        border-color: $primary-color !important;
+      }
+    }
+
+    .btn-prev,
+    .btn-next {
+      background: rgba(var(--bg-card-rgb), 0.25) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+  }
+}
+
+:root[data-theme="light"] {
+  .el-select-dropdown.el-popper,
+  .el-select__popper.el-popper {
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12) !important;
   }
 }
 

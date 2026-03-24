@@ -16,6 +16,8 @@ public class AiConfig {
     
     private String model;
     
+    private String displayName;
+    
     private String apiKey;
     
     private String baseUrl;
@@ -29,6 +31,40 @@ public class AiConfig {
     private Integer enabled;
     
     private Integer dailyLimit;
+    
+    private Integer sortOrder;
+    
+    private Integer isDefault;
+
+    /**
+     * 是否用于AI对话
+     */
+    private Integer useForChat;
+
+    /**
+     * 是否用于学习模块AI评分
+     */
+    private Integer useForStudyScore;
+
+    /**
+     * 是否为学习模块AI评分默认模型
+     */
+    private Integer isDefaultStudyScore;
+
+    /**
+     * 是否支持深度思考（如 DeepSeek R1）
+     */
+    private Integer supportThinking;
+
+    /**
+     * 关联的Logo ID（ai_logo表主键）
+     */
+    private Long logoId;
+
+    /**
+     * 学习模块AI评分系统提示词
+     */
+    private String scoreSystemPrompt;
     
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

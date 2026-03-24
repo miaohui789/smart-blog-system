@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.StudyUserQuestionProgressMapper">
+
+    <select id="selectDashboardFavoriteQuestions" resultType="com.blog.dto.response.StudyQuestionListVO">
+        SELECT
+            q.id,
+            q.category_id,
+            c.category_name,
+            q.question_no,
+            q.question_code,
+            q.title,
+            q.answer_summary,
+            q.keywords,
+            q.difficulty,
+            q.estimated_minutes,
+            q.score_full_mark,
+            q.score_pass_mark,
+            q.ai_score_enabled,
+            q.self_assessment_enabled,
+            q.view_count,
+            COALESCE(p.study_count, q.study_count, 0) AS study_count,
+            COALESCE(p.check_count, q.check_count, 0) AS check_count,
+            COALESCE(p.study_status, 0) AS study_status,
+            COALESCE(p.mastery_level, 0) AS mastery_level,
+            COALESCE(p.review_priority, 3) AS review_priority,
+            COALESCE(p.is_favorite, 0) AS is_favorite,
+            COALESCE(p.is_wrong_question, 0) AS is_wrong_question,
+            p.last_score,
+            p.last_study_time,
+            p.next_review_time
+        FROM study_user_question_progress p
+        INNER JOIN study_question q ON q.id = p.question_id
+        LEFT JOIN study_category c ON c.id = q.category_id
+        WHERE p.user_id = #{userId}
+          AND p.is_favorite = 1
+          AND q.status = 1
+          AND q.review_status = 2
+        ORDER BY COALESCE(p.last_study_time, p.update_time, p.create_time) DESC, p.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDashboardReviewQuestions" resultType="com.blog.dto.response.StudyQuestionListVO">
+        SELECT
+            q.id,
+            q.category_id,
+            c.category_name,
+            q.question_no,
+            q.question_code,
+            q.title,
+            q.answer_summary,
+            q.keywords,
+            q.difficulty,
+            q.estimated_minutes,
+            q.score_full_mark,
+            q.score_pass_mark,
+            q.ai_score_enabled,
+            q.self_assessment_enabled,
+            q.view_count,
+            COALESCE(p.study_count, q.study_count, 0) AS study_count,
+            COALESCE(p.check_count, q.check_count, 0) AS check_count,
+            COALESCE(p.study_status, 0) AS study_status,
+            COALESCE(p.mastery_level, 0) AS mastery_level,
+            COALESCE(p.review_priority, 3) AS review_priority,
+            COALESCE(p.is_favorite, 0) AS is_favorite,
+            COALESCE(p.is_wrong_question, 0) AS is_wrong_question,
+            p.last_score,
+            p.last_study_time,
+            p.next_review_time
+        FROM study_user_question_progress p
+        INNER JOIN study_question q ON q.id = p.question_id
+        LEFT JOIN study_category c ON c.id = q.category_id
+        WHERE p.user_id = #{userId}
+          AND q.status = 1
+          AND q.review_status = 2
+          AND (
+                p.study_status = 3
+                OR p.is_wrong_question = 1
+                OR (p.next_review_time IS NOT NULL AND p.next_review_time &lt;= NOW())
+              )
+        ORDER BY
+            CASE
+                WHEN p.next_review_time IS NOT NULL AND p.next_review_time &lt;= NOW() THEN 0
+                ELSE 1
+            END ASC,
+            COALESCE(p.review_priority, 0) DESC,
+            CASE
+                WHEN p.next_review_time IS NULL THEN 1
+                ELSE 0
+            END ASC,
+            p.next_review_time ASC,
+            COALESCE(p.last_check_time, p.last_study_time, p.update_time, p.create_time) DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

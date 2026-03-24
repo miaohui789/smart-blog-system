@@ -50,6 +50,16 @@
                   <span class="hint-text">方块</span>
                 </div>
               </div>
+              <!-- 黑夜星空预览 -->
+              <div v-else-if="skin.id === 'dark-4'" class="starsky-preview-container">
+                <div v-if="previewSkin === 'dark-4'" class="mini-starsky">
+                  <div class="mini-star" v-for="n in 40" :key="n"></div>
+                </div>
+                <div v-else class="starsky-preview-hint">
+                  <el-icon class="preview-icon"><VideoCameraFilled /></el-icon>
+                  <span class="hint-text">黑夜星空</span>
+                </div>
+              </div>
               <div v-else class="default-preview">
                 <span class="skin-name">{{ skin.name }}</span>
               </div>
@@ -137,7 +147,8 @@ const darkSkins = ref([
   { id: 'default', name: '默认', preview: '#18181b', component: null },
   { id: 'matrix', name: '黑客帝国', preview: 'linear-gradient(135deg, #000000 0%, #003300 100%)', component: 'MatrixRain' },
   { id: 'dark-2', name: '彩色斑点', preview: 'linear-gradient(135deg, #f093fb 0%, #f5576c 25%, #ffd140 50%, #4facfe 75%, #00f2fe 100%)', component: 'ColorGrid' },
-  { id: 'dark-3', name: '方块', preview: 'linear-gradient(135deg, #2d2d2d 0%, #1d1d1d 100%)', component: 'HexagonPattern' }
+  { id: 'dark-3', name: '方块', preview: 'linear-gradient(135deg, #2d2d2d 0%, #1d1d1d 100%)', component: 'HexagonPattern' },
+  { id: 'dark-4', name: '黑夜星空', preview: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)', component: 'StarSky' }
 ])
 
 const lightSkins = ref([
@@ -325,6 +336,28 @@ function loadThemeFromLocal() {
   
   .header-content {
     border-radius: 20px !important;
+  }
+}
+
+// 自定义背景下强制透明但保持圆角
+body.has-custom-bg .skin-page .page-header {
+  background: transparent !important;
+  border-radius: 20px !important;
+
+  .header-content {
+    background: rgba(var(--bg-card-rgb), 0.65) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-radius: 20px !important;
+  }
+}
+// 暗色主题下进一步降低透明度，使背景可见
+:root[data-theme="dark"] body.has-custom-bg .skin-page .page-header {
+  .header-content {
+    background: rgba(var(--bg-card-rgb), 0.25) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
   }
 }
 
@@ -855,5 +888,89 @@ function loadThemeFromLocal() {
   .el-icon {
     font-size: 12px;
   }
+}
+
+/* ===== 黑夜星空 预览样式 ===== */
+.starsky-preview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.starsky-preview-hint {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+.mini-starsky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+@keyframes miniStarFloat {
+  0%   { transform: translateY(0px); opacity: 1; }
+  100% { transform: translateY(-100px); opacity: 0; }
+}
+
+.mini-star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: miniStarFloat linear infinite;
+
+  &:nth-child(3n+1) { width: 1px; height: 1px; }
+  &:nth-child(3n+2) { width: 2px; height: 2px; }
+  &:nth-child(3n)   { width: 3px; height: 3px; }
+
+  /* 40颗星星的随机位置 */
+  &:nth-child(1)  { left:37%; top:92%; animation-duration:2s;   animation-delay:-0.3s; opacity:0.6; }
+  &:nth-child(2)  { left:74%; top:85%; animation-duration:3s;   animation-delay:-0.6s; opacity:0.7; }
+  &:nth-child(3)  { left:11%; top:78%; animation-duration:4s;   animation-delay:-0.9s; opacity:0.8; }
+  &:nth-child(4)  { left:48%; top:71%; animation-duration:5s;   animation-delay:-1.2s; opacity:0.9; }
+  &:nth-child(5)  { left:85%; top:64%; animation-duration:2s;   animation-delay:-1.5s; opacity:0.6; }
+  &:nth-child(6)  { left:22%; top:57%; animation-duration:3s;   animation-delay:-1.8s; opacity:0.7; }
+  &:nth-child(7)  { left:59%; top:50%; animation-duration:4s;   animation-delay:-2.1s; opacity:0.8; }
+  &:nth-child(8)  { left:96%; top:43%; animation-duration:5s;   animation-delay:-2.4s; opacity:0.9; }
+  &:nth-child(9)  { left:33%; top:36%; animation-duration:2s;   animation-delay:-2.7s; opacity:0.6; }
+  &:nth-child(10) { left:70%; top:29%; animation-duration:3s;   animation-delay:-0.0s; opacity:0.7; }
+  &:nth-child(11) { left: 7%; top:22%; animation-duration:4s;   animation-delay:-0.3s; opacity:0.8; }
+  &:nth-child(12) { left:44%; top:15%; animation-duration:5s;   animation-delay:-0.6s; opacity:0.9; }
+  &:nth-child(13) { left:81%; top: 8%; animation-duration:2s;   animation-delay:-0.9s; opacity:0.6; }
+  &:nth-child(14) { left:18%; top: 1%; animation-duration:3s;   animation-delay:-1.2s; opacity:0.7; }
+  &:nth-child(15) { left:55%; top:94%; animation-duration:4s;   animation-delay:-1.5s; opacity:0.8; }
+  &:nth-child(16) { left:92%; top:87%; animation-duration:5s;   animation-delay:-1.8s; opacity:0.9; }
+  &:nth-child(17) { left:29%; top:80%; animation-duration:2s;   animation-delay:-2.1s; opacity:0.6; }
+  &:nth-child(18) { left:66%; top:73%; animation-duration:3s;   animation-delay:-2.4s; opacity:0.7; }
+  &:nth-child(19) { left: 3%; top:66%; animation-duration:4s;   animation-delay:-2.7s; opacity:0.8; }
+  &:nth-child(20) { left:40%; top:59%; animation-duration:5s;   animation-delay:-0.0s; opacity:0.9; }
+  &:nth-child(21) { left:77%; top:52%; animation-duration:2s;   animation-delay:-0.3s; opacity:0.6; }
+  &:nth-child(22) { left:14%; top:45%; animation-duration:3s;   animation-delay:-0.6s; opacity:0.7; }
+  &:nth-child(23) { left:51%; top:38%; animation-duration:4s;   animation-delay:-0.9s; opacity:0.8; }
+  &:nth-child(24) { left:88%; top:31%; animation-duration:5s;   animation-delay:-1.2s; opacity:0.9; }
+  &:nth-child(25) { left:25%; top:24%; animation-duration:2s;   animation-delay:-1.5s; opacity:0.6; }
+  &:nth-child(26) { left:62%; top:17%; animation-duration:3s;   animation-delay:-1.8s; opacity:0.7; }
+  &:nth-child(27) { left: 9%; top:10%; animation-duration:4s;   animation-delay:-2.1s; opacity:0.8; }
+  &:nth-child(28) { left:46%; top: 3%; animation-duration:5s;   animation-delay:-2.4s; opacity:0.9; }
+  &:nth-child(29) { left:83%; top:96%; animation-duration:2s;   animation-delay:-2.7s; opacity:0.6; }
+  &:nth-child(30) { left:20%; top:89%; animation-duration:3s;   animation-delay:-0.0s; opacity:0.7; }
+  &:nth-child(31) { left:57%; top:82%; animation-duration:4s;   animation-delay:-0.3s; opacity:0.8; }
+  &:nth-child(32) { left:94%; top:75%; animation-duration:5s;   animation-delay:-0.6s; opacity:0.9; }
+  &:nth-child(33) { left:31%; top:68%; animation-duration:2s;   animation-delay:-0.9s; opacity:0.6; }
+  &:nth-child(34) { left:68%; top:61%; animation-duration:3s;   animation-delay:-1.2s; opacity:0.7; }
+  &:nth-child(35) { left: 5%; top:54%; animation-duration:4s;   animation-delay:-1.5s; opacity:0.8; }
+  &:nth-child(36) { left:42%; top:47%; animation-duration:5s;   animation-delay:-1.8s; opacity:0.9; }
+  &:nth-child(37) { left:79%; top:40%; animation-duration:2s;   animation-delay:-2.1s; opacity:0.6; }
+  &:nth-child(38) { left:16%; top:33%; animation-duration:3s;   animation-delay:-2.4s; opacity:0.7; }
+  &:nth-child(39) { left:53%; top:26%; animation-duration:4s;   animation-delay:-2.7s; opacity:0.8; }
+  &:nth-child(40) { left:90%; top:19%; animation-duration:5s;   animation-delay:-0.0s; opacity:0.9; }
 }
 </style>

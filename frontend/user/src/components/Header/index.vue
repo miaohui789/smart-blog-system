@@ -32,6 +32,8 @@
       <nav class="nav-tabs">
         <input type="radio" id="nav-home" name="nav-tabs" :checked="currentNav === '/'" @change="navigateTo('/')">
         <label class="nav-tab" for="nav-home">首页</label>
+        <input type="radio" id="nav-study" name="nav-tabs" :checked="currentNav === '/study'" @change="navigateTo('/study')">
+        <label class="nav-tab" for="nav-study">学习</label>
         <input type="radio" id="nav-category" name="nav-tabs" :checked="currentNav === '/category'" @change="navigateTo('/category')">
         <label class="nav-tab" for="nav-category">分类</label>
         <input type="radio" id="nav-tag" name="nav-tabs" :checked="currentNav === '/tag'" @change="navigateTo('/tag')">
@@ -207,6 +209,10 @@
                     <el-icon><Star /></el-icon>
                     <span>我的收藏</span>
                   </div>
+                  <div class="menu-item" @click="handleCommand('study')">
+                    <el-icon><Reading /></el-icon>
+                    <span>我的学习</span>
+                  </div>
                   <div class="menu-item" @click="handleCommand('vip')">
                     <el-icon><Medal /></el-icon>
                     <span>会员中心</span>
@@ -330,7 +336,7 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture } from '@element-plus/icons-vue'
+import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture, Reading } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
@@ -453,7 +459,7 @@ async function fetchNotificationUnread() {
 }
 
 // 导航相关
-const navItems = ['/', '/category', '/tag', '/archive', '/about']
+const navItems = ['/', '/study', '/category', '/tag', '/archive', '/about']
 const currentNav = computed(() => {
   const path = route.path
   if (path === '/') return '/'
@@ -630,6 +636,9 @@ function handleCommand(command) {
     case 'favorites':
       router.push('/user/favorites')
       break
+    case 'study':
+      router.push('/user/study')
+      break
     case 'settings':
       router.push('/user/settings')
       break
@@ -667,6 +676,7 @@ function handleCommand(command) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
 }
 
 .header-left {
@@ -880,7 +890,9 @@ function handleCommand(command) {
 /* 新导航样式 */
 .nav-tabs {
   display: flex;
-  position: relative;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   background: var(--bg-card);
   box-shadow: 0 0 1px 0 rgba(168, 85, 247, 0.15), 0 4px 12px 0 rgba(168, 85, 247, 0.1);
   padding: 6px;

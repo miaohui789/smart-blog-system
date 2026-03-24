@@ -1,6 +1,7 @@
 package com.blog.controller.web;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.PageResult;
@@ -178,15 +179,28 @@ public class ArticleController {
         boolean hasViewed = redisService.hasKey(viewLimitKey);
         
         if (!hasViewed) {
-            // 设置访问标记，5分钟内同一IP访问同一文章不重复计数
-            redisService.setWithMinutes(viewLimitKey, "1", 5);
+            // 设置访问标记，1分钟内同一IP访问同一文章不重复计数
+            redisService.setWithMinutes(viewLimitKey, "1", 1);
             
-            // 直接更新数据库浏览量
-            article.setViewCount((article.getViewCount() == null ? 0 : article.getViewCount()) + 1);
-            articleService.updateById(article);
+            // 原子更新浏览量（SQL层面原子操作，避免并发竞争导致计数丢失）
+            articleService.update(
+                new LambdaUpdateWrapper<Article>()
+                    .setSql("view_count = view_count + 1")
+                    .eq(Article::getId, id)
+            );
+            // 重新查询以获取更新后的最新浏览量
+            article = articleService.getById(id);
             
             // 清除文章列表缓存，确保列表页显示最新数据
             redisService.deleteByPattern(RedisService.CACHE_ARTICLE_LIST + "*");
+            // 清除分类文章缓存
+            redisService.deleteByPattern(RedisService.CACHE_CATEGORY + "*:articles:*");
+            // 清除标签文章缓存
+            redisService.deleteByPattern(RedisService.CACHE_TAG + "*:articles:*");
+            // 清除热门文章缓存，确保侧边栏实时更新
+            redisService.delete(RedisService.CACHE_HOT_ARTICLES);
+            // 清除推荐文章缓存
+            redisService.delete(RedisService.CACHE_RECOMMEND_ARTICLES);
         }
         
         // 获取当前用户ID

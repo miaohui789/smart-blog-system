@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.StudyAnswerRecordMapper">
+
+    <select id="selectMaxAnswerRound" resultType="java.lang.Integer">
+        SELECT MAX(answer_round)
+        FROM study_answer_record
+        WHERE task_item_id = #{taskItemId}
+    </select>
+
+    <select id="selectLatestByTaskItemId" resultType="com.blog.entity.StudyAnswerRecord">
+        SELECT *
+        FROM study_answer_record
+        WHERE task_item_id = #{taskItemId}
+        ORDER BY answer_round DESC, id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

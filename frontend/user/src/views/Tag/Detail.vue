@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PriceTag } from '@element-plus/icons-vue'
 import { getTagArticles, getTagList } from '@/api/tag'
@@ -76,6 +76,8 @@ watch(() => route.params.id, () => {
   fetchArticles()
 })
 onMounted(fetchArticles)
+// keep-alive 激活时重新刷新（从文章详情返回后更新浏览量等数据）
+onActivated(fetchArticles)
 </script>
 
 <style lang="scss" scoped>
