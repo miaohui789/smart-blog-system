@@ -702,4 +702,25 @@ onMounted(async () => {
     }
   }
 }
+
+@media (max-width: 768px) {
+  .write-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+    
+    .header-actions {
+      justify-content: flex-end;
+    }
+  }
+  
+  .write-body {
+    padding: 12px;
+  }
+  
+  .title-input :deep(.el-input__inner) {
+    font-size: 20px;
+  }
+}
 </style>

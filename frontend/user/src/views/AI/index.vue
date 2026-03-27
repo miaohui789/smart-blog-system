@@ -50,6 +50,10 @@
 
     <!-- 主聊天区 -->
     <main class="chat-main">
+      <!-- 移动端侧边栏切换按钮 -->
+      <button class="mobile-sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon><Menu /></el-icon>
+      </button>
       <!-- 欢迎页 -->
       <div class="welcome-screen" v-if="messages.length === 0">
         <div class="welcome-content">
@@ -293,7 +297,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
-import { Plus, Fold, Expand, Delete, Edit, QuestionFilled, MagicStick, Loading, HomeFilled, DocumentCopy, VideoPause } from '@element-plus/icons-vue'
+import { Plus, Fold, Expand, Delete, Edit, QuestionFilled, MagicStick, Loading, HomeFilled, DocumentCopy, VideoPause, Menu } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAiStatus, getConversations, createConversation, getMessages, deleteConversation, updateConversationTitle, getAvailableModels, switchAiModel } from '@/api/ai'
 import { copyToClipboard, copyWithMessage } from '@/utils/clipboard'
@@ -325,7 +329,7 @@ const randomGreeting = computed(() => {
   return `你好 ${name}${suffix}`
 })
 
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = ref(window.innerWidth <= 768)
 const aiStatus = ref({})
 const conversations = ref([])
 const currentConversation = ref(null)
@@ -801,12 +805,22 @@ async function createNewChat() {
   currentConversation.value = null
   messages.value = []
   resetQuoteState()
+  
+  if (window.innerWidth <= 768) {
+    sidebarCollapsed.value = true
+  }
 }
 
 async function selectConversation(conv) {
   currentConversation.value = conv
   messages.value = []
   resetQuoteState()
+  
+  // 移动端自动收起侧边栏
+  if (window.innerWidth <= 768) {
+    sidebarCollapsed.value = true
+  }
+
   try {
     const res = await getMessages(conv.id)
     if (res.code === 200) {
@@ -2508,14 +2522,37 @@ watch(thinkingStreamCollapsed, (collapsed) => {
   margin-top: 12px;
 }
 
+.mobile-sidebar-toggle {
+  display: none;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 90;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
 // 响应式
 @media (max-width: 768px) {
+  .mobile-sidebar-toggle {
+    display: flex;
+  }
+  
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
     z-index: 100;
+    transition: transform 0.3s ease;
     
     &.collapsed {
       transform: translateX(-100%);

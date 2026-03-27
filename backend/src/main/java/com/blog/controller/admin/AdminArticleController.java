@@ -11,6 +11,7 @@ import com.blog.security.SecurityUser;
 import com.blog.service.ArticleService;
 import com.blog.service.CategoryService;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AdminArticleController {
     private final ArticleService articleService;
     private final CategoryService categoryService;
     private final RedisService redisService;
+    private final SearchService searchService;
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -104,6 +106,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(article.getId());
+        searchService.syncArticle(article.getId());
         
         return Result.success("创建成功");
     }
@@ -130,6 +133,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
         
         return Result.success("更新成功");
     }
@@ -141,6 +145,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.deleteArticle(id);
         
         return Result.success("删除成功");
     }
@@ -153,6 +158,7 @@ public class AdminArticleController {
             articleService.removeByIds(ids);
             // 清除所有文章相关缓存
             ids.forEach(redisService::clearArticleCache);
+            ids.forEach(searchService::deleteArticle);
         }
         return Result.success("删除成功");
     }
@@ -173,6 +179,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
         
         return Result.success("更新成功");
     }
@@ -189,6 +196,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
         
         return Result.success("更新成功");
     }
@@ -205,6 +213,7 @@ public class AdminArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
         
         return Result.success("更新成功");
     }

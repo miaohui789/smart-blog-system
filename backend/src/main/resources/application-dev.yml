@@ -49,3 +49,9 @@ jwt:
 # 文件上传配置
 file:
   upload-path: uploads
+
+blog:
+  search:
+    elasticsearch:
+      enabled: false
+      endpoint: http://localhost:9200

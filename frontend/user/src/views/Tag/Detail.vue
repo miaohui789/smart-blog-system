@@ -128,4 +128,20 @@ onActivated(fetchArticles)
 :deep(.el-pagination) {
   justify-content: center;
 }
+
+@media (max-width: 768px) {
+  .detail-header {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .header-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+}
 </style>

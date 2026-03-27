@@ -127,7 +127,7 @@
           
           <!-- 用户头像悬浮卡片 -->
           <div class="user-avatar-wrapper" @mouseenter="handleUserCardEnter" @mouseleave="handleUserCardLeave">
-            <div class="user-avatar-trigger" @click="goToMyPage">
+            <div class="user-avatar-trigger" @click.stop.prevent="handleUserAvatarClick" :class="{ 'is-active': showUserCard }">
               <div class="user-avatar" :class="'vip-level-' + (userStore.userInfo?.vipLevel || 0)">
                 <img 
                   v-if="userStore.userInfo?.avatar" 
@@ -148,7 +148,7 @@
             
             <!-- 悬浮卡片 -->
             <Transition name="user-card">
-              <div v-if="showUserCard" class="user-card" :class="'vip-card-' + (userStore.userInfo?.vipLevel || 0)" @mouseenter="handleUserCardEnter" @mouseleave="handleUserCardLeave">
+              <div v-show="showUserCard" class="user-card" :class="'vip-card-' + (userStore.userInfo?.vipLevel || 0)" @mouseenter="handleUserCardEnter" @mouseleave="handleUserCardLeave" @click="handleCardClick">
                 <!-- VIP专属背景装饰 -->
                 <div v-if="userStore.userInfo?.vipLevel > 0" class="vip-card-bg" :class="'level-' + userStore.userInfo.vipLevel"></div>
                 <div class="user-card-header" :class="'vip-header-' + (userStore.userInfo?.vipLevel || 0)">
@@ -240,6 +240,15 @@
         <template v-else>
           <router-link to="/login" class="login-btn">登录</router-link>
         </template>
+        <button
+          class="mobile-menu-btn"
+          :class="{ active: showMobileMenu }"
+          type="button"
+          @click="toggleMobileMenu"
+        >
+          <el-icon v-if="showMobileMenu"><Close /></el-icon>
+          <el-icon v-else><Menu /></el-icon>
+        </button>
       </div>
     </div>
 
@@ -255,77 +264,230 @@
                 v-model="keyword"
                 type="text"
                 class="search-input"
-                placeholder="搜索文章、用户..."
+                placeholder="搜索文章、面试题、用户..."
                 @keyup.enter="doSearch"
                 @keyup.esc="closeSearch"
               />
               <kbd v-if="!keyword" class="esc-hint">ESC</kbd>
             </div>
-            
-            <!-- 用户搜索结果 -->
-            <div v-if="userResults.length" class="search-section">
-              <div class="search-section-title">
-                <el-icon><User /></el-icon>
-                <span>用户</span>
+
+            <div v-if="keyword" class="search-results-shell">
+              <div class="search-meta-bar">
+                <span>{{ searching ? '正在搜索...' : `找到 ${searchResults.length + studyResults.length + userResults.length} 条即时结果` }}</span>
+                <button v-if="keyword" class="search-page-link" @click="goToSearchPage">
+                  查看全部
+                </button>
               </div>
-              <div class="search-users">
-                <router-link
-                  v-for="user in userResults"
-                  :key="user.id"
-                  :to="`/user/${user.id}`"
-                  class="search-user-item"
-                  @click="closeSearch"
-                >
-                  <div class="user-avatar-small" :class="'vip-level-' + (user.vipLevel || 0)">
-                    <img v-if="user.avatar" :src="user.avatar" :alt="user.nickname" />
-                    <span v-else>{{ (user.nickname || user.username || 'U').charAt(0).toUpperCase() }}</span>
+
+              <div class="search-scroll">
+                <!-- 用户搜索结果 -->
+                <div v-if="userResults.length" class="search-section">
+                  <div class="search-section-title">
+                    <el-icon><User /></el-icon>
+                    <span>用户</span>
                   </div>
-                  <div class="user-info-small">
-                    <div class="user-name-row">
-                      <VipUsername 
-                        :username="user.nickname || user.username" 
-                        :vipLevel="user.vipLevel || 0"
-                      />
-                    </div>
-                    <p class="user-intro">{{ user.intro || '这个人很懒，什么都没写~' }}</p>
-                  </div>
-                </router-link>
-              </div>
-            </div>
-            
-            <!-- 文章搜索结果 -->
-            <div v-if="searchResults.length" class="search-section">
-              <div class="search-section-title">
-                <el-icon><Document /></el-icon>
-                <span>文章</span>
-              </div>
-              <div class="search-articles">
-                <router-link
-                  v-for="item in searchResults"
-                  :key="item.id"
-                  :to="`/article/${item.id}`"
-                  class="search-result-item"
-                  @click="closeSearch"
-                >
-                  <h4 v-html="highlightKeyword(item.title)"></h4>
-                  <p v-html="highlightKeyword(item.summary || '')"></p>
-                  <div v-if="item.tags && item.tags.length" class="search-tags">
-                    <span 
-                      v-for="tag in item.tags" 
-                      :key="tag.id" 
-                      class="search-tag"
-                      :class="{ 'tag-matched': isTagMatched(tag.name) }"
-                      :style="{ '--tag-color': tag.color || '#a855f7' }"
+                  <div class="search-users">
+                    <router-link
+                      v-for="user in userResults"
+                      :key="user.id"
+                      :to="`/user/${user.id}`"
+                      class="search-user-item"
+                      @click="closeSearch"
                     >
-                      {{ tag.name }}
-                    </span>
+                      <div class="user-avatar-small" :class="'vip-level-' + (user.vipLevel || 0)">
+                        <img v-if="user.avatar" :src="user.avatar" :alt="user.nickname" />
+                        <span v-else>{{ (user.nickname || user.username || 'U').charAt(0).toUpperCase() }}</span>
+                      </div>
+                      <div class="user-info-small">
+                        <div class="user-name-row">
+                          <VipUsername 
+                            :username="user.nickname || user.username" 
+                            :vipLevel="user.vipLevel || 0"
+                          />
+                        </div>
+                        <p class="user-intro">{{ user.intro || '这个人很懒，什么都没写~' }}</p>
+                      </div>
+                    </router-link>
                   </div>
-                </router-link>
+                </div>
+                
+                <!-- 文章搜索结果 -->
+                <div v-if="searchResults.length" class="search-section">
+                  <div class="search-section-title">
+                    <el-icon><Document /></el-icon>
+                    <span>文章</span>
+                  </div>
+                  <div class="search-articles">
+                    <router-link
+                      v-for="item in searchResults"
+                      :key="item.id"
+                      :to="`/article/${item.id}`"
+                      class="search-result-item"
+                      @click="closeSearch"
+                    >
+                      <h4 v-html="item.titleHighlight || highlightKeyword(item.title)"></h4>
+                      <p v-html="item.summaryHighlight || highlightKeyword(item.summary || '')"></p>
+                      <div v-if="item.tags && item.tags.length" class="search-tags">
+                        <span 
+                          v-for="tag in item.tags" 
+                          :key="tag.id" 
+                          class="search-tag"
+                          :class="{ 'tag-matched': isTagMatched(tag.name) }"
+                          :style="{ '--tag-color': tag.color || '#a855f7' }"
+                        >
+                          {{ tag.name }}
+                        </span>
+                      </div>
+                    </router-link>
+                  </div>
+                </div>
+
+                <!-- 面试题搜索结果 -->
+                <div v-if="studyResults.length" class="search-section">
+                  <div class="search-section-title">
+                    <el-icon><Reading /></el-icon>
+                    <span>面试题</span>
+                  </div>
+                  <div class="search-articles">
+                    <router-link
+                      v-for="item in studyResults"
+                      :key="item.id"
+                      :to="`/study/learn/${item.id}`"
+                      class="search-result-item search-study-item"
+                      @click="closeSearch"
+                    >
+                      <h4 v-html="item.titleHighlight || highlightKeyword(item.title)"></h4>
+                      <p v-html="item.answerSummaryHighlight || highlightKeyword(item.answerSummary || '')"></p>
+                      <div class="search-tags">
+                        <span class="search-tag">{{ item.categoryName || '未分类' }}</span>
+                        <span v-if="item.questionCode" class="search-tag">{{ item.questionCode }}</span>
+                        <span v-if="item.difficulty" class="search-tag">难度 {{ item.difficulty }}</span>
+                      </div>
+                    </router-link>
+                  </div>
+                </div>
+                
+                <div v-if="!searching && !userResults.length && !searchResults.length && !studyResults.length" class="search-empty">
+                  未找到相关内容
+                </div>
               </div>
             </div>
-            
-            <div v-else-if="keyword && !searching && !userResults.length" class="search-empty">
-              未找到相关内容
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <Transition name="mobile-menu-fade">
+        <div v-if="showMobileMenu" class="mobile-menu-overlay" @click.self="closeMobileMenu">
+          <div class="mobile-menu-panel">
+            <div class="mobile-menu-head">
+              <div class="mobile-menu-title">
+                <span class="mobile-menu-site">{{ configStore.siteName }}</span>
+              </div>
+              <button class="mobile-menu-close" type="button" @click="closeMobileMenu">
+                <el-icon><Close /></el-icon>
+              </button>
+            </div>
+
+            <div class="mobile-menu-content">
+              <section class="mobile-menu-section">
+                <div class="mobile-menu-section-title">站点导航</div>
+                <nav class="mobile-nav-list">
+                  <button
+                    v-for="item in navEntries"
+                    :key="item.path"
+                    class="mobile-nav-item"
+                    :class="{ active: currentNav === item.path }"
+                    type="button"
+                    @click="navigateTo(item.path)"
+                  >
+                    <span>{{ item.label }}</span>
+                    <span class="mobile-nav-arrow">›</span>
+                  </button>
+                </nav>
+              </section>
+
+              <section class="mobile-menu-section">
+                <div class="mobile-menu-section-title">快捷入口</div>
+                <div class="mobile-action-list">
+                  <button class="mobile-action-item" type="button" @click="openSearchFromMenu">
+                    <el-icon><Search /></el-icon>
+                    <span>搜索内容</span>
+                  </button>
+                  <button class="mobile-action-item" type="button" @click="navigateTo('/ai')">
+                    <span class="mobile-ai-badge">AI</span>
+                    <span>AI 助手</span>
+                  </button>
+                  <button
+                    v-if="userStore.isLoggedIn"
+                    class="mobile-action-item"
+                    type="button"
+                    @click="navigateTo('/write')"
+                  >
+                    <el-icon><Document /></el-icon>
+                    <span>写文章</span>
+                  </button>
+                  <button
+                    v-if="userStore.isLoggedIn"
+                    class="mobile-action-item"
+                    type="button"
+                    @click="navigateTo('/notification')"
+                  >
+                    <el-icon><Bell /></el-icon>
+                    <span>消息通知</span>
+                    <span v-if="totalBellUnread > 0" class="mobile-action-badge">{{ totalBellUnread > 99 ? '99+' : totalBellUnread }}</span>
+                  </button>
+                  <button
+                    v-if="!userStore.isLoggedIn"
+                    class="mobile-action-item"
+                    type="button"
+                    @click="navigateTo('/login')"
+                  >
+                    <el-icon><User /></el-icon>
+                    <span>登录 / 注册</span>
+                  </button>
+                </div>
+              </section>
+
+              <section v-if="userStore.isLoggedIn" class="mobile-menu-section">
+                <div class="mobile-menu-section-title">个人中心</div>
+                <div class="mobile-action-list">
+                  <button class="mobile-action-item" type="button" @click="handleCommand('profile')">
+                    <el-icon><User /></el-icon>
+                    <span>个人资料</span>
+                  </button>
+                  <button class="mobile-action-item" type="button" @click="handleCommand('articles')">
+                    <el-icon><Document /></el-icon>
+                    <span>投稿管理</span>
+                  </button>
+                  <button class="mobile-action-item" type="button" @click="handleCommand('favorites')">
+                    <el-icon><Star /></el-icon>
+                    <span>我的收藏</span>
+                  </button>
+                  <button class="mobile-action-item" type="button" @click="handleCommand('study')">
+                    <el-icon><Reading /></el-icon>
+                    <span>我的学习</span>
+                  </button>
+                  <button class="mobile-action-item" type="button" @click="handleCommand('settings')">
+                    <el-icon><Setting /></el-icon>
+                    <span>账号设置</span>
+                  </button>
+                  <button class="mobile-action-item logout" type="button" @click="handleCommand('logout')">
+                    <el-icon><SwitchButton /></el-icon>
+                    <span>退出登录</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="mobile-menu-section">
+                <div class="mobile-menu-section-title">外部链接</div>
+                <div class="mobile-external-list">
+                  <a href="https://github.com/miaohui789" target="_blank" class="mobile-external-item" @click="closeMobileMenu">GitHub</a>
+                  <a href="https://gitee.com/miao-huiyi" target="_blank" class="mobile-external-item" @click="closeMobileMenu">Gitee</a>
+                  <a href="https://space.bilibili.com/1589988727" target="_blank" class="mobile-external-item" @click="closeMobileMenu">Bilibili</a>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -336,14 +498,14 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture, Reading } from '@element-plus/icons-vue'
+import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture, Reading, Menu, Close } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
 import { useNotificationStore } from '@/stores/notification'
 import { useMessageStore } from '@/stores/message'
-import { searchArticles } from '@/api/article'
+import { searchAll } from '@/api/search'
 import { getUserProfile } from '@/api/follow'
 import VipUsername from '@/components/VipUsername/index.vue'
 
@@ -358,10 +520,12 @@ const messageStore = useMessageStore()
 const showSearch = ref(false)
 const keyword = ref('')
 const searchResults = ref([])
+const studyResults = ref([])
 const userResults = ref([])
 const searching = ref(false)
 const searchInputRef = ref(null)
 const avatarLoadError = ref(false)
+const showMobileMenu = ref(false)
 
 // 用户卡片相关
 const showUserCard = ref(false)
@@ -373,8 +537,8 @@ const userStats = ref({
 })
 
 // 显示用户卡片
-// 显示用户卡片
 function handleUserCardEnter() {
+  if (window.innerWidth <= 768) return // 移动端不响应悬浮
   if (userCardTimer) {
     clearTimeout(userCardTimer)
     userCardTimer = null
@@ -386,9 +550,29 @@ function handleUserCardEnter() {
 
 // 延迟隐藏用户卡片
 function handleUserCardLeave() {
+  if (window.innerWidth <= 768) return // 移动端不响应悬浮
   userCardTimer = setTimeout(() => {
     showUserCard.value = false
   }, 150)
+}
+
+// 移动端点击头像显示卡片
+function handleUserAvatarClick(e) {
+  if (window.innerWidth <= 768) {
+    e.stopPropagation() // 阻止事件冒泡
+    e.preventDefault()
+    
+    // 用 nextTick 确保状态切换正常
+    nextTick(() => {
+      showUserCard.value = !showUserCard.value
+      if (showUserCard.value) {
+        fetchUserStats()
+      }
+    })
+  } else {
+    // 桌面端点击也应该能进入个人主页
+    goToMyPage()
+  }
 }
 
 // 获取用户统计数据
@@ -410,25 +594,33 @@ async function fetchUserStats() {
 
 // 跳转到个人主页
 function goToMyPage() {
-  showUserCard.value = false
+  if (window.innerWidth <= 768) {
+    showUserCard.value = false
+  }
   router.push(`/user/${userStore.userInfo?.id}`)
 }
 
 // 跳转到关注列表
 function goToFollowing() {
-  showUserCard.value = false
+  if (window.innerWidth <= 768) {
+    showUserCard.value = false
+  }
   router.push('/user/following')
 }
 
 // 跳转到粉丝列表
 function goToFollowers() {
-  showUserCard.value = false
+  if (window.innerWidth <= 768) {
+    showUserCard.value = false
+  }
   router.push(`/user/${userStore.userInfo?.id}/followers`)
 }
 
 // 跳转到文章列表
 function goToArticles() {
-  showUserCard.value = false
+  if (window.innerWidth <= 768) {
+    showUserCard.value = false
+  }
   router.push('/user/articles')
 }
 
@@ -459,7 +651,15 @@ async function fetchNotificationUnread() {
 }
 
 // 导航相关
-const navItems = ['/', '/study', '/category', '/tag', '/archive', '/about']
+const navEntries = [
+  { path: '/', label: '首页' },
+  { path: '/study', label: '学习' },
+  { path: '/category', label: '分类' },
+  { path: '/tag', label: '标签' },
+  { path: '/archive', label: '归档' },
+  { path: '/about', label: '关于' }
+]
+const navItems = navEntries.map(item => item.path)
 const currentNav = computed(() => {
   const path = route.path
   if (path === '/') return '/'
@@ -481,7 +681,12 @@ const gliderStyle = computed(() => {
   }
 })
 
+const currentNavLabel = computed(() => {
+  return navEntries.find(item => item.path === currentNav.value)?.label || '更多功能'
+})
+
 function navigateTo(path) {
+  closeMobileMenu()
   router.push(path)
 }
 
@@ -502,6 +707,16 @@ watch(() => userStore.userInfo?.avatar, () => {
   avatarLoadError.value = false
 })
 
+watch(
+  () => route.fullPath,
+  () => {
+    if (window.innerWidth <= 768) {
+      showUserCard.value = false
+    }
+    closeMobileMenu()
+  }
+)
+
 // 监听登录状态变化，重新获取用户统计
 watch(() => userStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
@@ -512,9 +727,11 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
 })
 
 function openSearch() {
+  closeMobileMenu()
   showSearch.value = true
   keyword.value = ''
   searchResults.value = []
+  studyResults.value = []
   userResults.value = []
   nextTick(() => searchInputRef.value?.focus())
 }
@@ -535,22 +752,41 @@ function isTagMatched(tagName) {
 
 function closeSearch() {
   showSearch.value = false
+  searchResults.value = []
+  studyResults.value = []
+  userResults.value = []
+}
+
+function toggleMobileMenu() {
+  showMobileMenu.value = !showMobileMenu.value
+}
+
+function closeMobileMenu() {
+  showMobileMenu.value = false
+}
+
+function openSearchFromMenu() {
+  closeMobileMenu()
+  nextTick(() => openSearch())
+}
+
+function goToSearchPage() {
+  if (!keyword.value.trim()) return
+  closeSearch()
+  router.push({
+    path: '/search',
+    query: { keyword: keyword.value.trim() }
+  })
 }
 
 async function doSearch() {
   if (!keyword.value.trim()) return
   searching.value = true
   try {
-    const res = await searchArticles({ keyword: keyword.value, pageSize: 5 })
-    // 新的返回格式包含 articles 和 users
-    if (res.data?.articles) {
-      searchResults.value = res.data.articles.list || []
-      userResults.value = res.data.users || []
-    } else {
-      // 兼容旧格式
-      searchResults.value = res.data?.list || []
-      userResults.value = []
-    }
+    const res = await searchAll({ keyword: keyword.value, pageSize: 5 })
+    searchResults.value = res.data?.articles?.list || []
+    studyResults.value = res.data?.studyQuestions?.list || []
+    userResults.value = res.data?.users || []
   } catch (e) {
     console.error(e)
   } finally {
@@ -565,9 +801,17 @@ watch(keyword, (val) => {
     searchTimer = setTimeout(doSearch, 300)
   } else {
     searchResults.value = []
+    studyResults.value = []
     userResults.value = []
   }
 })
+
+watch(
+  [showSearch, showMobileMenu],
+  ([searchOpen, menuOpen]) => {
+    document.body.style.overflow = searchOpen || menuOpen ? 'hidden' : ''
+  }
+)
 
 // 快捷键 Ctrl+K 打开搜索
 function handleKeydown(e) {
@@ -580,8 +824,43 @@ function handleKeydown(e) {
 // 定时器引用
 let unreadTimer = null
 
+// 点击外部关闭用户卡片
+function handleClickOutside(e) {
+  if (window.innerWidth <= 768 && showUserCard.value) {
+    const card = document.querySelector('.user-card')
+    const trigger = document.querySelector('.user-avatar-trigger')
+    
+    // 如果点击的不是卡片内部，也不是触发按钮，就关闭卡片
+    if (
+      (!card || !card.contains(e.target)) && 
+      (!trigger || !trigger.contains(e.target))
+    ) {
+      // 加一点延迟，防止和click事件冲突
+      setTimeout(() => {
+        showUserCard.value = false
+      }, 10)
+    }
+  }
+}
+
+// 处理滚动关闭卡片
+function handleScroll() {
+  if (window.innerWidth <= 768 && showUserCard.value) {
+    showUserCard.value = false
+  }
+}
+
+// 阻止卡片内部点击事件冒泡，防止触发 handleClickOutside
+function handleCardClick(e) {
+  if (window.innerWidth <= 768) {
+    e.stopPropagation()
+  }
+}
+
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('scroll', handleScroll, { passive: true })
   fetchUnreadCount()
   fetchNotificationUnread()
   fetchUserStats()
@@ -594,14 +873,18 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('scroll', handleScroll)
   if (unreadTimer) {
     clearInterval(unreadTimer)
     unreadTimer = null
   }
+  document.body.style.overflow = ''
 })
 
 // 铃铛下拉菜单处理
 function handleBellCommand(command) {
+  closeMobileMenu()
   if (command === 'notification') {
     router.push('/notification')
   } else if (command === 'message') {
@@ -610,7 +893,10 @@ function handleBellCommand(command) {
 }
 
 function handleCommand(command) {
-  showUserCard.value = false
+  if (window.innerWidth <= 768) {
+    showUserCard.value = false
+  }
+  closeMobileMenu()
   switch (command) {
     case 'mypage':
       router.push(`/user/${userStore.userInfo?.id}`)
@@ -654,22 +940,22 @@ function handleCommand(command) {
 @import '@/assets/styles/variables.scss';
 
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  background: rgba(24, 24, 27, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-color);
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px 0;
+  background: transparent;
   transition: all 0.3s ease;
 }
 
 :root[data-theme="light"] .header {
-  background: rgba(255, 255, 255, 0.6);
+  background: transparent;
 }
 
 .header-container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0 24px;
   height: 64px;
@@ -677,12 +963,23 @@ function handleCommand(command) {
   align-items: center;
   justify-content: space-between;
   position: relative;
+  background: rgba(24, 24, 27, 0.78);
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+:root[data-theme="light"] .header-container {
+  background: rgba(255, 255, 255, 0.74);
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 24px;
+  min-width: 0;
 }
 
 .logo {
@@ -961,6 +1258,32 @@ function handleCommand(command) {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  .el-icon {
+    font-size: 18px;
+  }
+
+  &:hover,
+  &.active {
+    color: var(--text-primary);
+    border-color: rgba($primary-color, 0.3);
+    background: rgba($primary-color, 0.08);
+  }
 }
 
 /* 主题切换按钮 - 太阳月亮动画 */
@@ -1306,6 +1629,196 @@ function handleCommand(command) {
   }
 }
 
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  justify-content: flex-end; /* 改回右侧弹出，更符合移动端习惯 */
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.mobile-menu-panel {
+  width: min(70vw, 260px);
+  height: 100vh;
+  background: rgba(var(--bg-card-rgb), 0.98);
+  border-left: 1px solid var(--border-color); /* 改回左边框 */
+  box-shadow: -18px 0 48px rgba(15, 23, 42, 0.18); /* 改回阴影方向 */
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 14px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-menu-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-menu-site {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mobile-menu-route {
+  display: none;
+}
+
+.mobile-menu-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mobile-menu-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-menu-section {
+  padding: 12px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+}
+
+.mobile-menu-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.mobile-nav-list,
+.mobile-action-list,
+.mobile-external-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-nav-item,
+.mobile-action-item,
+.mobile-external-item {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.mobile-nav-item {
+  justify-content: space-between;
+
+  &.active {
+    color: $primary-color;
+    border-color: rgba($primary-color, 0.26);
+    background: rgba($primary-color, 0.08);
+  }
+}
+
+.mobile-nav-arrow {
+  color: var(--text-disabled);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mobile-action-item {
+  justify-content: flex-start;
+
+  .el-icon {
+    font-size: 14px;
+  }
+
+  &.logout {
+    color: #ef4444;
+  }
+}
+
+.mobile-external-item {
+  justify-content: center;
+  font-weight: 600;
+}
+
+.mobile-action-badge {
+  margin-left: auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-ai-badge {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffdb3b 10%, #fe53bb 45%, #8f51ea 67%, #0044ff 87%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mobile-menu-fade-enter-active,
+.mobile-menu-fade-leave-active {
+  transition: opacity 0.2s ease;
+
+  .mobile-menu-panel {
+    transition: transform 0.24s ease;
+  }
+}
+
+.mobile-menu-fade-enter-from,
+.mobile-menu-fade-leave-to {
+  opacity: 0;
+
+  .mobile-menu-panel {
+    transform: translateX(100%); /* 从右侧滑入 */
+  }
+}
+
 .write-btn {
   display: flex;
   align-items: center;
@@ -1422,6 +1935,19 @@ function handleCommand(command) {
   position: relative;
   z-index: 101;
   pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  padding: 4px; // 增加点击区域
+  margin: -4px; // 抵消 padding 带来的位移
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation; // 优化移动端触摸行为
+  
+  @media (max-width: 768px) {
+    // 移动端进一步增加点击区域
+    padding: 8px;
+    margin: -8px;
+  }
 }
 
 .user-avatar {
@@ -1534,7 +2060,8 @@ function handleCommand(command) {
   50% { transform: scale(1.1); }
 }
 
-.user-avatar-trigger:hover .user-avatar {
+.user-avatar-trigger:hover .user-avatar,
+.user-avatar-trigger.is-active .user-avatar {
   transform: scale(1.15);
   box-shadow: 0 4px 12px rgba($primary-color, 0.4);
 }
@@ -1544,7 +2071,7 @@ function handleCommand(command) {
   position: absolute;
   top: 100%;
   right: 0;
-  width: 280px;
+  width: 260px; /* 默认也改窄一点 */
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
@@ -1552,8 +2079,14 @@ function handleCommand(command) {
   z-index: 1001;
   overflow: hidden;
   padding-top: 12px;
-  margin-top: 0;
+  margin-top: 8px;
   pointer-events: auto;
+  
+  @media (max-width: 768px) {
+    padding-top: 0;
+    margin-top: 0;
+    width: 240px; /* 移动端下拉菜单宽度更窄一些 */
+  }
   
   &::before {
     content: '';
@@ -1577,6 +2110,10 @@ function handleCommand(command) {
     border-top: 1px solid var(--border-color);
     transform: rotate(45deg);
     z-index: 1;
+    
+    @media (max-width: 768px) {
+      display: none;
+    }
   }
   
   /* VIP卡片边框 */
@@ -1628,8 +2165,8 @@ function handleCommand(command) {
 
 .user-card-header {
   display: flex;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px;
   background: linear-gradient(135deg, rgba($primary-color, 0.1), rgba($primary-color, 0.05));
   position: relative;
   z-index: 1;
@@ -1649,8 +2186,8 @@ function handleCommand(command) {
 }
 
 .user-card-avatar {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   overflow: visible;
   flex-shrink: 0;
@@ -1731,12 +2268,12 @@ function handleCommand(command) {
 }
 
 .user-card-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .user-card-bio {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 4px;
   display: -webkit-box;
@@ -1744,8 +2281,8 @@ function handleCommand(command) {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.4;
-  max-height: 33.6px;
+  line-height: 1.3;
+  max-height: 28.6px;
   word-break: break-all;
   max-width: 100%;
 }
@@ -1754,8 +2291,8 @@ function handleCommand(command) {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 6px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: 10px;
   
   .vip-expire-label {
     color: var(--text-muted);
@@ -1770,7 +2307,7 @@ function handleCommand(command) {
 .user-card-stats {
   display: flex;
   justify-content: space-around;
-  padding: 12px 16px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -1779,7 +2316,7 @@ function handleCommand(command) {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-radius: 8px;
   transition: background 0.2s;
   
@@ -1788,38 +2325,38 @@ function handleCommand(command) {
   }
   
   .stat-value {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-primary);
   }
   
   .stat-label {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
     margin-top: 2px;
   }
 }
 
 .user-card-menu {
-  padding: 8px;
+  padding: 6px;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   color: var(--text-secondary);
   transition: all 0.2s;
   
   .el-icon {
-    font-size: 16px;
+    font-size: 15px;
   }
   
   span {
-    font-size: 14px;
+    font-size: 13px;
   }
   
   &:hover {
@@ -1829,7 +2366,7 @@ function handleCommand(command) {
 }
 
 .user-card-footer {
-  padding: 8px 16px 16px;
+  padding: 6px 12px 12px;
 }
 
 .logout-btn {
@@ -1838,12 +2375,12 @@ function handleCommand(command) {
   justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
   
@@ -1855,6 +2392,69 @@ function handleCommand(command) {
 }
 
 /* 用户卡片动画 */
+@media (max-width: 768px) {
+  .user-card {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 70px);
+    right: 16px;
+    width: 240px; /* 移动端下拉菜单宽度更窄一些 */
+    max-width: calc(100vw - 32px); /* 保证不超出屏幕 */
+    transform-origin: top right;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 12px; /* 移动端圆角稍微小一点 */
+  }
+  
+  .user-card-header {
+    padding: 10px;
+  }
+  
+  .user-card-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .user-card-name {
+    font-size: 13px;
+  }
+  
+  .user-card-stats {
+    padding: 6px;
+  }
+  
+  .stat-item {
+    padding: 2px 6px;
+    
+    .stat-value {
+      font-size: 14px;
+    }
+  }
+  
+  .user-card-menu {
+    padding: 4px;
+  }
+  
+  .menu-item {
+    padding: 8px 10px;
+    
+    .el-icon {
+      font-size: 14px;
+    }
+    
+    span {
+      font-size: 13px;
+    }
+  }
+  
+  .user-card-footer {
+    padding: 4px 10px 10px;
+  }
+  
+  .logout-btn {
+    padding: 8px;
+    font-size: 13px;
+  }
+}
+
 .user-card-enter-active,
 .user-card-leave-active {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1864,6 +2464,10 @@ function handleCommand(command) {
 .user-card-leave-to {
   opacity: 0;
   transform: translateY(-10px) scale(0.95);
+  
+  @media (max-width: 768px) {
+    transform: scale(0.95);
+  }
 }
 
 .user-info:hover .user-avatar {
@@ -1888,27 +2492,33 @@ function handleCommand(command) {
   position: fixed;
   inset: 0;
   background: var(--search-overlay-bg);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   justify-content: center;
-  padding-top: 100px;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 78px 16px 24px;
 }
 
 .search-modal {
   width: 100%;
-  max-width: 560px;
-  margin: 0 20px;
+  max-width: 620px;
+  max-height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: var(--bg-card);
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(var(--bg-card-rgb), 0.94);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
   
   .search-icon {
     font-size: 18px;
@@ -1920,8 +2530,9 @@ function handleCommand(command) {
     background: none;
     border: none;
     outline: none;
-    font-size: 15px;
-    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
     
     &::placeholder {
       color: var(--text-disabled);
@@ -1937,55 +2548,100 @@ function handleCommand(command) {
   }
 }
 
-.search-results {
-  margin-top: 8px;
-  background: var(--bg-card);
+.search-results-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: rgba(var(--bg-card-rgb), 0.96);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.14);
   overflow: hidden;
+}
+
+.search-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, rgba(var(--bg-card-rgb), 0.98) 0%, rgba(var(--bg-card-rgb), 0.9) 100%);
+
+  span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+}
+
+.search-page-link {
+  border: none;
+  background: rgba($primary-color, 0.12);
+  color: $primary-color;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba($primary-color, 0.18);
+    transform: translateY(-1px);
+  }
+}
+
+.search-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  max-height: min(58vh, 560px);
 }
 
 .search-result-item {
   display: block;
-  padding: 14px 18px;
+  padding: 12px 14px;
   text-decoration: none;
-  border-bottom: 1px solid var(--border-color);
-  transition: background 0.15s;
-  
-  &:last-child {
-    border-bottom: none;
-  }
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+  border: 1px solid transparent;
+  border-radius: 12px;
   
   &:hover {
     background: var(--bg-card-hover);
+    transform: translateY(-1px);
+    border-color: rgba($primary-color, 0.18);
   }
   
   h4 {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 4px;
     
     :deep(.search-highlight) {
-      background: rgba(168, 85, 247, 0.3);
-      color: var(--primary-color);
-      padding: 0 2px;
-      border-radius: 2px;
+      background: rgba(59, 130, 246, 0.14);
+      color: $primary-color;
+      padding: 0 4px;
+      border-radius: 6px;
     }
   }
   
   p {
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.6;
     color: var(--text-muted);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     
     :deep(.search-highlight) {
-      background: rgba(168, 85, 247, 0.3);
-      color: var(--primary-color);
-      padding: 0 2px;
-      border-radius: 2px;
+      background: rgba(59, 130, 246, 0.14);
+      color: $primary-color;
+      padding: 0 4px;
+      border-radius: 6px;
     }
   }
 }
@@ -1994,55 +2650,56 @@ function handleCommand(command) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .search-tag {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 8px;
   font-size: 11px;
   color: var(--text-muted);
   background: var(--bg-card-hover);
-  border-radius: 4px;
+  border-radius: 999px;
   transition: all 0.2s;
   
   &.tag-matched {
     background: rgba(168, 85, 247, 0.2);
     color: var(--primary-color);
-    border: 1px solid var(--primary-color);
+    border: 1px solid rgba($primary-color, 0.4);
   }
 }
 
 .search-empty {
-  margin-top: 8px;
-  padding: 32px;
+  padding: 36px 24px;
   text-align: center;
   color: var(--text-disabled);
-  font-size: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
+  font-size: 13px;
 }
 
 /* 搜索分区 */
 .search-section {
-  margin-top: 8px;
-  background: var(--bg-card);
+  background: transparent;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
+  margin-bottom: 10px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .search-section-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 10px 14px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
   color: var(--text-muted);
-  background: var(--bg-card-hover);
+  background: rgba(var(--bg-card-rgb), 0.82);
   border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(10px);
   
   .el-icon {
     font-size: 14px;
@@ -2051,15 +2708,15 @@ function handleCommand(command) {
 
 /* 用户搜索结果 */
 .search-users {
-  max-height: 200px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .search-user-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   text-decoration: none;
   border-bottom: 1px solid var(--border-color);
   transition: background 0.15s;
@@ -2074,8 +2731,8 @@ function handleCommand(command) {
 }
 
 .user-avatar-small {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -2118,6 +2775,11 @@ function handleCommand(command) {
   display: flex;
   align-items: center;
   gap: 4px;
+
+  :deep(.vip-username) {
+    font-size: 14px;
+    font-weight: 600;
+  }
 }
 
 .user-intro {
@@ -2131,8 +2793,29 @@ function handleCommand(command) {
 
 /* 文章搜索结果 */
 .search-articles {
-  max-height: 300px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.search-study-item {
+  h4 {
+    font-size: 15px;
+  }
+}
+
+.search-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.search-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .search-fade-enter-active,
@@ -2143,5 +2826,115 @@ function handleCommand(command) {
 .search-fade-enter-from,
 .search-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .search-overlay {
+    padding: 70px 10px 16px;
+  }
+
+  .search-modal {
+    max-width: none;
+    max-height: calc(100vh - 86px);
+  }
+
+  .search-input-wrapper {
+    padding: 10px 12px;
+
+    .search-input {
+      font-size: 15px;
+    }
+  }
+
+  .search-result-item h4 {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 900px) {
+  .header-container {
+    border-radius: 18px;
+    padding: 0 14px;
+  }
+
+  .header-left {
+    gap: 10px;
+    flex: 1;
+  }
+
+  .header-right {
+    gap: 10px;
+  }
+
+  .ai-btn {
+    width: 58px;
+    height: 34px;
+
+    strong {
+      font-size: 13px;
+      letter-spacing: 2px;
+    }
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .external-link {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-container {
+    border-radius: 16px;
+    height: 60px;
+    padding: 0 12px;
+  }
+
+  .logo {
+    gap: 6px;
+
+    .logo-img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+    }
+  }
+
+  .search-box {
+    padding: 8px 10px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .theme-switch {
+    --toggle-size: 9px;
+  }
+
+  .notification-bell {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 420px) {
+  .logo .logo-text {
+    display: none;
+  }
+
+  .ai-btn {
+    width: 48px;
+
+    strong {
+      letter-spacing: 1px;
+      font-size: 12px;
+    }
+  }
 }
 </style>

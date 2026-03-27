@@ -90,4 +90,11 @@ onMounted(fetchFavorites)
 :deep(.el-pagination) {
   justify-content: center;
 }
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+}
 </style>

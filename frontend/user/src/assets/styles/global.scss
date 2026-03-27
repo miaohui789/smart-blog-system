@@ -149,6 +149,8 @@ body {
   line-height: 1.6;
   color: var(--text-secondary);
   background: var(--bg-dark);
+  width: 100%;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s, color 0.3s;
@@ -184,8 +186,8 @@ img {
 // 滚动条样式 - 暗色主题
 :root[data-theme="dark"] {
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -193,11 +195,11 @@ img {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.12);
     }
   }
 }
@@ -205,8 +207,8 @@ img {
 // 滚动条样式 - 亮色主题
 :root[data-theme="light"] {
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -214,19 +216,19 @@ img {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.1);
+    border-radius: 999px;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(15, 23, 42, 0.18);
     }
   }
 }
 
 // 默认滚动条样式
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -234,19 +236,26 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
   }
 }
 
 // 通用类
 .container {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 $spacing-md;
+}
+
+#app {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .text-gradient {
@@ -281,7 +290,7 @@ body.has-custom-bg {
   }
   
   // Header透明度
-  .header {
+  .header-container {
     background: rgba(var(--bg-card-rgb), 0.75) !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -606,7 +615,7 @@ body.has-custom-bg {
     background: rgba(var(--bg-card-rgb), 0.3) !important;
   }
 
-  .header {
+  .header-container {
     background: rgba(var(--bg-card-rgb), 0.35) !important;
     backdrop-filter: blur(18px) !important;
     -webkit-backdrop-filter: blur(18px) !important;
@@ -686,6 +695,7 @@ body.has-custom-bg {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: $spacing-lg 0;
   
@@ -732,6 +742,8 @@ body.has-custom-bg {
   .el-pager {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 6px;
     
     li {
@@ -845,6 +857,10 @@ body.has-custom-bg {
 
 // 响应式设计
 @media (max-width: 768px) {
+  .container {
+    padding: 0 12px;
+  }
+
   .el-pagination {
     gap: 4px;
     
@@ -862,6 +878,16 @@ body.has-custom-bg {
       border-radius: 6px;
       font-size: 13px;
     }
+  }
+
+  .el-message-box {
+    width: calc(100vw - 24px);
+    min-width: 0;
+    max-width: 360px;
+  }
+
+  .el-notification {
+    width: min(calc(100vw - 24px), 360px) !important;
   }
 }
 

@@ -315,5 +315,9 @@ onMounted(async () => {
   .stat-card {
     flex: 1 1 calc(50% - 5px);
   }
+  
+  .module-card {
+    padding: 20px;
+  }
 }
 </style>

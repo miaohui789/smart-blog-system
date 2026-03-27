@@ -356,6 +356,24 @@ p { color: var(--text-secondary); line-height: 1.8; }
 }
 @media (max-width: 768px) {
   .check-hero { flex-direction: column; align-items: flex-start; }
-  .stats-grid, .form-grid, .switch-grid, .config-tips { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid, .switch-grid, .config-tips { grid-template-columns: 1fr; }
+  
+  .hero-links {
+    width: 100%;
+    display: flex;
+    gap: 12px;
+    
+    .el-button {
+      flex: 1;
+      margin: 0 !important;
+    }
+  }
+  
+  .submit-row {
+    .el-button {
+      width: 100%;
+    }
+  }
 }
 </style>

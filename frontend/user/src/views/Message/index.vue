@@ -617,10 +617,11 @@ watch(() => route.params.userId, async (newUserId) => {
 @import '@/assets/styles/variables.scss';
 
 .message-page {
-  height: calc(100vh - 140px);
+  height: calc(100vh - 100px); /* 调整高度以适应新的 margin-top */
   max-height: 700px;
   min-height: 400px;
   margin: 0 auto;
+  margin-top: 80px; /* 增加 Web 端顶部边距，防止被导航栏遮挡 */
 }
 
 .message-container {
@@ -1036,6 +1037,14 @@ watch(() => route.params.userId, async (newUserId) => {
 }
 
 @media (max-width: 768px) {
+  .message-page {
+    height: calc(100vh - 80px);
+    max-height: none;
+    min-height: calc(100vh - 80px);
+    margin-top: 60px; /* 增加顶部边距，防止被导航栏遮挡 */
+    padding-bottom: 20px;
+  }
+
   .conversation-list {
     width: 100%;
     border-right: none;
@@ -1055,6 +1064,20 @@ watch(() => route.params.userId, async (newUserId) => {
   
   .mobile-back {
     display: block;
+  }
+  
+  .msg-bubble {
+    max-width: 75%;
+  }
+
+  .chat-messages {
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .chat-input {
+    padding: 10px;
+    padding-bottom: env(safe-area-inset-bottom, 10px);
   }
 }
 

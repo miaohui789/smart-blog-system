@@ -237,4 +237,32 @@ onMounted(fetchProfile)
     border-color: $primary-dark;
   }
 }
+
+@media (max-width: 768px) {
+  .profile-page {
+    max-width: none;
+  }
+
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .profile-form {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .avatar-section {
+    align-items: center;
+    width: 100%;
+  }
+
+  :deep(.el-button--primary) {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+}
 </style>

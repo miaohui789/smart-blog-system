@@ -28,6 +28,7 @@ import com.blog.mapper.StudyQuestionVersionMapper;
 import com.blog.mapper.StudyUserQuestionNoteMapper;
 import com.blog.mapper.StudyUserQuestionProgressMapper;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import com.blog.service.StudyCategoryService;
 import com.blog.service.StudyQuestionService;
 import org.springframework.beans.BeanUtils;
@@ -60,6 +61,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
     private final StudyCheckTaskMapper studyCheckTaskMapper;
     private final RedisService redisService;
     private final StudyCacheProperties studyCacheProperties;
+    private final SearchService searchService;
 
     public StudyQuestionServiceImpl(StudyCategoryMapper studyCategoryMapper,
                                     StudyUserQuestionProgressMapper progressMapper,
@@ -68,7 +70,8 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
                                     StudyCategoryService studyCategoryService,
                                     StudyCheckTaskMapper studyCheckTaskMapper,
                                     RedisService redisService,
-                                    StudyCacheProperties studyCacheProperties) {
+                                    StudyCacheProperties studyCacheProperties,
+                                    SearchService searchService) {
         this.studyCategoryMapper = studyCategoryMapper;
         this.progressMapper = progressMapper;
         this.noteMapper = noteMapper;
@@ -77,6 +80,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
         this.studyCheckTaskMapper = studyCheckTaskMapper;
         this.redisService = redisService;
         this.studyCacheProperties = studyCacheProperties;
+        this.searchService = searchService;
     }
 
     @Override
@@ -325,6 +329,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
         insertVersion(question, 1, "后台新增题目", operatorId);
         studyCategoryService.updateQuestionCount(question.getCategoryId());
         clearAllStudyOverviewCacheAfterCommit();
+        redisService.runAfterCommit(() -> searchService.syncStudyQuestion(question.getId()));
         return question;
     }
 
@@ -347,6 +352,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
             studyCategoryService.updateQuestionCount(oldCategoryId);
         }
         clearAllStudyOverviewCacheAfterCommit();
+        redisService.runAfterCommit(() -> searchService.syncStudyQuestion(question.getId()));
         return question;
     }
 
@@ -361,6 +367,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
         insertVersion(question, 5, "后台删除题目", operatorId);
         studyCategoryService.updateQuestionCount(question.getCategoryId());
         clearAllStudyOverviewCacheAfterCommit();
+        redisService.runAfterCommit(() -> searchService.deleteStudyQuestion(id));
     }
 
     private StudyQuestion getPublishedQuestion(Long questionId) {

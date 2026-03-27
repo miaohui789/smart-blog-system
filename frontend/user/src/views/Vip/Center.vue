@@ -569,15 +569,15 @@ const formatDate = (date) => {
 
 @media (max-width: 768px) {
   .flip-card {
-    height: 360px;
+    height: 380px;
   }
   
   .privilege-cards {
     grid-template-columns: 1fr;
   }
   
-  .stats-row {
-    flex-direction: column;
+  .stat-item {
+    padding: 12px;
   }
 }
 </style>

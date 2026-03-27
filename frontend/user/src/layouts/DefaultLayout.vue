@@ -254,7 +254,7 @@ watch(
 
 .main-content {
   flex: 1;
-  padding: $spacing-xl 0;
+  padding: calc(#{$spacing-xl} + 64px) 0 $spacing-xl;
   position: relative;
   z-index: 2;
 }
@@ -335,6 +335,34 @@ watch(
   width: 0;
   opacity: 1;
   overflow: visible;
+}
+
+@media (max-width: 992px) {
+  .main-content {
+    padding: calc(#{$spacing-lg} + 60px) 0 $spacing-lg;
+  }
+
+  .content-wrapper {
+    gap: $spacing-lg;
+  }
+
+  .content-wrapper.is-study-layout .content-main {
+    padding-right: 0;
+  }
+
+  .content-wrapper.is-study-layout .content-main::after {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: calc(16px + 56px) 0 16px;
+  }
+
+  .content-wrapper {
+    gap: 16px;
+  }
 }
 
 </style>

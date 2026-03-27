@@ -206,5 +206,14 @@ onMounted(async () => {
   .tag-grid {
     grid-template-columns: 1fr;
   }
+  
+  .page-header {
+    margin-bottom: 20px;
+    padding: 20px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
 }
 </style>

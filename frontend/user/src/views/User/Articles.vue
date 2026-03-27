@@ -315,8 +315,32 @@ onMounted(fetchArticles)
   
   .page-header {
     flex-direction: column;
-    gap: $spacing-md;
-    align-items: flex-start;
+    gap: 16px;
+    align-items: stretch;
+    
+    .write-btn {
+      width: 100%;
+      display: block;
+      
+      .el-button {
+        width: 100%;
+      }
+    }
+  }
+  
+  .filter-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    scrollbar-width: none;
+    
+    :deep(.el-radio-group) {
+      display: flex;
+      flex-wrap: nowrap;
+    }
   }
 }
 </style>

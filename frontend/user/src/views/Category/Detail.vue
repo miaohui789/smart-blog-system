@@ -315,8 +315,10 @@ onActivated(fetchArticles)
   }
   
   .stats-bar {
-    padding: $spacing-xs $spacing-md;
-    gap: $spacing-sm;
+    padding: 10px 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .stat-value {
@@ -324,7 +326,7 @@ onActivated(fetchArticles)
   }
   
   .content-section {
-    padding: $spacing-md;
+    padding: 16px;
   }
 }
 </style>

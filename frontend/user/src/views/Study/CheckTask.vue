@@ -788,22 +788,91 @@ p { color: var(--text-secondary); }
   .task-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
-  .task-header, .task-actions, .question-head, .section-title-row, .result-summary {
+  .task-header, .task-actions, .question-head, .section-title-row {
     flex-direction: column; align-items: flex-start;
   }
-  .task-summary { grid-template-columns: 1fr; }
+  
+  .task-actions {
+    width: 100%;
+    margin-top: 16px;
+    gap: 12px;
+    flex-direction: row;
+    
+    .el-button {
+      flex: 1;
+      margin: 0 !important;
+    }
+  }
+
+  .task-summary { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
+  }
+  
   .question-progress-main {
     flex-direction: column;
     align-items: flex-start;
   }
+  
   .submit-actions {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    
+    .submit-center {
+      width: 100%;
+      flex-direction: column;
+      order: -1; // 把提交按钮放到最上面
+      
+      .el-button {
+        width: 100%;
+      }
+      
+      .submit-inline-state {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+    
+    // 上一题和下一题按钮在一行
+    &::before {
+      content: '';
+      display: flex;
+      width: 100%;
+    }
+    
+    .el-button:not(.el-button--primary) {
+      width: calc(50% - 6px);
+      float: left;
+      
+      &:last-child {
+        float: right;
+      }
+    }
   }
+  
   .submit-center {
     justify-content: flex-start;
   }
+  
   .ai-thinking-panel {
     align-items: flex-start;
+  }
+  
+  .result-summary {
+    flex-direction: column;
+    gap: 12px;
+    
+    .result-item {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      
+      span {
+        margin-bottom: 0;
+      }
+    }
   }
 }
 </style>

@@ -131,6 +131,10 @@ function goDetail() {
   display: flex;
   flex-direction: column;
   flex: 1;
+  
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 }
 
 .card-category {

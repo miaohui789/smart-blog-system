@@ -148,4 +148,27 @@ async function handleChangePassword() {
     border-color: $primary-dark;
   }
 }
+
+@media (max-width: 768px) {
+  .settings-page {
+    max-width: none;
+  }
+
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .settings-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  :deep(.el-button--primary) {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+}
 </style>

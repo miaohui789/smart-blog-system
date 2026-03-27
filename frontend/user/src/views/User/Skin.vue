@@ -973,4 +973,67 @@ body.has-custom-bg .skin-page .page-header {
   &:nth-child(39) { left:53%; top:26%; animation-duration:4s;   animation-delay:-2.7s; opacity:0.8; }
   &:nth-child(40) { left:90%; top:19%; animation-duration:5s;   animation-delay:-0.0s; opacity:0.9; }
 }
+
+@media (max-width: 768px) {
+  .skin-page {
+    min-height: auto;
+    padding: 16px 0;
+  }
+
+  .page-header {
+    margin-bottom: 20px;
+  }
+
+  .header-content {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .theme-section {
+    margin-bottom: 20px;
+  }
+
+  .skin-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .skin-preview {
+    height: 120px;
+  }
+
+  .skin-info {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .section-title {
+    font-size: 16px;
+  }
+
+  .skin-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .skin-preview {
+    height: 140px;
+  }
+
+  .skin-label {
+    font-size: 14px;
+  }
+}
 </style>

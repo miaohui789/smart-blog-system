@@ -540,6 +540,11 @@ onMounted(() => {
   @media (max-width: 768px) {
     width: 100%;
     justify-content: center;
+    
+    .follow-btn, .message-btn {
+      flex: 1;
+      justify-content: center;
+    }
   }
 }
 

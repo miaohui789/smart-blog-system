@@ -2568,8 +2568,15 @@ function addNewCommentToList(newComment) {
   .article-info { flex-direction: column; align-items: flex-start; }
   .meta-info { flex-wrap: wrap; gap: 12px; }
   .action-buttons {
-    flex-direction: column;
-    .action-btn { justify-content: center; }
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+  }
+  .action-btn-wrapper {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
   }
   
   .comment-card {

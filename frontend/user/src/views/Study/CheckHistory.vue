@@ -219,7 +219,14 @@ p { color: var(--text-secondary); }
 }
 @media (max-width: 768px) {
   .history-header { flex-direction: column; align-items: flex-start; }
-  .header-actions { width: 100%; }
+  .header-actions { 
+    width: 100%; 
+    justify-content: flex-end;
+    
+    .el-button {
+      flex: 1;
+    }
+  }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

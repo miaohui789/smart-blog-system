@@ -1139,15 +1139,26 @@ onMounted(fetchDashboard)
     flex-direction: column;
     align-items: flex-start;
   }
+  
+  .content-header {
+    gap: 12px;
+  }
 
   .hero-actions,
   .content-actions {
     width: 100%;
+    flex-wrap: nowrap;
   }
 
   .hero-actions :deep(.el-button),
   .content-actions :deep(.el-button) {
-    flex: 1 1 auto;
+    flex: 1;
+    margin: 0 !important;
+    justify-content: center;
+  }
+  
+  .content-actions :deep(.el-button) {
+    height: 36px;
   }
 }
 </style>

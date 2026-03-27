@@ -198,4 +198,35 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+// 响应式
+@media (max-width: 768px) {
+  .archive-header {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .timeline {
+    padding-left: 24px;
+    
+    &::before {
+      left: 6px;
+    }
+  }
+  
+  .timeline-dot {
+    left: -23px;
+    width: 10px;
+    height: 10px;
+  }
+  
+  .timeline-item {
+    padding: 12px;
+    gap: 10px;
+  }
+  
+  .item-date {
+    min-width: 42px;
+  }
+}
 </style>

@@ -805,6 +805,10 @@ function startCountdown(type) {
   border-radius: 16px;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  
+  @media (max-width: 480px) {
+    padding: 30px 20px;
+  }
 }
 
 .form-header {
@@ -971,6 +975,7 @@ function startCountdown(type) {
   background: transparent;
   cursor: pointer;
   transition: background 0.4s, color 0.4s, border-radius 0.4s;
+  border-radius: 6px; /* 默认加个圆角好看些 */
 
   em {
     position: absolute;
@@ -1005,7 +1010,7 @@ function startCountdown(type) {
   &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.88);
     color: #1a1a2e;
-    border-radius: 6px;
+    border-radius: 8px;
     em { opacity: 0; }
   }
   &:disabled {
@@ -1071,21 +1076,21 @@ function startCountdown(type) {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 2px solid #fff;
-  border-radius: 9999px;
-  background-color: #fff;
-  padding: 0.5rem 1.25rem;
-  color: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  background-color: transparent;
+  padding: 8px 24px;
+  color: #fff;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  font-weight: 400;
+  transition: all 0.3s ease;
   
   &:hover {
-    background-color: rgba(255, 255, 255, 0.85);
-    border-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.8);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
   }
   &:active { transform: translateY(0); }
   .icon { height: 1.1rem; width: 1.1rem; }
@@ -1264,13 +1269,13 @@ function startCountdown(type) {
   }
 
   .guest-btn {
-    border-color: #18181b;
-    background-color: #18181b;
-    color: #fff;
+    border-color: rgba(0, 0, 0, 0.4);
+    background-color: transparent;
+    color: #18181b;
     &:hover {
-      background-color: #3f3f46;
-      border-color: #3f3f46;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+      background-color: rgba(0, 0, 0, 0.05);
+      border-color: #18181b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
   }
 

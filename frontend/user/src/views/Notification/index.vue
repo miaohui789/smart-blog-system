@@ -452,4 +452,93 @@ onMounted(() => {
   justify-content: center;
   margin-top: 24px;
 }
+
+@media (max-width: 768px) {
+  .page-card {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .action-btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .type-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .notification-item {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .item-actions {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .notification-page {
+    max-width: none;
+  }
+
+  .page-card {
+    padding: 14px;
+  }
+
+  .type-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .notification-item {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .item-actions {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
 </style>

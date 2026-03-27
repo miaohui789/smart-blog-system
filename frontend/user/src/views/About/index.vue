@@ -507,9 +507,9 @@ onMounted(async () => {
 }
 
 /* 响应式 */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .parent {
-    height: 380px;
+    height: 480px;
   }
   
   .logo .circle1 {
@@ -549,24 +549,32 @@ onMounted(async () => {
   
   .content {
     left: 20px;
-    top: 140px;
+    top: 180px;
     padding: 0 20px;
   }
   
   .content .title {
     font-size: 20px;
+    text-align: center;
+  }
+
+  .content .subtitle {
+    text-align: center;
   }
   
   .content .text {
-    font-size: 12px;
+    font-size: 13px;
+    text-align: center;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    margin-top: 16px;
   }
   
   .bottom {
     left: 20px;
+    bottom: 20px;
     flex-direction: column;
     gap: 15px;
   }

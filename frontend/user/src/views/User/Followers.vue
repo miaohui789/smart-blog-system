@@ -355,9 +355,18 @@ onMounted(() => {
     gap: 12px;
   }
   
+  .user-left {
+    width: 100%;
+  }
+
   .user-actions {
     width: 100%;
     justify-content: flex-end;
+    
+    .message-btn, .follow-btn {
+      flex: 1;
+      justify-content: center;
+    }
   }
 }
 </style>

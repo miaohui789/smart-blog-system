@@ -33,3 +33,15 @@ logging:
   level:
     root: WARN
     com.blog: INFO
+
+blog:
+  search:
+    elasticsearch:
+      enabled: true
+      endpoint: http://blog-es:9200
+      username: ${ES_SEARCH_USERNAME:}
+      password: ${ES_SEARCH_PASSWORD:}
+      article-index: blog_article_search
+      study-question-index: blog_study_question_search
+      analyzer: ik_max_word
+      search-analyzer: ik_smart

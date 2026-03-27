@@ -49,6 +49,7 @@ public class ArticleController {
     private final CategoryService categoryService;
     private final RedisService redisService;
     private final NotificationService notificationService;
+    private final SearchService searchService;
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -346,106 +347,7 @@ public class ArticleController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        
-        // 1. 先查找匹配关键词的标签
-        List<com.blog.entity.Tag> matchedTags = tagService.list(
-                new LambdaQueryWrapper<com.blog.entity.Tag>()
-                        .like(com.blog.entity.Tag::getName, keyword)
-        );
-        
-        // 2. 获取这些标签关联的文章ID
-        List<Long> tagArticleIds = List.of();
-        if (!matchedTags.isEmpty()) {
-            List<Long> tagIds = matchedTags.stream().map(com.blog.entity.Tag::getId).collect(Collectors.toList());
-            tagArticleIds = articleTagService.list(
-                    new LambdaQueryWrapper<ArticleTag>()
-                            .in(ArticleTag::getTagId, tagIds)
-            ).stream().map(ArticleTag::getArticleId).distinct().collect(Collectors.toList());
-        }
-        
-        // 3. 构建查询条件：标题、摘要、内容匹配 OR 标签匹配
-        final List<Long> finalTagArticleIds = tagArticleIds;
-        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
-                .eq(Article::getStatus, 1)
-                .and(w -> {
-                    w.like(Article::getTitle, keyword)
-                            .or()
-                            .like(Article::getSummary, keyword)
-                            .or()
-                            .like(Article::getContent, keyword);
-                    // 如果有标签匹配的文章，也加入结果
-                    if (!finalTagArticleIds.isEmpty()) {
-                        w.or().in(Article::getId, finalTagArticleIds);
-                    }
-                })
-                .orderByDesc(Article::getPublishTime);
-        
-        Page<Article> pageResult = articleService.page(new Page<>(page, pageSize), wrapper);
-        
-        // 4. 为搜索结果添加作者和标签信息
-        List<ArticleVO> voList = pageResult.getRecords().stream().map(article -> {
-            ArticleVO vo = new ArticleVO();
-            BeanUtils.copyProperties(article, vo);
-            
-            // 获取作者信息
-            User author = userService.getById(article.getUserId());
-            if (author != null) {
-                UserVO authorVO = new UserVO();
-                authorVO.setId(author.getId());
-                authorVO.setUsername(author.getUsername());
-                authorVO.setNickname(author.getNickname());
-                authorVO.setAvatar(author.getAvatar());
-                authorVO.setVipLevel(author.getVipLevel());
-                vo.setAuthor(authorVO);
-            }
-            
-            // 获取分类名称
-            if (article.getCategoryId() != null) {
-                var category = categoryService.getById(article.getCategoryId());
-                if (category != null) {
-                    vo.setCategoryName(category.getName());
-                }
-            }
-            
-            // 获取文章的标签
-            List<ArticleTag> articleTags = articleTagService.list(
-                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
-            );
-            if (!articleTags.isEmpty()) {
-                List<Long> tagIds = articleTags.stream().map(ArticleTag::getTagId).collect(Collectors.toList());
-                List<com.blog.entity.Tag> tags = tagService.listByIds(tagIds);
-                List<TagVO> tagVOs = tags.stream().map(tag -> {
-                    TagVO tagVO = new TagVO();
-                    tagVO.setId(tag.getId());
-                    tagVO.setName(tag.getName());
-                    tagVO.setColor(tag.getColor());
-                    return tagVO;
-                }).collect(Collectors.toList());
-                vo.setTags(tagVOs);
-            }
-            
-            return vo;
-        }).collect(Collectors.toList());
-        
-        // 5. 搜索用户（最多返回5个）
-        List<User> users = userService.searchUsers(keyword, 5);
-        List<UserVO> userVOList = users.stream().map(user -> {
-            UserVO uvo = new UserVO();
-            uvo.setId(user.getId());
-            uvo.setUsername(user.getUsername());
-            uvo.setNickname(user.getNickname());
-            uvo.setAvatar(user.getAvatar());
-            uvo.setIntro(user.getIntro());
-            uvo.setVipLevel(user.getVipLevel());
-            return uvo;
-        }).collect(Collectors.toList());
-        
-        // 6. 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("articles", PageResult.of(voList, pageResult.getTotal(), page, pageSize));
-        result.put("users", userVOList);
-        
-        return Result.success(result);
+        return Result.success(searchService.search(keyword, page, pageSize));
     }
 
     @Operation(summary = "文章归档")
@@ -612,6 +514,7 @@ public class ArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(article.getId());
+        searchService.syncArticle(article.getId());
         
         return Result.success(article.getId());
     }
@@ -670,6 +573,7 @@ public class ArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
         
         return Result.success("更新成功");
     }
@@ -700,6 +604,7 @@ public class ArticleController {
         
         // 清除文章相关缓存
         redisService.clearArticleCache(id);
+        searchService.deleteArticle(id);
         
         return Result.success("删除成功");
     }

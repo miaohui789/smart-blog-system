@@ -432,34 +432,32 @@ onActivated(() => {
 }
 
 @media (max-width: 768px) {
-  .sort-bar {
-    padding: 10px 12px;
-  }
-  
-  .sort-options {
-    gap: 6px;
-  }
-  
-  .sort-btn {
-    padding: 6px 12px;
-    font-size: 13px;
-    
-    span {
-      display: none;
+    .sort-bar {
+      padding: 10px 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      
+      &::-webkit-scrollbar {
+        display: none;
+      }
+      scrollbar-width: none;
     }
     
-    .el-icon:first-child {
-      margin: 0;
+    .sort-options {
+      gap: 8px;
+      flex-wrap: nowrap;
+      min-width: max-content;
     }
     
-    &:first-child span {
-      display: inline;
+    .sort-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      white-space: nowrap;
     }
-  }
 
-  .featured-cover {
-    height: 200px;
-  }
+    .featured-cover {
+      height: 200px;
+    }
 
   .featured-content {
     padding: 20px;
@@ -725,6 +723,7 @@ onActivated(() => {
         min-height: 14em;
         animation: none;
         transform: none !important;
+        font-size: 0.85em; /* 减小字体以防溢出 */
       }
     }
     
