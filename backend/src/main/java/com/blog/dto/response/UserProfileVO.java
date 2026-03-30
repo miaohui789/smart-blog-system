@@ -14,6 +14,7 @@ public class UserProfileVO {
     private String avatar;
     private String intro;
     private String website;
+    private Integer userLevel;
     private Integer vipLevel;
     private LocalDateTime vipExpireTime;
     

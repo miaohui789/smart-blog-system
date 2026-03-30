@@ -27,6 +27,7 @@ public class ConversationVO {
         private Long id;
         private String nickname;
         private String avatar;
+        private Integer userLevel;
         private Integer vipLevel;
     }
 }

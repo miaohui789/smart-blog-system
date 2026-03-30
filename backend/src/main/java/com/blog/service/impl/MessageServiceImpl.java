@@ -117,6 +117,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             senderInfo.put("id", sender.getId());
             senderInfo.put("nickname", sender.getNickname());
             senderInfo.put("avatar", sender.getAvatar());
+            senderInfo.put("userLevel", sender.getUserLevel());
             senderInfo.put("vipLevel", sender.getVipLevel());
             pushData.put("sender", senderInfo);
         }

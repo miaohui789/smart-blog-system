@@ -32,4 +32,6 @@ public class VipMember {
     private String nickname;
     @TableField(exist = false)
     private String avatar;
+    @TableField(exist = false)
+    private Integer userLevel;
 }

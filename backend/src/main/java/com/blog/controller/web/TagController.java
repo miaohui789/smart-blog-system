@@ -115,6 +115,7 @@ public class TagController {
                 authorVO.setUsername(author.getUsername());
                 authorVO.setNickname(author.getNickname());
                 authorVO.setAvatar(author.getAvatar());
+                authorVO.setUserLevel(author.getUserLevel());
                 authorVO.setVipLevel(author.getVipLevel());
                 vo.setAuthor(authorVO);
             }

@@ -1,18 +1,29 @@
 <template>
-  <span class="vip-username" :class="usernameClass">
-    <span class="username-text">{{ username }}</span>
-    <VipBadge v-if="vipLevel > 0" :level="vipLevel" :glow="glow" />
+  <span class="vip-username" :class="[`tier-${levelTheme.tier}`, vipClass]">
+    <span class="username-wrapper" :style="wrapperStyle">
+      <span class="username-text" :style="usernameStyle">{{ username }}</span>
+    </span>
+    <span v-if="showBadge" class="badge-group">
+      <UserLevelBadge :level="normalizedLevel" />
+      <VipBadge v-if="vipLevel > 0" :level="vipLevel" :glow="glow" />
+    </span>
   </span>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import VipBadge from '@/components/VipBadge/index.vue'
+import UserLevelBadge from '@/components/UserLevelBadge/index.vue'
+import { getUserLevelTheme, normalizeUserLevel } from '@/utils/level'
 
 const props = defineProps({
   username: {
     type: String,
     default: '匿名用户'
+  },
+  userLevel: {
+    type: Number,
+    default: 1
   },
   vipLevel: {
     type: Number,
@@ -21,64 +32,108 @@ const props = defineProps({
   glow: {
     type: Boolean,
     default: false
+  },
+  showBadge: {
+    type: Boolean,
+    default: true
   }
 })
 
-const usernameClass = computed(() => {
+const normalizedLevel = computed(() => normalizeUserLevel(props.userLevel))
+const levelTheme = computed(() => getUserLevelTheme(normalizedLevel.value))
+
+const vipClass = computed(() => {
   if (props.vipLevel > 0) {
     return `vip-level-${props.vipLevel}`
   }
   return ''
 })
+
+const wrapperStyle = computed(() => ({
+  filter: `drop-shadow(0 0 10px ${levelTheme.value.shadow})`
+}))
+
+const usernameStyle = computed(() => ({
+  backgroundImage: levelTheme.value.textGradient
+}))
 </script>
 
 <style scoped>
 .vip-username {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  flex-wrap: wrap; /* 允许换行 */
+  gap: 8px; /* 增大名称和标签之间的间距 */
+  max-width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.username-wrapper {
+  display: inline-flex;
 }
 
 .username-text {
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.3s ease;
-}
-
-/* 普通用户 */
-.vip-username:not([class*="vip-level"]) .username-text {
-  color: var(--text-primary);
-}
-
-/* 普通VIP - 铜色渐变 */
-.vip-username.vip-level-1 .username-text {
-  background: linear-gradient(135deg, #cd7f32, #daa520);
+  background-size: 220% 220%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-weight: 700;
+  white-space: nowrap;
 }
 
-/* 高级VIP - 银色渐变 */
-.vip-username.vip-level-2 .username-text {
-  background: linear-gradient(135deg, #a8a8a8, #d4d4d4, #a8a8a8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
+.badge-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-/* 超级VIP - 金色渐变 + 动画 */
+.tier-1 .username-text,
+.tier-3 .username-text {
+  animation: levelFloat 4.6s ease-in-out infinite;
+}
+
+.tier-2 .username-text,
+.tier-6 .username-text,
+.tier-9 .username-text {
+  animation: levelFlow 3.6s ease infinite;
+}
+
+.tier-4 .username-text,
+.tier-8 .username-text,
+.tier-10 .username-text {
+  animation: levelShine 2.8s linear infinite;
+}
+
+.tier-5 .username-text,
+.tier-7 .username-text {
+  animation: levelPulse 2.8s ease-in-out infinite;
+}
+
+.tier-11 .username-text {
+  animation: levelGenesis 4s linear infinite;
+}
+
 .vip-username.vip-level-3 .username-text {
-  background: linear-gradient(135deg, #ffd700, #ffb700, #ffd700, #ffe44d);
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
-  animation: goldGradient 3s ease infinite;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.22);
 }
 
-@keyframes goldGradient {
+@keyframes levelGenesis {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes levelFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes levelFlow {
   0%, 100% {
     background-position: 0% 50%;
   }
@@ -87,23 +142,21 @@ const usernameClass = computed(() => {
   }
 }
 
-/* 深色模式适配 */
-:root[data-theme="dark"] .vip-username.vip-level-1 .username-text {
-  background: linear-gradient(135deg, #e8a54b, #f0c060);
-  -webkit-background-clip: text;
-  background-clip: text;
+@keyframes levelShine {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
-:root[data-theme="dark"] .vip-username.vip-level-2 .username-text {
-  background: linear-gradient(135deg, #c8c8c8, #e8e8e8, #c8c8c8);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-:root[data-theme="dark"] .vip-username.vip-level-3 .username-text {
-  background: linear-gradient(135deg, #ffe44d, #ffd000, #ffe44d, #fff176);
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
+@keyframes levelPulse {
+  0%, 100% {
+    opacity: 0.92;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 </style>

@@ -86,6 +86,7 @@ public class NotificationController {
                     senderInfo.setId(sender.getId());
                     senderInfo.setNickname(sender.getNickname());
                     senderInfo.setAvatar(sender.getAvatar());
+                    senderInfo.setUserLevel(sender.getUserLevel());
                     senderInfo.setVipLevel(sender.getVipLevel());
                     vo.setSender(senderInfo);
                 }

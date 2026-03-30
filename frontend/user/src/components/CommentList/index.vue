@@ -12,6 +12,7 @@
           <div class="comment-header">
             <VipUsername 
               :username="comment.user?.nickname || '匿名用户'" 
+              :user-level="comment.user?.userLevel || 1"
               :vip-level="comment.user?.vipLevel || 0" 
             />
             <span class="comment-time">{{ formatRelativeTime(comment.createTime) }}</span>
@@ -37,6 +38,7 @@
               <div class="reply-content">
                 <VipUsername 
                   :username="reply.user?.nickname || '匿名用户'" 
+                  :user-level="reply.user?.userLevel || 1"
                   :vip-level="reply.user?.vipLevel || 0" 
                 />
                 <span v-if="reply.replyUser" class="reply-to">

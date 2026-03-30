@@ -50,6 +50,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="180" />
+        <el-table-column label="用户等级" min-width="160">
+          <template #default="{ row }">
+            <UserLevelTag :level="row.userLevel || 1" />
+          </template>
+        </el-table-column>
         <el-table-column label="角色" width="120">
           <template #default="{ row }">
             <el-tag v-for="role in row.roles" :key="role" size="small" :type="getRoleTagType(role)" style="margin-right: 4px">
@@ -128,6 +133,9 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱" />
         </el-form-item>
+        <el-form-item label="等级">
+          <el-input-number v-model="form.userLevel" :min="1" :max="100" style="width: 100%" />
+        </el-form-item>
         <el-form-item v-if="!form.id" label="密码" prop="password">
           <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" />
         </el-form-item>
@@ -153,6 +161,7 @@ import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, canc
 import { getAllRoles } from '@/api/role'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
+import UserLevelTag from '@/components/UserLevelTag/index.vue'
 
 const userStore = useUserStore()
 
@@ -193,7 +202,7 @@ const dialogVisible = ref(false)
 const formRef = ref()
 const query = ref({ page: 1, pageSize: 10, keyword: '', status: null })
 
-const form = ref({ id: null, username: '', nickname: '', email: '', password: '', roleIds: [] })
+const form = ref({ id: null, username: '', nickname: '', email: '', password: '', userLevel: 1, roleIds: [] })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
@@ -226,12 +235,12 @@ function resetQuery() {
 }
 
 function handleAdd() {
-  form.value = { id: null, username: '', nickname: '', email: '', password: '', roleIds: [] }
+  form.value = { id: null, username: '', nickname: '', email: '', password: '', userLevel: 1, roleIds: [] }
   dialogVisible.value = true
 }
 
 function handleEdit(row) {
-  form.value = { ...row, password: '', roleIds: row.roleIds || [] }
+  form.value = { ...row, password: '', userLevel: row.userLevel || 1, roleIds: row.roleIds || [] }
   dialogVisible.value = true
 }
 

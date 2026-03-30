@@ -272,6 +272,7 @@
                   <VipUsername 
                     v-else
                     :username="comment.user?.nickname || '匿名用户'" 
+                    :user-level="comment.user?.userLevel || 1"
                     :vip-level="comment.user?.vipLevel || 0"
                     class="clickable-name"
                     @click="goUserProfile(comment.user?.id)"
@@ -359,6 +360,7 @@
                         <VipUsername 
                           v-else
                           :username="reply.user?.nickname || '匿名用户'" 
+                          :user-level="reply.user?.userLevel || 1"
                           :vip-level="reply.user?.vipLevel || 0" 
                           size="small"
                           class="clickable-name"
@@ -2297,6 +2299,8 @@ function addNewCommentToList(newComment) {
   gap: 10px;
   margin-bottom: 8px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
 }
 
 .comment-time,

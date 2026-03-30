@@ -74,6 +74,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
                     senderInfo.put("id", sender.getId());
                     senderInfo.put("nickname", sender.getNickname());
                     senderInfo.put("avatar", sender.getAvatar());
+                    senderInfo.put("userLevel", sender.getUserLevel());
                     senderInfo.put("vipLevel", sender.getVipLevel());
                     data.put("sender", senderInfo);
                 }

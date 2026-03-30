@@ -151,7 +151,9 @@
               <div v-show="showUserCard" class="user-card" :class="'vip-card-' + (userStore.userInfo?.vipLevel || 0)" @mouseenter="handleUserCardEnter" @mouseleave="handleUserCardLeave" @click="handleCardClick">
                 <!-- VIP专属背景装饰 -->
                 <div v-if="userStore.userInfo?.vipLevel > 0" class="vip-card-bg" :class="'level-' + userStore.userInfo.vipLevel"></div>
-                <div class="user-card-header" :class="'vip-header-' + (userStore.userInfo?.vipLevel || 0)">
+                <div class="user-card-header" :class="['vip-header-' + (userStore.userInfo?.vipLevel || 0), 'level-tier-' + userLevelTheme.tier]" :style="headerStyle">
+                  <div class="level-card-bg"></div>
+                  <div class="level-card-glow"></div>
                   <div class="user-card-avatar" :class="'vip-level-' + (userStore.userInfo?.vipLevel || 0)" @click="goToMyPage">
                     <img 
                       v-if="userStore.userInfo?.avatar" 
@@ -165,7 +167,9 @@
                   <div class="user-card-info">
                     <VipUsername 
                       :username="userStore.userInfo?.nickname || '用户'" 
+                      :user-level="userStore.userInfo?.userLevel || 1"
                       :vipLevel="userStore.userInfo?.vipLevel || 0"
+                      :show-badge="false"
                       class="user-card-name"
                     />
                     <p class="user-card-bio">{{ userStore.userInfo?.intro || '这个人很懒，什么都没写~' }}</p>
@@ -302,6 +306,7 @@
                         <div class="user-name-row">
                           <VipUsername 
                             :username="user.nickname || user.username" 
+                            :user-level="user.userLevel || 1"
                             :vipLevel="user.vipLevel || 0"
                           />
                         </div>
@@ -508,6 +513,7 @@ import { useMessageStore } from '@/stores/message'
 import { searchAll } from '@/api/search'
 import { getUserProfile } from '@/api/follow'
 import VipUsername from '@/components/VipUsername/index.vue'
+import { getUserLevelTheme } from '@/utils/level'
 
 const router = useRouter()
 const route = useRoute()
@@ -534,6 +540,20 @@ const userStats = ref({
   followingCount: 0,
   followerCount: 0,
   articleCount: 0
+})
+
+const userLevelTheme = computed(() => {
+  return getUserLevelTheme(userStore.userInfo?.userLevel || 1)
+})
+
+const headerStyle = computed(() => {
+  if (!userStore.isLoggedIn) return {}
+  const theme = userLevelTheme.value
+  return {
+    '--card-bg-gradient': theme.gradient,
+    '--card-shadow': theme.shadow,
+    '--card-text-gradient': theme.textGradient
+  }
 })
 
 // 显示用户卡片
@@ -2165,24 +2185,157 @@ function handleCommand(command) {
 
 .user-card-header {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-  background: linear-gradient(135deg, rgba($primary-color, 0.1), rgba($primary-color, 0.05));
+  gap: 12px;
+  padding: 16px 14px;
   position: relative;
   z-index: 1;
-  
-  /* VIP专属头部背景 */
-  &.vip-header-1 {
-    background: linear-gradient(135deg, rgba(205, 127, 50, 0.15), rgba(205, 127, 50, 0.05));
-  }
-  
-  &.vip-header-2 {
-    background: linear-gradient(135deg, rgba(192, 192, 192, 0.15), rgba(192, 192, 192, 0.05));
-  }
-  
-  &.vip-header-3 {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 183, 0, 0.08));
-  }
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+  /* 基础背景，被 level-card-bg 覆盖 */
+  background: linear-gradient(135deg, rgba(var(--primary-color-rgb, 168, 85, 247), 0.1), rgba(var(--primary-color-rgb, 168, 85, 247), 0.05));
+}
+
+.level-card-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--card-bg-gradient);
+  opacity: 0.12; /* 浅色模式下有一点颜色 */
+  z-index: -1;
+  transition: opacity 0.3s;
+}
+
+:root[data-theme="dark"] .level-card-bg {
+  opacity: 0.15; /* 暗色模式下稍微明显一点 */
+}
+
+.level-card-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, var(--card-bg-gradient), transparent 60%);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+.user-card-header:hover .level-card-glow {
+  opacity: 0.15;
+  animation: rotateGlow 10s linear infinite;
+}
+
+@keyframes rotateGlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 名片卡片各等级SVG花纹 (1~10级) */
+.user-card-header.level-tier-1::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 150 0 L 200 50 L 250 0" fill="none" stroke="%2394a3b8" stroke-width="2"/><circle cx="200" cy="20" r="4" fill="%2394a3b8"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-1::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 150 0 L 200 50 L 250 0" fill="none" stroke="white" stroke-width="2"/><circle cx="200" cy="20" r="4" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-2::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 120 50 Q 180 0 240 50" fill="none" stroke="%2338bdf8" stroke-width="2"/><circle cx="180" cy="25" r="4" fill="%2338bdf8"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-2::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 120 50 Q 180 0 240 50" fill="none" stroke="white" stroke-width="2"/><circle cx="180" cy="25" r="4" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-3::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><circle cx="200" cy="30" r="20" fill="none" stroke="%2360a5fa" stroke-width="2"/><circle cx="200" cy="30" r="5" fill="%2360a5fa"/><circle cx="150" cy="60" r="3" fill="%2360a5fa"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-3::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><circle cx="200" cy="30" r="20" fill="none" stroke="white" stroke-width="2"/><circle cx="200" cy="30" r="5" fill="white"/><circle cx="150" cy="60" r="3" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-4::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 100 60 Q 150 10 200 60 T 300 60" fill="none" stroke="%23818cf8" stroke-width="2"/><circle cx="150" cy="35" r="4" fill="%23818cf8"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-4::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 100 60 Q 150 10 200 60 T 300 60" fill="none" stroke="white" stroke-width="2"/><circle cx="150" cy="35" r="4" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-5::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 100 20 Q 150 40 200 20 T 300 20" fill="none" stroke="%23c084fc" stroke-width="1.5"/><path d="M 100 60 Q 150 80 200 60 T 300 60" fill="none" stroke="%23c084fc" stroke-width="1.5"/><circle cx="150" cy="40" r="4" fill="%23c084fc"/><circle cx="220" cy="40" r="2" fill="%23c084fc"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-5::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 100 20 Q 150 40 200 20 T 300 20" fill="none" stroke="white" stroke-width="1.5"/><path d="M 100 60 Q 150 80 200 60 T 300 60" fill="none" stroke="white" stroke-width="1.5"/><circle cx="150" cy="40" r="4" fill="white"/><circle cx="220" cy="40" r="2" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-6::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 100 80 A 80 80 0 0 1 260 80" fill="none" stroke="%23a78bfa" stroke-width="2"/><circle cx="180" cy="30" r="6" fill="%23a78bfa"/><circle cx="140" cy="50" r="2" fill="%23a78bfa"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-6::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 100 80 A 80 80 0 0 1 260 80" fill="none" stroke="white" stroke-width="2"/><circle cx="180" cy="30" r="6" fill="white"/><circle cx="140" cy="50" r="2" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-7::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><ellipse cx="200" cy="40" rx="60" ry="20" fill="none" stroke="%23fb7185" stroke-width="2" transform="rotate(-15 200 40)"/><circle cx="200" cy="40" r="8" fill="%23fb7185"/><circle cx="140" cy="60" r="3" fill="%23fb7185"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-7::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><ellipse cx="200" cy="40" rx="60" ry="20" fill="none" stroke="white" stroke-width="2" transform="rotate(-15 200 40)"/><circle cx="200" cy="40" r="8" fill="white"/><circle cx="140" cy="60" r="3" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-8::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 200 10 L 210 30 L 230 40 L 210 50 L 200 70 L 190 50 L 170 40 L 190 30 Z" fill="%23f472b6"/><circle cx="140" cy="20" r="4" fill="%23f472b6"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-8::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 200 10 L 210 30 L 230 40 L 210 50 L 200 70 L 190 50 L 170 40 L 190 30 Z" fill="white"/><circle cx="140" cy="20" r="4" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-9::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 160 60 L 200 20 L 240 60 Z" fill="none" stroke="%23fb923c" stroke-width="2"/><rect x="180" y="60" width="40" height="20" fill="%23fb923c" opacity="0.5"/><circle cx="200" cy="40" r="4" fill="%23fb923c"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-9::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 160 60 L 200 20 L 240 60 Z" fill="none" stroke="white" stroke-width="2"/><rect x="180" y="60" width="40" height="20" fill="white" opacity="0.5"/><circle cx="200" cy="40" r="4" fill="white"/></svg>'); }
+
+.user-card-header.level-tier-10::after {
+  content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background-position: top right; background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.15"><path d="M 120 40 Q 200 0 280 40 Q 200 80 120 40" fill="none" stroke="%23facc15" stroke-width="2"/><path d="M 160 20 L 240 60 M 160 60 L 240 20" stroke="%23facc15" stroke-width="1"/><circle cx="200" cy="40" r="8" fill="%23facc15"/></svg>');
+}
+:root[data-theme="dark"] .user-card-header.level-tier-10::after { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 120 40 Q 200 0 280 40 Q 200 80 120 40" fill="none" stroke="white" stroke-width="2"/><path d="M 160 20 L 240 60 M 160 60 L 240 20" stroke="white" stroke-width="1"/><circle cx="200" cy="40" r="8" fill="white"/></svg>'); }
+
+/* 100级专属超级名片样式 */
+.user-card-header.level-tier-11 {
+  background: var(--bg-card); /* 覆盖默认背景 */
+}
+
+.user-card-header.level-tier-11 .level-card-bg {
+  opacity: 1; /* 100级完全显示渐变背景 */
+  background: linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 50%, #e0e7ff 100%);
+}
+
+:root[data-theme="dark"] .user-card-header.level-tier-11 .level-card-bg {
+  background: linear-gradient(135deg, #2e1065 0%, #1e1b4b 50%, #0f172a 100%);
+}
+
+.user-card-header.level-tier-11::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.3"><path d="M 80 0 Q 120 40 80 80 T 0 80" fill="none" stroke="%23a855f7" stroke-width="2"/><circle cx="90" cy="20" r="2" fill="%23a855f7"/><circle cx="60" cy="60" r="1.5" fill="%23a855f7"/><path d="M 150 20 Q 180 50 150 80 T 100 80" fill="none" stroke="%23a855f7" stroke-width="1"/></svg>');
+  background-position: top right;
+  background-repeat: no-repeat;
+  opacity: 0.8;
+  z-index: 0;
+  pointer-events: none;
+}
+
+:root[data-theme="dark"] .user-card-header.level-tier-11::after {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" opacity="0.4"><path d="M 80 0 Q 120 40 80 80 T 0 80" fill="none" stroke="white" stroke-width="2"/><circle cx="90" cy="20" r="2" fill="white"/><circle cx="60" cy="60" r="1.5" fill="white"/><path d="M 150 20 Q 180 50 150 80 T 100 80" fill="none" stroke="white" stroke-width="1"/></svg>');
+}
+
+/* VIP专属头部背景可以保留作为补充 */
+.user-card-header.vip-header-1 {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.15), rgba(205, 127, 50, 0.05));
+}
+
+.user-card-header.vip-header-2 {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.15), rgba(192, 192, 192, 0.05));
+}
+
+.user-card-header.vip-header-3 {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 183, 0, 0.08));
 }
 
 .user-card-avatar {
@@ -2194,6 +2347,7 @@ function handleCommand(command) {
   cursor: pointer;
   transition: transform 0.3s;
   position: relative;
+  z-index: 1;
   
   img {
     width: 100%;
@@ -2265,11 +2419,17 @@ function handleCommand(command) {
   flex-direction: column;
   justify-content: center;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .user-card-name {
   font-size: 14px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* 允许标签换行，避免挤压导致竖排 */
+  gap: 4px; /* 标签之间的间距 */
 }
 
 .user-card-bio {

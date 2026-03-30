@@ -12,7 +12,7 @@ import org.apache.ibatis.annotations.Select;
 public interface VipMemberMapper extends BaseMapper<VipMember> {
     
     @Select("<script>" +
-            "SELECT vm.*, u.username, u.nickname, u.avatar " +
+            "SELECT vm.*, u.username, u.nickname, u.avatar, u.user_level AS userLevel " +
             "FROM vip_member vm " +
             "LEFT JOIN sys_user u ON vm.user_id = u.id " +
             "<where>" +

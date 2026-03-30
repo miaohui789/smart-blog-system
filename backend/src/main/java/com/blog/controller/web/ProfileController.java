@@ -191,6 +191,7 @@ public class ProfileController {
                         authorVO.setId(author.getId());
                         authorVO.setNickname(author.getNickname());
                         authorVO.setAvatar(author.getAvatar());
+                        authorVO.setUserLevel(author.getUserLevel());
                         authorVO.setVipLevel(author.getVipLevel());
                         vo.setAuthor(authorVO);
                     }
@@ -245,6 +246,7 @@ public class ProfileController {
                         authorVO.setId(author.getId());
                         authorVO.setNickname(author.getNickname());
                         authorVO.setAvatar(author.getAvatar());
+                        authorVO.setUserLevel(author.getUserLevel());
                         authorVO.setVipLevel(author.getVipLevel());
                         vo.setAuthor(authorVO);
                     }

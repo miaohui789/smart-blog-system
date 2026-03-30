@@ -7,6 +7,7 @@ import com.blog.common.result.Result;
 import com.blog.entity.User;
 import com.blog.service.UserService;
 import com.blog.service.UserRoleService;
+import com.blog.util.UserLevelUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,7 @@ public class AdminUserController {
             userMap.put("email", user.getEmail());
             userMap.put("avatar", user.getAvatar());
             userMap.put("status", user.getStatus());
+            userMap.put("userLevel", UserLevelUtils.normalize(user.getUserLevel()));
             userMap.put("createTime", user.getCreateTime());
             userMap.put("roles", userRoleService.getRoleNamesByUserId(user.getId()));
             userMap.put("roleIds", userRoleService.getRoleIdsByUserId(user.getId()));
@@ -97,6 +99,7 @@ public class AdminUserController {
         user.setNickname((String) data.get("nickname"));
         user.setEmail((String) data.get("email"));
         user.setStatus(1);
+        user.setUserLevel(UserLevelUtils.normalize(parseInteger(data.get("userLevel"))));
         userService.save(user);
         
         // 保存用户角色关联
@@ -123,6 +126,9 @@ public class AdminUserController {
         }
         if (data.get("email") != null) {
             user.setEmail((String) data.get("email"));
+        }
+        if (data.containsKey("userLevel")) {
+            user.setUserLevel(UserLevelUtils.normalize(parseInteger(data.get("userLevel"))));
         }
         userService.updateById(user);
         
@@ -177,5 +183,15 @@ public class AdminUserController {
         user.setPassword(passwordEncoder.encode("123456"));
         userService.updateById(user);
         return Result.success("密码已重置为 123456");
+    }
+
+    private Integer parseInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return Integer.parseInt(String.valueOf(value));
     }
 }

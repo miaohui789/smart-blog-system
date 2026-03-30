@@ -149,6 +149,7 @@ public class CommentController {
             userInfo.setId(user.getId());
             userInfo.setNickname(user.getNickname());
             userInfo.setAvatar(user.getAvatar());
+            userInfo.setUserLevel(user.getUserLevel());
             userInfo.setVipLevel(user.getVipLevel());
             userInfo.setStatus(user.getStatus());
             vo.setUser(userInfo);
@@ -161,6 +162,7 @@ public class CommentController {
                 replyUserInfo.setId(replyUser.getId());
                 replyUserInfo.setNickname(replyUser.getNickname());
                 replyUserInfo.setAvatar(replyUser.getAvatar());
+                replyUserInfo.setUserLevel(replyUser.getUserLevel());
                 replyUserInfo.setVipLevel(replyUser.getVipLevel());
                 replyUserInfo.setStatus(replyUser.getStatus());
                 vo.setReplyUser(replyUserInfo);
@@ -241,6 +243,7 @@ public class CommentController {
                 userInfo.put("id", user.getId());
                 userInfo.put("nickname", user.getNickname());
                 userInfo.put("avatar", user.getAvatar());
+                userInfo.put("userLevel", user.getUserLevel());
                 userInfo.put("vipLevel", user.getVipLevel());
                 userInfo.put("status", user.getStatus());
                 commentData.put("user", userInfo);
@@ -253,6 +256,7 @@ public class CommentController {
                     Map<String, Object> replyUserInfo = new java.util.HashMap<>();
                     replyUserInfo.put("id", replyUser.getId());
                     replyUserInfo.put("nickname", replyUser.getNickname());
+                    replyUserInfo.put("userLevel", replyUser.getUserLevel());
                     replyUserInfo.put("status", replyUser.getStatus());
                     commentData.put("replyUser", replyUserInfo);
                 }

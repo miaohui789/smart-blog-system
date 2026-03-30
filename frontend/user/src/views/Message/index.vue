@@ -28,6 +28,7 @@
               <div class="conv-header">
                 <VipUsername 
                   :username="conv.targetUser?.nickname || '未知用户'" 
+                  :user-level="conv.targetUser?.userLevel || 1"
                   :vip-level="conv.targetUser?.vipLevel || 0"
                   class="conv-name"
                 />
@@ -64,6 +65,7 @@
               </el-avatar>
               <VipUsername 
                 :username="activeConversation.targetUser?.nickname || '未知用户'" 
+                :user-level="activeConversation.targetUser?.userLevel || 1"
                 :vip-level="activeConversation.targetUser?.vipLevel || 0"
               />
             </div>

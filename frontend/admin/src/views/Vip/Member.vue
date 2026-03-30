@@ -39,6 +39,11 @@
             <el-tag :type="getLevelType(row.level)">{{ getLevelName(row.level) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="用户等级" width="170" align="center">
+          <template #default="{ row }">
+            <UserLevelTag :level="row.userLevel || 1" />
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '有效' : '过期' }}</el-tag>
@@ -101,6 +106,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getMemberList, updateMember, deleteMember } from '@/api/vip'
 import { formatDateTime } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import UserLevelTag from '@/components/UserLevelTag/index.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)

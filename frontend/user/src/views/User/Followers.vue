@@ -27,6 +27,7 @@
             <div class="user-info">
               <VipUsername 
                 :username="user.nickname" 
+                :user-level="user.userLevel || 1"
                 :vip-level="user.vipLevel || 0"
               />
               <p class="user-intro">{{ user.intro || '这个人很懒，什么都没写~' }}</p>

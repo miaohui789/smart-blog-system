@@ -140,6 +140,7 @@ public class ArticleController {
                 authorVO.setUsername(author.getUsername());
                 authorVO.setNickname(author.getNickname());
                 authorVO.setAvatar(author.getAvatar());
+                authorVO.setUserLevel(author.getUserLevel());
                 authorVO.setVipLevel(author.getVipLevel());
                 vo.setAuthor(authorVO);
             }
@@ -243,6 +244,7 @@ public class ArticleController {
             authorVO.setUsername(author.getUsername());
             authorVO.setNickname(author.getNickname());
             authorVO.setAvatar(author.getAvatar());
+            authorVO.setUserLevel(author.getUserLevel());
             authorVO.setStatus(author.getStatus());
             vo.setAuthor(authorVO);
         }

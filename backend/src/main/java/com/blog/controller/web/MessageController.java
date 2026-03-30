@@ -121,6 +121,7 @@ public class MessageController {
                 userInfo.setId(targetUser.getId());
                 userInfo.setNickname(targetUser.getNickname());
                 userInfo.setAvatar(targetUser.getAvatar());
+                userInfo.setUserLevel(targetUser.getUserLevel());
                 userInfo.setVipLevel(targetUser.getVipLevel());
                 vo.setTargetUser(userInfo);
             }
@@ -188,6 +189,7 @@ public class MessageController {
                 userInfo.setId(sender.getId());
                 userInfo.setNickname(sender.getNickname());
                 userInfo.setAvatar(sender.getAvatar());
+                userInfo.setUserLevel(sender.getUserLevel());
                 userInfo.setVipLevel(sender.getVipLevel());
                 vo.setSender(userInfo);
             }

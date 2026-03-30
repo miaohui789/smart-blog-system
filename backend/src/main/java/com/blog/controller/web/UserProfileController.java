@@ -54,6 +54,7 @@ public class UserProfileController {
         vo.setAvatar(user.getAvatar());
         vo.setIntro(user.getIntro());
         vo.setWebsite(user.getWebsite());
+        vo.setUserLevel(user.getUserLevel());
         vo.setVipLevel(user.getVipLevel());
         vo.setVipExpireTime(user.getVipExpireTime());
         vo.setStatus(user.getStatus());
@@ -129,6 +130,7 @@ public class UserProfileController {
                 authorVO.setUsername(author.getUsername());
                 authorVO.setNickname(author.getNickname());
                 authorVO.setAvatar(author.getAvatar());
+                authorVO.setUserLevel(author.getUserLevel());
                 authorVO.setVipLevel(author.getVipLevel());
                 vo.setAuthor(authorVO);
             }
@@ -268,6 +270,7 @@ public class UserProfileController {
             vo.setNickname(user.getNickname());
             vo.setAvatar(user.getAvatar());
             vo.setIntro(user.getIntro());
+            vo.setUserLevel(user.getUserLevel());
             vo.setVipLevel(user.getVipLevel());
             // 如果当前用户已登录，检查是否关注了这个用户
             if (currentUserId != null) {
@@ -312,6 +315,7 @@ public class UserProfileController {
             vo.setNickname(user.getNickname());
             vo.setAvatar(user.getAvatar());
             vo.setIntro(user.getIntro());
+            vo.setUserLevel(user.getUserLevel());
             vo.setVipLevel(user.getVipLevel());
             // 如果当前用户已登录，检查是否关注了这个用户
             if (currentUserId != null) {
