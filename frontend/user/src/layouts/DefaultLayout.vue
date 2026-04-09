@@ -72,11 +72,24 @@ const INACTIVE_TIMEOUT = 30 * 60 * 1000 // 30 分钟
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click']
 let inactivityTimer = null
 
-function resetInactivityTimer() {
+// 节流函数，避免滚动时频繁触发重置逻辑导致卡顿
+function throttle(fn, delay) {
+  let timer = null
+  return function (...args) {
+    if (!timer) {
+      timer = setTimeout(() => {
+        fn.apply(this, args)
+        timer = null
+      }, delay)
+    }
+  }
+}
+
+const resetInactivityTimer = throttle(() => {
   if (!userStore.isLoggedIn) return
   clearTimeout(inactivityTimer)
   inactivityTimer = setTimeout(handleInactivityLogout, INACTIVE_TIMEOUT)
-}
+}, 1000)
 
 async function handleInactivityLogout() {
   if (!userStore.isLoggedIn) return
@@ -115,11 +128,9 @@ const bgComponents = {
 
 // 加载当前皮肤
 function loadCurrentSkin() {
-  // 只有登录用户才加载自定义皮肤
   if (!userStore.isLoggedIn) {
     console.log('未登录，不加载自定义皮肤')
     currentBgComponent.value = null
-    // 确保清除透明类，避免游客看到组件透明
     document.body.classList.remove('has-custom-bg')
     themeStore.hasCustomBackground = false
     return
@@ -149,6 +160,8 @@ function loadCurrentSkin() {
     console.log('无皮肤数据')
     currentBgComponent.value = null
   }
+
+  themeStore.checkCustomBackground()
 }
 
 // 监听皮肤切换事件
@@ -207,15 +220,12 @@ onUnmounted(() => {
 // 监听登录状态变化
 watch(() => userStore.isLoggedIn, (isLoggedIn) => {
   if (!isLoggedIn) {
-    // 用户退出登录时，清除背景并移除透明类，避免组件样式错乱
     console.log('用户退出登录，清除自定义背景')
     currentBgComponent.value = null
     document.body.classList.remove('has-custom-bg')
     themeStore.hasCustomBackground = false
-    // 停止无操作计时器
     stopInactivityWatch()
   } else {
-    // 用户登录时，重新加载皮肤并启动无操作计时器
     console.log('用户登录，重新加载皮肤')
     loadCurrentSkin()
     startInactivityWatch()

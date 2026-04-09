@@ -1,6 +1,7 @@
 package com.blog.controller.web;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.blog.common.constant.ExpConstants;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.Result;
 import com.blog.dto.request.LoginRequest;
@@ -11,8 +12,10 @@ import com.blog.entity.User;
 import com.blog.entity.UserRole;
 import com.blog.security.JwtTokenProvider;
 import com.blog.security.SecurityUser;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.service.EmailService;
 import com.blog.service.RoleService;
+import com.blog.service.SearchService;
 import com.blog.service.UserRoleService;
 import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.constraints.Email;
 import java.util.HashMap;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +50,8 @@ public class UserController {
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final UserExpAsyncService userExpAsyncService;
+    private final SearchService searchService;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -68,6 +74,14 @@ public class UserController {
         }
         
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+        userExpAsyncService.publishGrant(
+                user.getId(),
+                ExpConstants.BIZ_LOGIN_DAILY,
+                "login:" + user.getId() + ":" + LocalDate.now(),
+                ExpConstants.EXP_LOGIN_DAILY,
+                "每日首次登录经验",
+                "UserController.login"
+        );
 
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
@@ -114,6 +128,14 @@ public class UserController {
         
         // 生成token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+        userExpAsyncService.publishGrant(
+                user.getId(),
+                ExpConstants.BIZ_LOGIN_DAILY,
+                "login:" + user.getId() + ":" + LocalDate.now(),
+                ExpConstants.EXP_LOGIN_DAILY,
+                "每日首次登录经验",
+                "UserController.loginByEmail"
+        );
         
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
@@ -220,6 +242,7 @@ public class UserController {
 
         // 为新用户分配"普通用户"角色
         assignDefaultRole(user.getId());
+        searchService.syncUser(user.getId());
 
         return Result.success("注册成功");
     }

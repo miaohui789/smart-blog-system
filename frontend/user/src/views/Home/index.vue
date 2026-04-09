@@ -60,7 +60,7 @@
       @click="goArticle(topArticle.id)"
     >
       <div class="featured-cover">
-        <img :src="topArticle.cover || defaultCover" :alt="topArticle.title" @error="(e) => e.target.src = defaultCover" />
+        <img :src="topArticle.cover || defaultCover" :alt="topArticle.title" fetchpriority="high" decoding="async" @error="(e) => e.target.src = defaultCover" />
         <div class="featured-overlay"></div>
       </div>
       <div class="featured-content">
@@ -80,7 +80,7 @@
     </div>
 
     <!-- 普通文章列表 -->
-    <div class="article-section" v-if="!loading">
+    <div class="article-section" v-loading="loading && normalArticles.length > 0">
       <div class="section-header" v-if="topArticle && currentPage === 1 && currentSort === 'latest'">
         <h3>最新文章</h3>
       </div>
@@ -91,10 +91,10 @@
           :article="article"
         />
       </div>
-      <el-empty v-else-if="!loading && normalArticles.length === 0 && !topArticle" description="暂无文章" />
+      <el-empty v-else-if="normalArticles.length === 0 && !topArticle" description="暂无文章" />
     </div>
 
-    <Loading v-if="loading" />
+    <Loading v-if="loading && normalArticles.length === 0" />
 
     <!-- 分页 -->
     <div class="pagination-wrapper" v-if="total > pageSize">
@@ -103,6 +103,7 @@
         :page-size="pageSize"
         :total="total"
         :pager-count="5"
+        :disabled="loading"
         layout="prev, pager, next"
         @current-change="handlePageChange"
       />
@@ -111,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, View, ChatDotRound, Star, CollectionTag, ArrowDown, Sunny, ChatLineSquare, StarFilled, Collection, TrendCharts } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
@@ -128,6 +129,8 @@ const pageSize = ref(8)          // 每页8篇普通文章
 const total = ref(0)             // 普通文章总数
 const currentSort = ref('latest')
 const sortOrder = ref('desc')
+const articleCache = new Map()
+let latestRequestId = 0
 
 // 排序选项
 const sortOptions = [
@@ -148,6 +151,15 @@ function goArticle(id) {
 }
 
 async function fetchArticles() {
+  const key = [currentPage.value, pageSize.value, currentSort.value, sortOrder.value].join(':')
+  const cached = articleCache.get(key)
+  if (cached) {
+    loading.value = false
+    normalArticles.value = cached.list
+    total.value = cached.total
+    return
+  }
+  const requestId = ++latestRequestId
   loading.value = true
   try {
     const res = await getArticleList({
@@ -157,12 +169,46 @@ async function fetchArticles() {
       sortOrder: sortOrder.value,
       excludeTop: 1  // 排除置顶文章
     })
-    normalArticles.value = res.data?.list || []
-    total.value = res.data?.total || 0
+    if (requestId !== latestRequestId) {
+      return
+    }
+    const list = res.data?.list || []
+    const totalCount = res.data?.total || 0
+    normalArticles.value = list
+    total.value = totalCount
+    articleCache.set(key, { list, total: totalCount })
   } catch (e) {
     console.error(e)
   } finally {
-    loading.value = false
+    if (requestId === latestRequestId) {
+      loading.value = false
+    }
+  }
+}
+
+async function prefetchNextPage() {
+  const maxPage = Math.ceil(total.value / pageSize.value)
+  const nextPage = currentPage.value + 1
+  if (nextPage > maxPage) {
+    return
+  }
+  const key = [nextPage, pageSize.value, currentSort.value, sortOrder.value].join(':')
+  if (articleCache.has(key)) {
+    return
+  }
+  try {
+    const res = await getArticleList({
+      page: nextPage,
+      pageSize: pageSize.value,
+      sortBy: currentSort.value,
+      sortOrder: sortOrder.value,
+      excludeTop: 1
+    })
+    articleCache.set(key, {
+      list: res.data?.list || [],
+      total: res.data?.total || 0
+    })
+  } catch (e) {
   }
 }
 
@@ -181,8 +227,18 @@ async function fetchTopArticles() {
   }
 }
 
+async function refreshArticleData() {
+  articleCache.clear()
+  await Promise.all([fetchTopArticles(), fetchArticles()])
+  prefetchNextPage()
+}
+
+function handleUserDisplayRefresh() {
+  refreshArticleData()
+}
+
 // 处理排序
-function handleSort(sortValue) {
+async function handleSort(sortValue) {
   if (currentSort.value === sortValue && sortValue !== 'latest' && sortValue !== 'comprehensive') {
     sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
   } else {
@@ -190,24 +246,29 @@ function handleSort(sortValue) {
     sortOrder.value = 'desc'
   }
   currentPage.value = 1
-  fetchArticles()
+  articleCache.clear()
+  await fetchArticles()
+  prefetchNextPage()
 }
 
-function handlePageChange(page) {
-  currentPage.value = page
-  fetchArticles()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+async function handlePageChange(page) {
+  await fetchArticles()
+  window.scrollTo({ top: 0, behavior: 'auto' })
+  prefetchNextPage()
 }
 
-onMounted(() => {
-  fetchTopArticles()
-  fetchArticles()
+onMounted(async () => {
+  window.addEventListener('user-display-refresh', handleUserDisplayRefresh)
+  await refreshArticleData()
 })
 
 // keep-alive 缓存激活时重新刷新数据（从文章详情返回后更新浏览量等数据）
 onActivated(() => {
-  fetchTopArticles()
-  fetchArticles()
+  refreshArticleData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('user-display-refresh', handleUserDisplayRefresh)
 })
 </script>
 

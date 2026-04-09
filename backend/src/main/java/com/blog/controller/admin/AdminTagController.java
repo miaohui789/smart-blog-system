@@ -3,6 +3,7 @@ package com.blog.controller.admin;
 import com.blog.common.result.Result;
 import com.blog.entity.Tag;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import com.blog.service.TagService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class AdminTagController {
 
     private final TagService tagService;
     private final RedisService redisService;
+    private final SearchService searchService;
 
     @Operation(summary = "标签列表")
     @GetMapping
@@ -34,6 +36,7 @@ public class AdminTagController {
         
         // 清除标签缓存
         redisService.clearTagCache();
+        searchService.syncArticlesByTagId(tag.getId());
         
         return Result.success("创建成功");
     }
@@ -46,6 +49,7 @@ public class AdminTagController {
         
         // 清除标签缓存
         redisService.clearTagCache();
+        searchService.syncArticlesByTagId(id);
         
         return Result.success("更新成功");
     }
@@ -57,6 +61,7 @@ public class AdminTagController {
         
         // 清除标签缓存
         redisService.clearTagCache();
+        searchService.syncArticlesByTagId(id);
         
         return Result.success("删除成功");
     }
@@ -70,6 +75,7 @@ public class AdminTagController {
             
             // 清除标签缓存
             redisService.clearTagCache();
+            ids.forEach(searchService::syncArticlesByTagId);
         }
         return Result.success("删除成功");
     }

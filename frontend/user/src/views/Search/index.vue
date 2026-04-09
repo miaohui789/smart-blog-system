@@ -177,7 +177,8 @@ async function handleSearch() {
     const res = await searchAll({
       keyword: keyword.value,
       page: currentPage.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
+      recordHot: currentPage.value === 1
     })
     articles.value = res.data?.articles?.list || []
     studyQuestions.value = res.data?.studyQuestions?.list || []
@@ -233,6 +234,19 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: $spacing-xl;
+  --search-hit-color: #b45309;
+  --search-hit-bg: linear-gradient(180deg, rgba(255, 236, 179, 0.96), rgba(253, 230, 138, 0.9));
+  --search-hit-border: rgba(245, 158, 11, 0.5);
+  --search-hit-shadow: rgba(245, 158, 11, 0.22);
+  --search-hit-text-shadow: none;
+}
+
+:global(:root[data-theme='dark']) .search-page {
+  --search-hit-color: #111827;
+  --search-hit-bg: linear-gradient(180deg, rgba(253, 224, 71, 0.98), rgba(250, 204, 21, 0.92));
+  --search-hit-border: rgba(252, 211, 77, 0.62);
+  --search-hit-shadow: rgba(250, 204, 21, 0.3);
+  --search-hit-text-shadow: 0 1px 1px rgba(255, 255, 255, 0.18);
 }
 
 .search-header,
@@ -455,18 +469,27 @@ onMounted(() => {
   }
 }
 
-:deep(.search-highlight) {
-  background: rgba($primary-color, 0.16);
-  color: $primary-color;
-  padding: 0 3px;
-  border-radius: 4px;
+:deep(.search-highlight),
+:deep(.search-hit) {
+  display: inline;
+  padding: 0 0.35em;
+  margin: 0 0.04em;
+  border-radius: 0.45em;
+  border: 1px solid var(--search-hit-border);
+  background: var(--search-hit-bg);
+  box-shadow: 0 8px 16px -12px var(--search-hit-shadow);
+  color: var(--search-hit-color);
+  -webkit-text-fill-color: var(--search-hit-color);
   font-style: normal;
+  font-weight: 800;
+  text-decoration: none;
+  text-shadow: var(--search-hit-text-shadow);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
-:deep(.search-hit) {
-  color: $primary-color;
-  font-style: normal;
-  font-weight: 600;
+:deep(.search-highlight) {
+  background-color: transparent;
 }
 
 :deep(.el-pagination) {

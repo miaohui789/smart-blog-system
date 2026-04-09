@@ -15,6 +15,9 @@ public class UserProfileVO {
     private String intro;
     private String website;
     private Integer userLevel;
+    private Integer currentExp;
+    private Integer totalExp;
+    private Integer nextLevelNeedExp;
     private Integer vipLevel;
     private LocalDateTime vipExpireTime;
     

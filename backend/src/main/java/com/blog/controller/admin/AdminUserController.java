@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
 import com.blog.entity.User;
+import com.blog.service.SearchService;
 import com.blog.service.UserService;
 import com.blog.service.UserRoleService;
 import com.blog.util.UserLevelUtils;
@@ -29,6 +30,7 @@ public class AdminUserController {
     private final UserService userService;
     private final UserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
+    private final SearchService searchService;
 
     @Operation(summary = "用户列表")
     @GetMapping
@@ -109,6 +111,8 @@ public class AdminUserController {
             List<Long> roleIdList = roleIds.stream().map(Integer::longValue).collect(Collectors.toList());
             userRoleService.updateUserRoles(user.getId(), roleIdList);
         }
+
+        searchService.syncUser(user.getId());
         
         return Result.success("创建成功");
     }
@@ -139,6 +143,9 @@ public class AdminUserController {
             List<Long> roleIdList = roleIds.stream().map(Integer::longValue).collect(Collectors.toList());
             userRoleService.updateUserRoles(id, roleIdList);
         }
+
+        searchService.syncUser(id);
+        searchService.syncArticlesByUserId(id);
         
         return Result.success("更新成功");
     }
@@ -147,6 +154,8 @@ public class AdminUserController {
     @DeleteMapping("/{id}")
     public Result<?> delete(@PathVariable Long id) {
         userService.removeById(id);
+        searchService.deleteUser(id);
+        searchService.syncArticlesByUserId(id);
         return Result.success("删除成功");
     }
 
@@ -160,6 +169,7 @@ public class AdminUserController {
         // 设置用户状态为已注销(2)
         user.setStatus(2);
         userService.updateById(user);
+        searchService.syncUser(id);
         return Result.success("用户已注销");
     }
 
@@ -170,6 +180,7 @@ public class AdminUserController {
         user.setId(id);
         user.setStatus(body.get("status"));
         userService.updateById(user);
+        searchService.syncUser(id);
         return Result.success("更新成功");
     }
 

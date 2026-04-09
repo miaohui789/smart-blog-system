@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.blog.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 @Mapper
@@ -26,4 +27,7 @@ public interface UserMapper extends BaseMapper<User> {
      */
     @Update("UPDATE sys_user SET article_count = GREATEST(0, COALESCE(article_count, 0) + #{delta}) WHERE id = #{userId}")
     int updateArticleCount(@Param("userId") Long userId, @Param("delta") int delta);
+
+    @Select("SELECT * FROM sys_user WHERE id = #{userId} FOR UPDATE")
+    User selectByIdForUpdate(@Param("userId") Long userId);
 }

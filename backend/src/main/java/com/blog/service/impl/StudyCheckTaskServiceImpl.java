@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.constant.StudyConstants;
+import com.blog.common.constant.ExpConstants;
 import com.blog.common.exception.BusinessException;
 import com.blog.common.result.PageResult;
 import com.blog.config.StudyCacheProperties;
@@ -31,6 +32,7 @@ import com.blog.mapper.StudyCheckTaskItemMapper;
 import com.blog.mapper.StudyCheckTaskMapper;
 import com.blog.mapper.StudyQuestionMapper;
 import com.blog.mapper.StudyUserQuestionProgressMapper;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.service.RedisService;
 import com.blog.service.StudyAiScoreService;
 import com.blog.service.StudyCheckTaskService;
@@ -73,6 +75,7 @@ public class StudyCheckTaskServiceImpl extends ServiceImpl<StudyCheckTaskMapper,
     private final StudyCacheProperties studyCacheProperties;
     private final StudyCheckRetentionProperties studyCheckRetentionProperties;
     private final TransactionTemplate transactionTemplate;
+    private final UserExpAsyncService userExpAsyncService;
 
     public StudyCheckTaskServiceImpl(StudyCheckTaskItemMapper taskItemMapper,
                                      StudyQuestionMapper questionMapper,
@@ -86,7 +89,8 @@ public class StudyCheckTaskServiceImpl extends ServiceImpl<StudyCheckTaskMapper,
                                      RedisService redisService,
                                      StudyCacheProperties studyCacheProperties,
                                      StudyCheckRetentionProperties studyCheckRetentionProperties,
-                                     TransactionTemplate transactionTemplate) {
+                                     TransactionTemplate transactionTemplate,
+                                     UserExpAsyncService userExpAsyncService) {
         this.taskItemMapper = taskItemMapper;
         this.questionMapper = questionMapper;
         this.categoryMapper = categoryMapper;
@@ -100,6 +104,7 @@ public class StudyCheckTaskServiceImpl extends ServiceImpl<StudyCheckTaskMapper,
         this.studyCacheProperties = studyCacheProperties;
         this.studyCheckRetentionProperties = studyCheckRetentionProperties;
         this.transactionTemplate = transactionTemplate;
+        this.userExpAsyncService = userExpAsyncService;
     }
 
     @Override
@@ -257,6 +262,27 @@ public class StudyCheckTaskServiceImpl extends ServiceImpl<StudyCheckTaskMapper,
         }
         updateById(task);
         clearStudyUserCache(userId);
+        final boolean excellentReward = task.getFinalScore() != null && task.getFinalScore().compareTo(new BigDecimal("90")) >= 0;
+        redisService.runAfterCommit(() -> {
+            userExpAsyncService.publishGrant(
+                    userId,
+                    ExpConstants.BIZ_CHECK_FINISH,
+                    "check:" + taskId,
+                    ExpConstants.EXP_CHECK_FINISH,
+                    "完成抽查任务获得经验",
+                    "StudyCheckTaskService.finishTask"
+            );
+            if (excellentReward) {
+                userExpAsyncService.publishGrant(
+                        userId,
+                        ExpConstants.BIZ_CHECK_EXCELLENT,
+                        "check:excellent:" + taskId,
+                        ExpConstants.EXP_CHECK_EXCELLENT,
+                        "抽查高分奖励经验",
+                        "StudyCheckTaskService.finishTask"
+                );
+            }
+        });
         return getTaskDetail(userId, taskId, false);
     }
 

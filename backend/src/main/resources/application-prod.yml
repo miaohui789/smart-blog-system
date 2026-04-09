@@ -43,5 +43,6 @@ blog:
       password: ${ES_SEARCH_PASSWORD:}
       article-index: blog_article_search
       study-question-index: blog_study_question_search
+      user-index: blog_user_search
       analyzer: ik_max_word
       search-analyzer: ik_smart

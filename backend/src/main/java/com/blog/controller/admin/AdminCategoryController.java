@@ -4,6 +4,7 @@ import com.blog.common.result.Result;
 import com.blog.entity.Category;
 import com.blog.service.CategoryService;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class AdminCategoryController {
 
     private final CategoryService categoryService;
     private final RedisService redisService;
+    private final SearchService searchService;
 
     @Operation(summary = "分类列表")
     @GetMapping
@@ -33,6 +35,7 @@ public class AdminCategoryController {
         
         // 清除分类缓存
         redisService.clearCategoryCache();
+        searchService.syncArticlesByCategoryId(category.getId());
         
         return Result.success("创建成功");
     }
@@ -45,6 +48,7 @@ public class AdminCategoryController {
         
         // 清除分类缓存
         redisService.clearCategoryCache();
+        searchService.syncArticlesByCategoryId(id);
         
         return Result.success("更新成功");
     }
@@ -56,6 +60,7 @@ public class AdminCategoryController {
         
         // 清除分类缓存
         redisService.clearCategoryCache();
+        searchService.syncArticlesByCategoryId(id);
         
         return Result.success("删除成功");
     }

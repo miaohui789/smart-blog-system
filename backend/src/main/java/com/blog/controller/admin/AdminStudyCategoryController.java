@@ -4,6 +4,7 @@ import com.blog.common.result.Result;
 import com.blog.dto.request.StudyCategorySaveRequest;
 import com.blog.dto.response.StudyCategoryVO;
 import com.blog.entity.StudyCategory;
+import com.blog.service.SearchService;
 import com.blog.service.StudyCategoryService;
 import com.blog.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +29,7 @@ import java.util.List;
 public class AdminStudyCategoryController {
 
     private final StudyCategoryService studyCategoryService;
+    private final SearchService searchService;
 
     @Operation(summary = "分类列表")
     @GetMapping("/list")
@@ -44,12 +46,16 @@ public class AdminStudyCategoryController {
     @Operation(summary = "新增分类")
     @PostMapping
     public Result<StudyCategory> create(@Validated @RequestBody StudyCategorySaveRequest request) {
-        return Result.success(studyCategoryService.saveCategory(request, SecurityUtils.requireCurrentUserId()));
+        StudyCategory category = studyCategoryService.saveCategory(request, SecurityUtils.requireCurrentUserId());
+        searchService.syncStudyQuestionsByCategoryId(category.getId());
+        return Result.success(category);
     }
 
     @Operation(summary = "编辑分类")
     @PutMapping("/{id}")
     public Result<StudyCategory> update(@PathVariable Long id, @Validated @RequestBody StudyCategorySaveRequest request) {
-        return Result.success(studyCategoryService.updateCategory(id, request, SecurityUtils.requireCurrentUserId()));
+        StudyCategory category = studyCategoryService.updateCategory(id, request, SecurityUtils.requireCurrentUserId());
+        searchService.syncStudyQuestionsByCategoryId(id);
+        return Result.success(category);
     }
 }

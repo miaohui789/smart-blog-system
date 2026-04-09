@@ -58,6 +58,22 @@ spring:
       write-numbers-as-strings: false
     parser:
       allow-comments: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:82.156.91.111}
+    port: ${RABBITMQ_PORT:5672}
+
+    virtual-host: ${RABBITMQ_VHOST:/}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:123456}
+    listener:
+      simple:
+        missing-queues-fatal: false
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          multiplier: 2.0
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -104,6 +120,7 @@ blog:
       password:
       article-index: blog_article_search
       study-question-index: blog_study_question_search
+      user-index: blog_user_search
       analyzer: ik_max_word
       search-analyzer: ik_smart
       connect-timeout-ms: 3000

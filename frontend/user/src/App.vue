@@ -1,21 +1,26 @@
 <template>
-  <router-view />
+  <div id="app-root">
+    <router-view />
+    <LevelUpModal ref="levelUpModalRef" />
+  </div>
 </template>
 
 <script setup>
-import { onMounted, watch, onUnmounted } from 'vue'
+import { onMounted, watch, onUnmounted, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { useNotificationStore } from '@/stores/notification'
 import { useMessageStore } from '@/stores/message'
-import { initWebSocket, closeWebSocket, onNotification, onForceLogout, onUnreadUpdate, onMessage } from '@/utils/websocket'
+import { initWebSocket, closeWebSocket, onNotification, onForceLogout, onUnreadUpdate, onMessage, onExpChanged, onExpLevelUp } from '@/utils/websocket'
 import { ElMessage, ElNotification } from 'element-plus'
 import { getTheme } from '@/api/user'
+import LevelUpModal from '@/components/LevelUpModal/index.vue'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 const notificationStore = useNotificationStore()
 const messageStore = useMessageStore()
+const levelUpModalRef = ref(null)
 
 // 存储取消订阅函数
 let unsubscribes = []
@@ -23,7 +28,11 @@ let unsubscribes = []
 // 页面加载时，如果已登录则刷新用户信息并加载主题
 onMounted(() => {
   if (userStore.isLoggedIn) {
-    userStore.fetchUserInfo().then(() => {
+    userStore.fetchUserInfo().then((user) => {
+      if (!user?.id) {
+        userStore.resetState()
+        return
+      }
       initWebSocketConnection()
       loadUserTheme()
     })
@@ -109,8 +118,11 @@ async function loadUserTheme() {
 
 // 监听登录状态变化
 watch(() => userStore.isLoggedIn, (isLoggedIn) => {
-  if (isLoggedIn && userStore.userInfo?.id) {
-    initWebSocketConnection()
+  if (isLoggedIn) {
+    loadUserTheme()
+    if (userStore.userInfo?.id) {
+      initWebSocketConnection()
+    }
   } else {
     cleanupWebSocket()
   }
@@ -197,7 +209,18 @@ function initWebSocketConnection() {
     notificationStore.fetchUnreadCount()
     messageStore.fetchUnreadCount()
   }))
-  
+
+  unsubscribes.push(onExpChanged(() => {
+    userStore.fetchExpSummary()
+  }))
+
+  // 监听经验等级提升
+  unsubscribes.push(onExpLevelUp((data) => {
+    if (levelUpModalRef.value) {
+      levelUpModalRef.value.show(data)
+    }
+  }))
+
   // 监听强制下线
   unsubscribes.push(onForceLogout((data) => {
     ElMessage.warning(data.message || '账号已在其他设备登录')

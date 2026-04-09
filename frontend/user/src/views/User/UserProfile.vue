@@ -72,6 +72,14 @@
                 <span class="stat-label">关注</span>
               </div>
             </div>
+
+            <div class="profile-exp" v-if="userProfile.status !== 2 && userProfile.nextLevelNeedExp !== undefined">
+              <ExpBar 
+                :level="userProfile.userLevel" 
+                :current-exp="userProfile.currentExp" 
+                :next-level-need-exp="userProfile.nextLevelNeedExp" 
+              />
+            </div>
           </div>
           <!-- 已注销用户不显示关注和私信按钮 -->
           <div class="profile-actions" v-if="!isSelf && userProfile.status !== 2">
@@ -167,6 +175,7 @@ import { getUserLevelTheme } from '@/utils/level'
 import Loading from '@/components/Loading/index.vue'
 import ArticleCard from '@/components/ArticleCard/index.vue'
 import VipUsername from '@/components/VipUsername/index.vue'
+import ExpBar from '@/components/ExpBar/index.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -661,6 +670,11 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
+}
+
+.profile-exp {
+  margin-top: 16px;
+  max-width: 400px;
 }
 
 .profile-actions {

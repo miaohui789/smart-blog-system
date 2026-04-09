@@ -351,6 +351,8 @@ const emailCodeRules = {
 }
 
 async function handleLogin() {
+  if (loginLoading.value) return
+
   await loginFormRef.value.validate()
   loginLoading.value = true
   try {
@@ -358,7 +360,9 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
-    // 错误已处理
+    if (e?.message) {
+      ElMessage.error(e.message)
+    }
   } finally {
     loginLoading.value = false
   }
@@ -375,14 +379,16 @@ function handleGuestAccess() {
       type: 'info',
     }
   ).then(() => {
+    userStore.resetState()
     ElMessage.success('欢迎访问')
     router.push('/')
   }).catch(() => {
-    // 用户取消
   })
 }
 
 async function handleEmailCodeLogin() {
+  if (loginLoading.value) return
+
   await emailCodeFormRef.value.validate()
   loginLoading.value = true
   try {
@@ -390,7 +396,9 @@ async function handleEmailCodeLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
-    // 错误已处理
+    if (e?.message) {
+      ElMessage.error(e.message)
+    }
   } finally {
     loginLoading.value = false
   }

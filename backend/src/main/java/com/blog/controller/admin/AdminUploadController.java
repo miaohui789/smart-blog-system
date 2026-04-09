@@ -36,7 +36,7 @@ public class AdminUploadController {
         }
 
         try {
-            String url = fileService.uploadFile(file);
+            String url = fileService.uploadImage(file);
             return Result.success(url);
         } catch (Exception e) {
             log.error("文件上传失败", e);

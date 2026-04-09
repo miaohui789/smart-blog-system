@@ -316,9 +316,11 @@ import {
 import { getStudyDashboard } from '@/api/study'
 import Loading from '@/components/Loading/index.vue'
 import { formatDate, formatRelativeTime } from '@/utils/format'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const MODULE_KEYS = ['overview', 'review', 'favorite', 'check']
 
@@ -405,7 +407,7 @@ const progressItems = computed(() => {
   const totalTasks = safeNumber(statistics.value.totalTaskCount)
   const completedTasks = safeNumber(statistics.value.completedTaskCount)
 
-  return [
+  const items = [
     {
       label: '学习覆盖率',
       percent: calcPercent(studiedQuestions, totalQuestions),
@@ -422,6 +424,16 @@ const progressItems = computed(() => {
       detail: `${completedTasks} / ${totalTasks}`
     }
   ]
+
+  if (userStore.expSummary) {
+    items.unshift({
+      label: `当前经验 (Lv.${userStore.expSummary.level})`,
+      percent: userStore.expSummary.nextLevelNeedExp ? Math.min(Math.max((userStore.expSummary.currentExp / userStore.expSummary.nextLevelNeedExp) * 100, 0), 100) : 100,
+      detail: `${userStore.expSummary.currentExp} / ${userStore.expSummary.nextLevelNeedExp || 0}`
+    })
+  }
+
+  return items
 })
 
 const activeModuleConfig = computed(() => {

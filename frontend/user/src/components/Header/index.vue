@@ -48,7 +48,7 @@
       <!-- 右侧：功能按钮 -->
       <div class="header-right">
         <!-- 消息通知铃铛下拉菜单 -->
-        <el-dropdown v-if="userStore.isLoggedIn" trigger="click" @command="handleBellCommand">
+        <el-dropdown v-if="showBellDropdown" trigger="click" @command="handleBellCommand">
           <div class="notification-bell" title="消息中心">
             <el-icon :size="20"><Bell /></el-icon>
             <span v-if="totalBellUnread > 0" class="bell-badge">{{ totalBellUnread > 99 ? '99+' : totalBellUnread }}</span>
@@ -68,6 +68,8 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+
+        <SignInCalendar v-if="userStore.isLoggedIn" ref="signInCalendarRef" />
 
         <!-- 主题切换开关 -->
         <label class="theme-switch" @click.prevent="toggleTheme">
@@ -194,6 +196,14 @@
                     <span class="stat-value">{{ userStats.articleCount || 0 }}</span>
                     <span class="stat-label">文章</span>
                   </div>
+                </div>
+
+                <div class="user-card-exp" v-if="userStore.expSummary">
+                  <ExpBar 
+                    :level="userStore.expSummary.userLevel || userStore.userInfo?.userLevel || 1" 
+                    :current-exp="userStore.expSummary.currentExp" 
+                    :next-level-need-exp="userStore.expSummary.nextLevelNeedExp" 
+                  />
                 </div>
                 
                 <div class="user-card-menu">
@@ -377,6 +387,49 @@
                 </div>
               </div>
             </div>
+
+            <div v-else class="search-results-shell hot-search-shell">
+              <div class="search-meta-bar">
+                <span>{{ hotSearchBoard.date ? `${hotSearchBoard.timezone} ${hotSearchBoard.date} ${hotSearchBoard.period}` : '北京时间每日热搜榜' }}</span>
+                <span class="hot-search-reset">零点清空</span>
+              </div>
+
+              <div class="search-scroll">
+                <div class="search-section">
+                  <div class="search-section-title">
+                    <el-icon><Medal /></el-icon>
+                    <span>今日热搜</span>
+                  </div>
+                  <div v-if="hotSearchLoading" class="search-empty">
+                    热搜加载中...
+                  </div>
+                  <div v-else-if="hotSearchList.length" class="hot-search-list">
+                    <button
+                      v-for="(item, index) in hotSearchList"
+                      :key="item.keyword"
+                      class="hot-search-item"
+                      :class="`hot-rank-${index + 1}`"
+                      type="button"
+                      @click="selectHotKeyword(item.keyword)"
+                    >
+                      <span v-if="index < 3" class="hot-search-rank hot-search-rank-hot">
+                        <el-icon><HotWater /></el-icon>
+                        <span class="hot-rank-number">{{ index + 1 }}</span>
+                      </span>
+                      <span v-else class="hot-search-rank">{{ index + 1 }}</span>
+                      <span class="hot-search-keyword">{{ item.keyword }}</span>
+                      <span class="hot-search-score-badge">
+                        <el-icon class="fire-icon"><TrendCharts /></el-icon>
+                        {{ formatScore(item.score) }}
+                      </span>
+                    </button>
+                  </div>
+                  <div v-else class="search-empty">
+                    今日热搜正在生成中
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Transition>
@@ -444,6 +497,15 @@
                     <span v-if="totalBellUnread > 0" class="mobile-action-badge">{{ totalBellUnread > 99 ? '99+' : totalBellUnread }}</span>
                   </button>
                   <button
+                    v-if="userStore.isLoggedIn"
+                    class="mobile-action-item"
+                    type="button"
+                    @click="openSignInCalendar"
+                  >
+                    <span class="mobile-ai-badge sign-badge">签</span>
+                    <span>每日签到</span>
+                  </button>
+                  <button
                     v-if="!userStore.isLoggedIn"
                     class="mobile-action-item"
                     type="button"
@@ -503,16 +565,18 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { Search, User, Star, Setting, SwitchButton, Document, Medal, ChatDotRound, UserFilled, Connection, Bell, Picture, Reading, Menu, Close } from '@element-plus/icons-vue'
+import { Search, User, Star, Setting, SwitchButton, Document, Medal, HotWater, TrendCharts, ChatDotRound, UserFilled, Connection, Bell, Picture, Reading, Menu, Close } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
 import { useNotificationStore } from '@/stores/notification'
 import { useMessageStore } from '@/stores/message'
-import { searchAll } from '@/api/search'
+import { searchAll, getHotSearchBoard } from '@/api/search'
 import { getUserProfile } from '@/api/follow'
 import VipUsername from '@/components/VipUsername/index.vue'
+import ExpBar from '@/components/ExpBar/index.vue'
+import SignInCalendar from '@/components/SignInCalendar/index.vue'
 import { getUserLevelTheme } from '@/utils/level'
 
 const router = useRouter()
@@ -529,9 +593,28 @@ const searchResults = ref([])
 const studyResults = ref([])
 const userResults = ref([])
 const searching = ref(false)
+const hotSearchLoading = ref(false)
+const hotSearchList = ref([])
+
+const formatScore = (score) => {
+  if (!score) return 0
+  if (score >= 10000) return (score / 10000).toFixed(1) + 'w'
+  if (score >= 1000) return (score / 1000).toFixed(1) + 'k'
+  return score
+}
+const hotSearchBoard = ref({
+  date: '',
+  timezone: '北京时间',
+  period: '00:00 - 24:00'
+})
+const recordedHotKeywords = ref(new Set())
 const searchInputRef = ref(null)
 const avatarLoadError = ref(false)
 const showMobileMenu = ref(false)
+const signInCalendarRef = ref(null)
+const hideBellOnMobile = ref(false)
+
+const showBellDropdown = computed(() => userStore.isLoggedIn && !hideBellOnMobile.value)
 
 // 用户卡片相关
 const showUserCard = ref(false)
@@ -719,6 +802,11 @@ function toggleTheme(event) {
   themeStore.toggleTheme(event)
 }
 
+function openSignInCalendar() {
+  closeMobileMenu()
+  signInCalendarRef.value?.openDialog()
+}
+
 function onAvatarError() {
   avatarLoadError.value = true
 }
@@ -753,6 +841,8 @@ function openSearch() {
   searchResults.value = []
   studyResults.value = []
   userResults.value = []
+  recordedHotKeywords.value = new Set()
+  fetchHotSearches()
   nextTick(() => searchInputRef.value?.focus())
 }
 
@@ -775,6 +865,7 @@ function closeSearch() {
   searchResults.value = []
   studyResults.value = []
   userResults.value = []
+  recordedHotKeywords.value = new Set()
 }
 
 function toggleMobileMenu() {
@@ -799,18 +890,51 @@ function goToSearchPage() {
   })
 }
 
+function selectHotKeyword(text) {
+  keyword.value = text
+  goToSearchPage()
+}
+
 async function doSearch() {
-  if (!keyword.value.trim()) return
+  const trimmedKeyword = keyword.value.trim()
+  if (!trimmedKeyword) return
   searching.value = true
   try {
-    const res = await searchAll({ keyword: keyword.value, pageSize: 5 })
+    const shouldRecordHot = !recordedHotKeywords.value.has(trimmedKeyword)
+    const res = await searchAll({
+      keyword: trimmedKeyword,
+      pageSize: 5,
+      recordHot: shouldRecordHot
+    })
     searchResults.value = res.data?.articles?.list || []
     studyResults.value = res.data?.studyQuestions?.list || []
     userResults.value = res.data?.users || []
+    if (shouldRecordHot) {
+      recordedHotKeywords.value = new Set(recordedHotKeywords.value).add(trimmedKeyword)
+      fetchHotSearches()
+    }
   } catch (e) {
     console.error(e)
   } finally {
     searching.value = false
+  }
+}
+
+async function fetchHotSearches() {
+  hotSearchLoading.value = true
+  try {
+    const res = await getHotSearchBoard({ limit: 10 })
+    hotSearchBoard.value = {
+      date: res.data?.date || '',
+      timezone: res.data?.timezone || '北京时间',
+      period: res.data?.period || '00:00 - 24:00'
+    }
+    hotSearchList.value = res.data?.list || []
+  } catch (e) {
+    console.error(e)
+    hotSearchList.value = []
+  } finally {
+    hotSearchLoading.value = false
   }
 }
 
@@ -864,9 +988,16 @@ function handleClickOutside(e) {
 }
 
 // 处理滚动关闭卡片
+let headerTicking = false
 function handleScroll() {
-  if (window.innerWidth <= 768 && showUserCard.value) {
-    showUserCard.value = false
+  if (!headerTicking) {
+    window.requestAnimationFrame(() => {
+      if (window.innerWidth <= 768 && showUserCard.value) {
+        showUserCard.value = false
+      }
+      headerTicking = false
+    })
+    headerTicking = true
   }
 }
 
@@ -877,7 +1008,13 @@ function handleCardClick(e) {
   }
 }
 
+function updateHeaderViewportState() {
+  hideBellOnMobile.value = window.innerWidth <= 480
+}
+
 onMounted(() => {
+  updateHeaderViewportState()
+  window.addEventListener('resize', updateHeaderViewportState)
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('scroll', handleScroll, { passive: true })
@@ -892,6 +1029,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateHeaderViewportState)
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('scroll', handleScroll)
@@ -989,6 +1127,10 @@ function handleCommand(command) {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+
+  @media (max-width: 480px) {
+    padding: 0 12px; /* 减小两侧内边距 */
+  }
 }
 
 :root[data-theme="light"] .header-container {
@@ -1000,6 +1142,10 @@ function handleCommand(command) {
   align-items: center;
   gap: 24px;
   min-width: 0;
+
+  @media (max-width: 480px) {
+    gap: 4px; /* 进一步缩小左侧元素间距 */
+  }
 }
 
 .logo {
@@ -1023,6 +1169,10 @@ function handleCommand(command) {
     font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
+
+    @media (max-width: 480px) {
+      display: none; /* 手机端隐藏文字，只留 Logo 图标 */
+    }
   }
 }
 
@@ -1036,6 +1186,7 @@ function handleCommand(command) {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
   
   .el-icon {
     font-size: 14px;
@@ -1065,6 +1216,14 @@ function handleCommand(command) {
     span, kbd { display: none; }
     padding: 8px;
   }
+
+  @media (max-width: 480px) {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
 }
 
 .ai-btn {
@@ -1086,6 +1245,19 @@ function handleCommand(command) {
   background-clip: content-box, border-box;
   text-decoration: none;
   position: relative;
+  flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    width: 28px; /* 进一步缩小宽度 */
+    height: 28px; /* 进一步缩小高度 */
+    border-radius: 50%;
+    /* margin-right: auto; 已移至底部统一样式中处理 */
+    
+    strong {
+      font-size: 11px !important;
+      letter-spacing: 0 !important;
+    }
+  }
   
   strong {
     z-index: 2;
@@ -1279,6 +1451,71 @@ function handleCommand(command) {
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    justify-content: space-between; /* 恢复为两端对齐 */
+    gap: 4px;
+  }
+
+  .header-left {
+    flex-shrink: 0;
+    margin-right: 0; /* 移除额外边距 */
+    gap: 4px; /* 左侧内部(Logo,搜索,AI)的间距 */
+  }
+
+  .header-right {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* 取消之前把 AI 按钮当弹簧的做法，恢复其在 header-left 里的正常文档流 */
+  .ai-btn {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50%;
+    margin-right: 0;
+    margin-left: 0;
+    
+    strong {
+      font-size: 11px !important;
+      letter-spacing: 0 !important;
+    }
+  }
+
+  /* 取消搜索框最小宽度限制，防止挤压旁边的元素 */
+  .search-box {
+    min-width: unset;
+  }
+
+  .theme-switch {
+    transform: scale(0.6); /* 进一步缩小主题切换按钮 */
+    transform-origin: center;
+  }
+
+  .notification-bell {
+    display: none; /* 在手机端隐藏消息铃铛，释放空间 */
+  }
+
+  .external-link {
+    display: none;
+  }
+
+  .user-avatar {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .mobile-menu-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    
+    .el-icon {
+      font-size: 16px;
+    }
+  }
 }
 
 .mobile-menu-btn {
@@ -1819,6 +2056,10 @@ function handleCommand(command) {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.mobile-ai-badge.sign-badge {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
 }
 
 .mobile-menu-fade-enter-active,
@@ -2497,6 +2738,11 @@ function handleCommand(command) {
   }
 }
 
+.user-card-exp {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
 .user-card-menu {
   padding: 6px;
 }
@@ -2864,6 +3110,157 @@ function handleCommand(command) {
   .el-icon {
     font-size: 14px;
   }
+}
+
+.hot-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.hot-search-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-card-hover);
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: inherit;
+  }
+
+  &:hover {
+    transform: translateX(4px);
+    
+    &::before {
+      opacity: 1;
+    }
+
+    .hot-search-keyword {
+      color: var(--primary-color);
+    }
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.hot-search-rank {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--bg-body);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  transition: all 0.2s;
+}
+
+.hot-search-item.hot-rank-1 .hot-search-rank {
+  width: 36px;
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.3);
+  
+  .el-icon { font-size: 14px; }
+}
+
+.hot-search-item.hot-rank-2 .hot-search-rank {
+  width: 36px;
+  background: linear-gradient(135deg, #fa8c16 0%, #ff9c6e 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(250, 140, 22, 0.3);
+  
+  .el-icon { font-size: 14px; }
+}
+
+.hot-search-item.hot-rank-3 .hot-search-rank {
+  width: 36px;
+  background: linear-gradient(135deg, #faad14 0%, #ffc069 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(250, 173, 20, 0.3);
+  
+  .el-icon { font-size: 14px; }
+}
+
+.hot-rank-number {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+.hot-search-keyword {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.hot-search-score-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--bg-body);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.2s;
+
+  .fire-icon {
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+}
+
+.hot-search-item:hover .hot-search-score-badge {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  
+  .fire-icon {
+    color: #ff4d4f;
+  }
+}
+
+.hot-search-reset {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* 用户搜索结果 */

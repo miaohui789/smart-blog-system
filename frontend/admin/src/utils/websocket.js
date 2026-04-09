@@ -5,18 +5,32 @@ import router from '@/router'
 let ws = null
 let reconnectTimer = null
 let heartbeatTimer = null
+let currentUserId = null
+let currentWsUrl = ''
+let forceLogoutHandling = false
 
 /**
  * 初始化WebSocket连接
  */
 export function initWebSocket(userId) {
   if (!userId || !getToken()) return
-  
-  closeWebSocket()
-  
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = import.meta.env.VITE_APP_WS_URL || `${protocol}//${window.location.hostname}:8080`
   const wsUrl = `${host}/ws/admin/${userId}`
+
+  if (
+    ws &&
+    currentUserId === userId &&
+    currentWsUrl === wsUrl &&
+    (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
+  ) {
+    return
+  }
+
+  closeWebSocket()
+  currentUserId = userId
+  currentWsUrl = wsUrl
   
   console.log('正在连接WebSocket:', wsUrl)
   
@@ -57,6 +71,8 @@ export function initWebSocket(userId) {
 }
 
 function handleForceLogout(message) {
+  if (forceLogoutHandling) return
+  forceLogoutHandling = true
   console.log('收到强制下线通知')
   closeWebSocket()
   removeToken()
@@ -68,8 +84,9 @@ function handleForceLogout(message) {
     closeOnClickModal: false,
     closeOnPressEscape: false
   }).finally(() => {
-    // 强制刷新页面，路由守卫会检测到没有token自动跳转登录页
-    window.location.reload()
+    router.replace('/login').finally(() => {
+      forceLogoutHandling = false
+    })
   })
 }
 
@@ -109,4 +126,6 @@ export function closeWebSocket() {
     ws.close(1000)
     ws = null
   }
+  currentUserId = null
+  currentWsUrl = ''
 }

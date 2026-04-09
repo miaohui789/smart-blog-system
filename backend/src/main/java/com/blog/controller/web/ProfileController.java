@@ -22,6 +22,7 @@ import com.blog.service.ArticleLikeService;
 import com.blog.service.ArticleService;
 import com.blog.service.CommentService;
 import com.blog.service.FileService;
+import com.blog.service.SearchService;
 import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,6 +53,7 @@ public class ProfileController {
     private final CommentService commentService;
     private final FileService fileService;
     private final PasswordEncoder passwordEncoder;
+    private final SearchService searchService;
 
     @Operation(summary = "获取个人资料")
     @GetMapping("/profile")
@@ -98,6 +100,8 @@ public class ProfileController {
         }
 
         userService.updateById(user);
+        searchService.syncUser(userId);
+        searchService.syncArticlesByUserId(userId);
         user.setPassword(null);
         return Result.success(user);
     }
@@ -140,6 +144,8 @@ public class ProfileController {
             User user = userService.getById(userId);
             user.setAvatar(url);
             userService.updateById(user);
+            searchService.syncUser(userId);
+            searchService.syncArticlesByUserId(userId);
 
             Map<String, String> data = new HashMap<>();
             data.put("url", url);

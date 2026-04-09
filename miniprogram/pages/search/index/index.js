@@ -1,10 +1,44 @@
 // pages/search/index/index.js
-const articleApi = require('../../../api/article')
+const searchApi = require('../../../api/search')
 const imageUtil = require('../../../utils/image')
 const formatUtil = require('../../../utils/format')
 
 const STORAGE_KEY = 'searchHistory'
 const MAX_HISTORY = 10
+
+function extractArticleRecords(result) {
+  if (!result) {
+    return []
+  }
+  if (result.articles) {
+    if (Array.isArray(result.articles.list)) {
+      return result.articles.list
+    }
+    if (Array.isArray(result.articles.records)) {
+      return result.articles.records
+    }
+    if (Array.isArray(result.articles)) {
+      return result.articles
+    }
+  }
+  if (Array.isArray(result.list)) {
+    return result.list
+  }
+  if (Array.isArray(result.records)) {
+    return result.records
+  }
+  if (Array.isArray(result)) {
+    return result
+  }
+  return []
+}
+
+function extractUserRecords(result) {
+  if (!result || !Array.isArray(result.users)) {
+    return []
+  }
+  return result.users
+}
 
 Page({
   data: {
@@ -15,6 +49,12 @@ Page({
     searchHistory: [],
     searchTimer: null,
     hotKeywords: [],
+    hotSearchBoard: {
+      date: '',
+      timezone: '北京时间',
+      period: '00:00 - 24:00'
+    },
+    hotSearchLoading: false,
     discoveries: [],
     suggestions: [], // 搜索建议
     showSuggestions: false // 是否显示建议
@@ -80,40 +120,37 @@ Page({
 
   // 加载热门搜索（访问量最高的8篇文章标题）
   async loadHotKeywords() {
+    this.setData({ hotSearchLoading: true })
     try {
-      const res = await articleApi.getList({
-        page: 1,
-        pageSize: 8,
-        sortBy: 'view',
-        sortOrder: 'desc'
-      })
-
-      let records = []
-      if (Array.isArray(res)) {
-        records = res
-      } else if (res.records) {
-        records = res.records
-      } else if (res.list) {
-        records = res.list
-      } else if (res.data) {
-        if (Array.isArray(res.data)) {
-          records = res.data
-        } else if (res.data.records) {
-          records = res.data.records
-        } else if (res.data.list) {
-          records = res.data.list
-        }
-      }
-
-      const hotKeywords = records.map((article, index) => ({
-        id: article.id,
-        title: article.title,
-        hot: index < 3 // 前3个标记为热门
+      const res = await searchApi.getHotSearchBoard({ limit: 8 })
+      const list = Array.isArray(res.list) ? res.list : []
+      const hotKeywords = list.map((item, index) => ({
+        keyword: item.keyword,
+        rank: item.rank || index + 1,
+        score: item.score || 0,
+        hot: (item.rank || index + 1) <= 3
       }))
 
-      this.setData({ hotKeywords })
+      this.setData({
+        hotKeywords,
+        hotSearchBoard: {
+          date: res.date || '',
+          timezone: res.timezone || '北京时间',
+          period: res.period || '00:00 - 24:00'
+        }
+      })
     } catch (err) {
       console.error('加载热门搜索失败:', err)
+      this.setData({
+        hotKeywords: [],
+        hotSearchBoard: {
+          date: '',
+          timezone: '北京时间',
+          period: '00:00 - 24:00'
+        }
+      })
+    } finally {
+      this.setData({ hotSearchLoading: false })
     }
   },
 
@@ -197,32 +234,13 @@ Page({
   async loadSuggestions(keyword) {
     try {
       const tagApi = require('../../../api/tag')
-      const userApi = require('../../../api/user')
       
-      // 同时搜索文章、标签和用户
-      const [articleRes, tagRes, userRes] = await Promise.all([
-        articleApi.search(keyword, { page: 1, pageSize: 3 }),
-        tagApi.getList(),
-        userApi.search(keyword, { page: 1, pageSize: 3 })
+      const [searchRes, tagRes] = await Promise.all([
+        searchApi.searchAll({ keyword, page: 1, pageSize: 3 }),
+        tagApi.getList()
       ])
 
-      // 处理文章结果
-      let articles = []
-      if (articleRes.articles) {
-        if (articleRes.articles.records) {
-          articles = articleRes.articles.records
-        } else if (articleRes.articles.list) {
-          articles = articleRes.articles.list
-        } else if (Array.isArray(articleRes.articles)) {
-          articles = articleRes.articles
-        }
-      } else if (Array.isArray(articleRes)) {
-        articles = articleRes
-      } else if (articleRes.records) {
-        articles = articleRes.records
-      } else if (articleRes.list) {
-        articles = articleRes.list
-      }
+      const articles = extractArticleRecords(searchRes)
 
       // 处理标签结果
       let tags = []
@@ -237,8 +255,7 @@ Page({
         tag.name.toLowerCase().includes(keyword.toLowerCase())
       ).slice(0, 2)
 
-      // 处理用户结果（已经是数组）
-      let users = Array.isArray(userRes) ? userRes : []
+      const users = extractUserRecords(searchRes)
 
       // 构建建议列表
       const suggestions = []
@@ -332,7 +349,8 @@ Page({
     this.handleSearch(true)
   },
 
-  async handleSearch(saveHistory = true) {
+  async handleSearch(arg = true) {
+    const saveHistory = typeof arg === 'boolean' ? arg : true
     const keyword = this.data.keyword.trim()
     if (!keyword) {
       return
@@ -349,33 +367,19 @@ Page({
     this.setData({ loading: true, searched: true })
 
     try {
-      const res = await articleApi.search(keyword)
+      const res = await searchApi.searchAll({
+        keyword,
+        page: 1,
+        pageSize: 10,
+        recordHot: saveHistory
+      })
       
       console.log('搜索返回数据:', res)
       
-      // 验证返回数据格式
-      let records = []
-      if (res.articles) {
-        // 后端返回 {articles: {...}, users: [...]}
-        if (res.articles.records) {
-          records = res.articles.records
-        } else if (res.articles.list) {
-          records = res.articles.list
-        } else if (Array.isArray(res.articles)) {
-          records = res.articles
-        }
-      } else if (Array.isArray(res)) {
-        records = res
-      } else if (res.records && Array.isArray(res.records)) {
-        records = res.records
-      } else if (res.list && Array.isArray(res.list)) {
-        records = res.list
-      }
+      let records = extractArticleRecords(res)
 
-      // 处理图片路径
       records = imageUtil.processArticleList(records)
       
-      // 格式化时间
       records = records.map(article => ({
         ...article,
         createTime: formatUtil.formatRelativeTime(article.createTime),
@@ -386,6 +390,9 @@ Page({
         articles: records,
         loading: false
       })
+      if (saveHistory) {
+        this.loadHotKeywords()
+      }
     } catch (err) {
       console.error('搜索失败:', err)
       this.setData({ loading: false })

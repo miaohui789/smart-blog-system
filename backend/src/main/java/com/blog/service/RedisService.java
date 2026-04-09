@@ -2,6 +2,7 @@ package com.blog.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -43,6 +44,7 @@ public class RedisService {
     public static final String CACHE_WEATHER = CACHE_PREFIX + "weather:";
     public static final String CACHE_USER_FOLLOW = CACHE_PREFIX + "user:follow:";
     public static final String CACHE_USER_FANS = CACHE_PREFIX + "user:fans:";
+    public static final String CACHE_SEARCH_HOT = CACHE_PREFIX + "search:hot:";
     public static final String CACHE_STUDY_CATEGORY_TREE = CACHE_PREFIX + "study:category:tree:";
     public static final String CACHE_STUDY_CATEGORY_TREE_ENABLED = CACHE_STUDY_CATEGORY_TREE + "enabled";
     public static final String CACHE_STUDY_OVERVIEW = CACHE_PREFIX + "study:overview:";
@@ -362,6 +364,16 @@ public class RedisService {
         if (!redisAvailable) return new LinkedHashSet<>();
         try {
             return redisTemplate.opsForZSet().reverseRange(key, start, end);
+        } catch (Exception e) {
+            handleRedisError(e);
+            return new LinkedHashSet<>();
+        }
+    }
+
+    public Set<ZSetOperations.TypedTuple<Object>> zReverseRangeWithScores(String key, long start, long end) {
+        if (!redisAvailable) return new LinkedHashSet<>();
+        try {
+            return redisTemplate.opsForZSet().reverseRangeWithScores(key, start, end);
         } catch (Exception e) {
             handleRedisError(e);
             return new LinkedHashSet<>();

@@ -1,7 +1,7 @@
 <template>
   <article class="article-card" @click="goDetail">
     <div class="card-cover">
-      <img :src="coverUrl" :alt="article.title" @error="handleImageError" />
+      <img :src="coverUrl" :alt="article.title" loading="lazy" decoding="async" @error="handleImageError" />
       <div class="cover-overlay"></div>
     </div>
     <div class="card-content">
@@ -33,6 +33,23 @@
             {{ article.commentCount || 0 }}
           </span>
         </div>
+        
+        <!-- 作者信息区域 -->
+        <div class="card-author" v-if="article.author" @click.stop="goAuthorDetail">
+          <VipUsername 
+            :username="article.author.nickname || article.author.username"
+            :userLevel="article.author.userLevel"
+            :vipLevel="article.author.vipLevel"
+            :showBadge="true"
+          />
+          <el-avatar 
+            :size="24" 
+            :src="article.author.avatar" 
+            class="author-avatar"
+          >
+            {{ (article.author.nickname || article.author.username || 'U').charAt(0).toUpperCase() }}
+          </el-avatar>
+        </div>
       </div>
     </div>
   </article>
@@ -43,6 +60,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, View, Star, CollectionTag, ChatDotRound } from '@element-plus/icons-vue'
 import { formatDate } from '@/utils/format'
+import VipUsername from '@/components/VipUsername/index.vue'
 
 const props = defineProps({
   article: { type: Object, required: true }
@@ -67,6 +85,12 @@ function handleImageError() {
 
 function goDetail() {
   router.push(`/article/${props.article.id}`)
+}
+
+function goAuthorDetail() {
+  if (props.article.author?.id) {
+    router.push(`/user/${props.article.author.id}`)
+  }
 }
 </script>
 
@@ -180,16 +204,32 @@ function goDetail() {
 .card-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end; /* 底部对齐，防止头像和多行元信息高度不一致导致错位 */
   padding-top: 14px;
   border-top: 1px solid var(--border-color);
   transition: border-color 0.3s;
+  min-height: 44px; /* 保证底部区域有足够高度 */
+
+  /* 移动端适配：空间极小时允许垂直排列 */
+  @media (max-width: 400px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 }
 
 .card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 12px 10px; /* 增加行间距 */
+  flex: 1; /* 让左侧元信息占据剩余空间 */
+  min-width: 0; /* 防止子元素撑破父容器 */
+  margin-right: 12px; /* 与右侧作者信息保持间距 */
+
+  @media (max-width: 400px) {
+    margin-right: 0;
+    width: 100%;
+  }
 }
 
 .meta-item {
@@ -199,9 +239,81 @@ function goDetail() {
   font-size: 12px;
   color: var(--text-disabled);
   transition: color 0.3s;
+  white-space: nowrap; /* 防止单项换行 */
 
   .el-icon {
     font-size: 14px;
+  }
+}
+
+.card-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.3s;
+  flex-shrink: 0; /* 防止作者信息区域被挤压 */
+  
+  &:hover {
+    opacity: 0.8;
+  }
+  
+  /* 调整等级标签和用户名的尺寸使其更适合小空间 */
+  :deep(.vip-username) {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    .username-text {
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+  
+  :deep(.user-level-badge) {
+    transform: scale(0.85);
+    transform-origin: right center;
+    margin: 0;
+  }
+
+  .author-avatar {
+    border: 1px solid var(--border-color);
+    flex-shrink: 0; /* 强制头像不被挤压 */
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important; /* 强制正圆形 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 移动端适配：缩小字体和间距，隐藏部分非核心信息 */
+  @media (max-width: 480px) {
+    gap: 4px;
+    
+    :deep(.vip-username) {
+      .username-text {
+        max-width: 50px; /* 移动端进一步缩短用户名显示 */
+        font-size: 11px;
+      }
+    }
+    
+    :deep(.user-level-badge) {
+      transform: scale(0.7); /* 移动端进一步缩小等级标签 */
+    }
+
+    .author-avatar {
+      width: 20px !important;
+      height: 20px !important;
+    }
   }
 }
 </style>

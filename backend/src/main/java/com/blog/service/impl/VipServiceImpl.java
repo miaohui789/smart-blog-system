@@ -9,6 +9,8 @@ import com.blog.dto.request.VipKeyGenerateRequest;
 import com.blog.dto.request.VipMemberUpdateRequest;
 import com.blog.entity.*;
 import com.blog.mapper.*;
+import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import com.blog.service.VipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,8 @@ public class VipServiceImpl implements VipService {
     private final VipArticleHeatMapper vipArticleHeatMapper;
     private final UserMapper userMapper;
     private final ArticleMapper articleMapper;
+    private final RedisService redisService;
+    private final SearchService searchService;
     
     private static final String KEY_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -125,6 +129,7 @@ public class VipServiceImpl implements VipService {
         key.setUsedBy(userId);
         key.setUsedTime(now);
         vipActivationKeyMapper.updateById(key);
+        syncUserSearchAfterCommit(userId);
         
         return member;
     }
@@ -146,6 +151,7 @@ public class VipServiceImpl implements VipService {
                 user.setIsVip(0);
                 user.setVipLevel(0);
                 userMapper.updateById(user);
+                syncUserSearchAfterCommit(userId);
             }
             
             // 重置每日次数
@@ -294,6 +300,7 @@ public class VipServiceImpl implements VipService {
         user.setVipLevel(member.getStatus() == 1 ? member.getLevel() : 0);
         user.setVipExpireTime(member.getExpireTime());
         userMapper.updateById(user);
+        syncUserSearchAfterCommit(member.getUserId());
     }
 
     @Override
@@ -313,6 +320,7 @@ public class VipServiceImpl implements VipService {
         user.setVipLevel(0);
         user.setVipExpireTime(null);
         userMapper.updateById(user);
+        syncUserSearchAfterCommit(member.getUserId());
     }
 
     @Override
@@ -440,5 +448,12 @@ public class VipServiceImpl implements VipService {
         if (needUpdate) {
             vipMemberMapper.updateById(member);
         }
+    }
+
+    private void syncUserSearchAfterCommit(Long userId) {
+        redisService.runAfterCommit(() -> {
+            searchService.syncUser(userId);
+            searchService.syncArticlesByUserId(userId);
+        });
     }
 }

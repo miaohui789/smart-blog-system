@@ -3,6 +3,7 @@ package com.blog.controller.web;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.common.constant.ExpConstants;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
@@ -13,6 +14,7 @@ import com.blog.dto.response.UserVO;
 import com.blog.entity.Article;
 import com.blog.entity.ArticleTag;
 import com.blog.entity.User;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.security.SecurityUser;
 import com.blog.service.*;
 import com.blog.utils.IpUtils;
@@ -27,11 +29,13 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Tag(name = "文章接口")
@@ -50,6 +54,7 @@ public class ArticleController {
     private final RedisService redisService;
     private final NotificationService notificationService;
     private final SearchService searchService;
+    private final UserExpAsyncService userExpAsyncService;
 
     @Operation(summary = "文章列表")
     @GetMapping
@@ -61,7 +66,14 @@ public class ArticleController {
             @RequestParam(required = false, defaultValue = "desc") String sortOrder,
             @RequestParam(required = false) Integer excludeTop,
             @RequestParam(required = false) Integer onlyTop) {
-        
+        String cacheKey = buildArticleListCacheKey(page, pageSize, categoryId, sortBy, sortOrder, excludeTop, onlyTop);
+        @SuppressWarnings("unchecked")
+        PageResult<ArticleVO> cachedResult = (PageResult<ArticleVO>) redisService.get(cacheKey);
+        if (cachedResult != null) {
+            refreshArticleAuthorInfo(cachedResult.getList());
+            return Result.success(cachedResult);
+        }
+
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
                 .eq(categoryId != null, Article::getCategoryId, categoryId);
@@ -157,7 +169,7 @@ public class ArticleController {
         }).collect(Collectors.toList());
         
         PageResult<ArticleVO> result = PageResult.of(voList, pageResult.getTotal(), page, pageSize);
-        
+        redisService.setWithMinutes(cacheKey, result, RedisService.EXPIRE_SHORT);
         return Result.success(result);
     }
 
@@ -203,6 +215,7 @@ public class ArticleController {
             redisService.delete(RedisService.CACHE_HOT_ARTICLES);
             // 清除推荐文章缓存
             redisService.delete(RedisService.CACHE_RECOMMEND_ARTICLES);
+            searchService.syncArticle(id);
         }
         
         // 获取当前用户ID
@@ -222,13 +235,7 @@ public class ArticleController {
                 cachedVO.setIsLiked(false);
                 cachedVO.setIsFavorited(false);
             }
-            // 更新作者状态（可能被冻结）
-            if (cachedVO.getAuthor() != null) {
-                User author = userService.getById(article.getUserId());
-                if (author != null) {
-                    cachedVO.getAuthor().setStatus(author.getStatus());
-                }
-            }
+            refreshAuthorInfo(cachedVO, article.getUserId());
             return Result.success(cachedVO);
         }
         
@@ -245,6 +252,7 @@ public class ArticleController {
             authorVO.setNickname(author.getNickname());
             authorVO.setAvatar(author.getAvatar());
             authorVO.setUserLevel(author.getUserLevel());
+            authorVO.setVipLevel(author.getVipLevel());
             authorVO.setStatus(author.getStatus());
             vo.setAuthor(authorVO);
         }
@@ -517,6 +525,16 @@ public class ArticleController {
         // 清除文章相关缓存
         redisService.clearArticleCache(article.getId());
         searchService.syncArticle(article.getId());
+        if (status == 1) {
+            redisService.runAfterCommit(() -> userExpAsyncService.publishGrant(
+                    userId,
+                    ExpConstants.BIZ_ARTICLE_PUBLISH,
+                    "article:" + article.getId(),
+                    ExpConstants.EXP_ARTICLE_PUBLISH,
+                    "发布文章获得经验",
+                    "ArticleController.create"
+            ));
+        }
         
         return Result.success(article.getId());
     }
@@ -638,5 +656,62 @@ public class ArticleController {
             return securityUser.getUser().getId();
         }
         return null;
+    }
+
+    private String buildArticleListCacheKey(Integer page, Integer pageSize, Long categoryId, String sortBy,
+                                            String sortOrder, Integer excludeTop, Integer onlyTop) {
+        return RedisService.CACHE_ARTICLE_LIST
+                + page + ":" + pageSize + ":"
+                + (categoryId == null ? "all" : categoryId) + ":"
+                + sortBy + ":" + sortOrder + ":"
+                + (excludeTop == null ? 0 : excludeTop) + ":"
+                + (onlyTop == null ? 0 : onlyTop);
+    }
+
+    private void refreshArticleAuthorInfo(List<ArticleVO> articles) {
+        if (articles == null || articles.isEmpty()) {
+            return;
+        }
+
+        Set<Long> userIds = new HashSet<>();
+        for (ArticleVO article : articles) {
+            if (article.getAuthor() != null && article.getAuthor().getId() != null) {
+                userIds.add(article.getAuthor().getId());
+            }
+        }
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, User> userMap = userService.listByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        for (ArticleVO article : articles) {
+            if (article.getAuthor() == null) {
+                continue;
+            }
+            User author = userMap.get(article.getAuthor().getId());
+            if (author != null) {
+                applyAuthorInfo(article.getAuthor(), author);
+            }
+        }
+    }
+
+    private void refreshAuthorInfo(ArticleVO articleVO, Long userId) {
+        if (articleVO == null || articleVO.getAuthor() == null || userId == null) {
+            return;
+        }
+        User author = userService.getById(userId);
+        if (author != null) {
+            applyAuthorInfo(articleVO.getAuthor(), author);
+        }
+    }
+
+    private void applyAuthorInfo(UserVO authorVO, User author) {
+        authorVO.setUsername(author.getUsername());
+        authorVO.setNickname(author.getNickname());
+        authorVO.setAvatar(author.getAvatar());
+        authorVO.setUserLevel(author.getUserLevel());
+        authorVO.setVipLevel(author.getVipLevel());
+        authorVO.setStatus(author.getStatus());
     }
 }

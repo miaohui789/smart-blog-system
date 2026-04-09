@@ -87,24 +87,30 @@
 
   <!-- 热门搜索 -->
   <view class="hot-search" wx:if="{{!searched}}">
-    <view class="section-title">
-      <van-icon name="fire" size="18px" color="#f59e0b" />
-      <text>热门搜索</text>
+    <view class="section-header">
+      <view class="section-title">
+        <van-icon name="fire" size="18px" color="#f59e0b" />
+        <text>热搜榜单</text>
+      </view>
+      <text class="hot-reset">零点清空</text>
     </view>
+    <view class="hot-meta">{{hotSearchBoard.timezone}} {{hotSearchBoard.date}} {{hotSearchBoard.period}}</view>
     <view class="hot-list">
       <view 
         class="hot-item" 
         wx:for="{{hotKeywords}}" 
-        wx:key="id"
+        wx:key="keyword"
         bindtap="searchHot"
-        data-keyword="{{item.title}}"
+        data-keyword="{{item.keyword}}"
       >
-        <view class="hot-rank {{index < 3 ? 'top' : ''}}">{{index + 1}}</view>
-        <text class="hot-title">{{item.title}}</text>
+        <view class="hot-rank {{item.rank <= 3 ? 'top' : ''}}">{{item.rank}}</view>
+        <text class="hot-title">{{item.keyword}}</text>
         <view class="hot-badge" wx:if="{{item.hot}}">热</view>
+        <text class="hot-score">{{item.score}}</text>
         <van-icon name="search" size="16px" color="#64748b" class="hot-icon" />
       </view>
     </view>
+    <view class="empty-tip hot-empty" wx:if="{{!hotSearchLoading && hotKeywords.length === 0}}">今日热搜正在生成中</view>
   </view>
 
   <!-- 搜索发现 -->

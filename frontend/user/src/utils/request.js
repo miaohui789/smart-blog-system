@@ -3,8 +3,13 @@ import { ElMessage } from 'element-plus'
 import { getToken, clearAuth } from './auth'
 import router from '@/router'
 
+const rawBaseApi = import.meta.env.VITE_APP_BASE_API || '/api'
+const normalizedBaseApi = /^https?:\/\//.test(rawBaseApi)
+  ? rawBaseApi.replace(/\/+$/, '')
+  : `/${String(rawBaseApi).replace(/^\/+|\/+$/g, '')}`
+
 const service = axios.create({
-  baseURL: import.meta.env.VITE_APP_BASE_API,
+  baseURL: normalizedBaseApi,
   timeout: 15000
 })
 

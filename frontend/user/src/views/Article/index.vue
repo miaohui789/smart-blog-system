@@ -714,12 +714,55 @@ async function handleFavorite() {
   }
 }
 
+function resolveCurrentCommentUserLevel(level) {
+  const candidateLevels = [
+    level,
+    userStore.expSummary?.userLevel,
+    userStore.userInfo?.userLevel
+  ]
+
+  for (const candidate of candidateLevels) {
+    const normalizedLevel = Number(candidate)
+    if (Number.isFinite(normalizedLevel) && normalizedLevel > 0) {
+      return normalizedLevel
+    }
+  }
+
+  return 1
+}
+
+function buildCurrentCommentUser(user = {}) {
+  return {
+    id: user.id ?? userStore.userInfo?.id,
+    nickname: user.nickname ?? userStore.userInfo?.nickname,
+    avatar: user.avatar ?? userStore.userInfo?.avatar,
+    userLevel: resolveCurrentCommentUserLevel(user.userLevel),
+    vipLevel: Number(user.vipLevel ?? userStore.userInfo?.vipLevel ?? 0) || 0,
+    status: user.status ?? userStore.userInfo?.status ?? 1
+  }
+}
+
+async function syncCommentUserLevel(comment) {
+  try {
+    const latestExpSummary = await userStore.refreshExpSummaryWithRetry({
+      retryCount: 3,
+      retryDelay: 400
+    })
+    if (latestExpSummary?.userLevel && comment?.user) {
+      comment.user.userLevel = latestExpSummary.userLevel
+    }
+  } catch (e) {
+    console.error('同步评论用户等级失败:', e)
+  }
+}
+
 // 发表评论
 async function submitComment() {
   if (!commentContent.value.trim()) return
   submitting.value = true
   
   const content = commentContent.value.trim()
+  const savedReplyTo = replyTo.value
   // 修复：正确获取parentId - 如果回复的是子评论，需要找到其根评论
   let parentId = null
   if (replyTo.value) {
@@ -745,7 +788,6 @@ async function submitComment() {
     
     // 先清空输入框，提升用户体验
     commentContent.value = ''
-    const savedReplyTo = replyTo.value
     replyTo.value = null
     
     const res = await createComment(data)
@@ -758,13 +800,7 @@ async function submitComment() {
       replyUserId: replyUserId,
       createTime: new Date().toISOString(),
       likeCount: 0,
-      user: {
-        id: userStore.userInfo?.id,
-        nickname: userStore.userInfo?.nickname,
-        avatar: userStore.userInfo?.avatar,
-        vipLevel: userStore.userInfo?.vipLevel || 0,
-        status: userStore.userInfo?.status || 1
-      },
+      user: buildCurrentCommentUser(res.data?.user),
       replyUser: replyUserInfo,
       replies: []
     }
@@ -788,6 +824,8 @@ async function submitComment() {
     if (article.value) {
       article.value.commentCount = (article.value.commentCount || 0) + 1
     }
+
+    void syncCommentUserLevel(newComment)
     
     ElMessage.success('评论成功')
   } catch (e) {
@@ -1028,29 +1066,37 @@ function handleTocItemMouseLeave(event) {
 
 // 初始化滚动监听（进度条 + TOC 高亮）
 function initScrollListener() {
+  let articleTicking = false
   scrollHandler = () => {
-    // —— 阅读进度 ——
-    const articleEl = document.querySelector('.article-card')
-    if (articleEl) {
-      const scrolled = window.scrollY - articleEl.offsetTop
-      const total = articleEl.offsetHeight - window.innerHeight
-      readProgress.value = total > 0
-        ? Math.min(100, Math.max(0, (scrolled / total) * 100))
-        : 0
-    }
+    if (!articleTicking) {
+      window.requestAnimationFrame(() => {
+        // —— 阅读进度 ——
+        const articleEl = document.querySelector('.article-card')
+        if (articleEl) {
+          const scrolled = window.scrollY - articleEl.offsetTop
+          const total = articleEl.offsetHeight - window.innerHeight
+          readProgress.value = total > 0
+            ? Math.min(100, Math.max(0, (scrolled / total) * 100))
+            : 0
+        }
 
-    // —— TOC 当前章节高亮 ——
-    // 点击跳转期间锁定，不让 scroll 事件覆盖选中项
-    if (isScrollLocked || tocItems.value.length === 0) return
-    const offset = 100
-    let current = tocItems.value[0].id
-    for (const item of tocItems.value) {
-      const el = document.getElementById(item.id)
-      if (el && el.getBoundingClientRect().top <= offset) {
-        current = item.id
-      }
+        // —— TOC 当前章节高亮 ——
+        // 点击跳转期间锁定，不让 scroll 事件覆盖选中项
+        if (!isScrollLocked && tocItems.value.length > 0) {
+          const offset = 100
+          let current = tocItems.value[0].id
+          for (const item of tocItems.value) {
+            const el = document.getElementById(item.id)
+            if (el && el.getBoundingClientRect().top <= offset) {
+              current = item.id
+            }
+          }
+          activeTocId.value = current
+        }
+        articleTicking = false
+      })
+      articleTicking = true
     }
-    activeTocId.value = current
   }
   window.addEventListener('scroll', scrollHandler, { passive: true })
 }

@@ -25,7 +25,9 @@ const callbacks = {
   message: new Set(),
   message_withdraw: new Set(),  // 消息撤回
   force_logout: new Set(),
-  unread_update: new Set()  // 未读数更新
+  unread_update: new Set(),  // 未读数更新
+  exp_changed: new Set(),
+  exp_level_up: new Set() // 等级提升
 }
 
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.host}`
@@ -134,6 +136,12 @@ function handleMessage(rawData) {
         break
       case 'unread_update':
         callbacks.unread_update.forEach(cb => cb(data.data))
+        break
+      case 'EXP_CHANGED':
+        callbacks.exp_changed.forEach(cb => cb(data.data))
+        break
+      case 'EXP_LEVEL_UP':
+        callbacks.exp_level_up.forEach(cb => cb(data.data))
         break
     }
   } catch (e) {
@@ -272,6 +280,17 @@ export function onUnreadUpdate(callback) {
  */
 export function onMessageWithdraw(callback) {
   return registerCallback('message_withdraw', callback)
+}
+
+export function onExpChanged(callback) {
+  return registerCallback('exp_changed', callback)
+}
+
+/**
+ * 注册等级提升回调
+ */
+export function onExpLevelUp(callback) {
+  return registerCallback('exp_level_up', callback)
 }
 
 /**

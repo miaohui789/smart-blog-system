@@ -6,13 +6,17 @@ import com.blog.common.result.Result;
 import com.blog.entity.LoginLog;
 import com.blog.entity.OperationLog;
 import com.blog.service.LogService;
+import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Tag(name = "日志管理")
 @RestController
@@ -22,6 +26,7 @@ public class AdminLogController {
 
     private final LogService logService;
     private final com.blog.mapper.LoginLogMapper loginLogMapper;
+    private final UserService userService;
 
     @Operation(summary = "操作日志列表")
     @GetMapping("/operation")
@@ -32,6 +37,7 @@ public class AdminLogController {
         wrapper.orderByDesc(OperationLog::getCreateTime);
         
         Page<OperationLog> pageResult = logService.page(new Page<>(page, pageSize), wrapper);
+        fillOperationLogUsername(pageResult.getRecords());
         
         Map<String, Object> result = new HashMap<>();
         result.put("list", pageResult.getRecords());
@@ -69,5 +75,28 @@ public class AdminLogController {
     public Result<?> cleanLoginLogs() {
         loginLogMapper.delete(null);
         return Result.success("清空成功");
+    }
+
+    private void fillOperationLogUsername(List<OperationLog> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+
+        Set<Long> userIds = records.stream()
+                .map(OperationLog::getUserId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, String> usernameMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(com.blog.entity.User::getId, com.blog.entity.User::getUsername));
+
+        for (OperationLog record : records) {
+            if (record.getUserId() != null) {
+                record.setUsername(usernameMap.getOrDefault(record.getUserId(), "-"));
+            }
+        }
     }
 }

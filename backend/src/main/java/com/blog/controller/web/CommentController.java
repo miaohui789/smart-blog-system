@@ -2,6 +2,7 @@ package com.blog.controller.web;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.common.constant.ExpConstants;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
@@ -14,7 +15,10 @@ import com.blog.security.SecurityUser;
 import com.blog.service.ArticleService;
 import com.blog.service.CommentService;
 import com.blog.service.NotificationService;
+import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import com.blog.service.UserService;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.websocket.WebSocketServer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,6 +46,9 @@ public class CommentController {
     private final UserService userService;
     private final NotificationService notificationService;
     private final WebSocketServer webSocketServer;
+    private final UserExpAsyncService userExpAsyncService;
+    private final RedisService redisService;
+    private final SearchService searchService;
 
     @Operation(summary = "获取文章评论列表")
     @GetMapping("/articles/{articleId}/comments")
@@ -217,7 +224,17 @@ public class CommentController {
             
             // 广播新评论到文章页面（实时刷新评论区）
             broadcastNewComment(request.getArticleId(), comment, userId);
+            redisService.clearArticleCache(article.getId());
+            searchService.syncArticle(article.getId());
         }
+        userExpAsyncService.publishGrant(
+                userId,
+                ExpConstants.BIZ_COMMENT_CREATE,
+                "comment:" + comment.getId(),
+                ExpConstants.EXP_COMMENT_CREATE,
+                "发表评论获得经验",
+                "CommentController.create"
+        );
 
         // 返回新评论的ID
         Map<String, Object> result = new java.util.HashMap<>();
@@ -302,6 +319,8 @@ public class CommentController {
         if (article != null && article.getCommentCount() >= deleteCount) {
             article.setCommentCount(article.getCommentCount() - deleteCount);
             articleService.updateById(article);
+            redisService.clearArticleCache(article.getId());
+            searchService.syncArticle(article.getId());
         }
 
         return Result.success("删除成功");

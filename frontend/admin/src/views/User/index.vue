@@ -49,21 +49,21 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="email" label="邮箱" min-width="180" />
-        <el-table-column label="用户等级" min-width="160">
+        <el-table-column prop="email" label="邮箱" min-width="200" />
+        <el-table-column label="用户等级" min-width="180">
           <template #default="{ row }">
-            <UserLevelTag :level="row.userLevel || 1" />
+            <UserLevelBadge :level="row.userLevel || 1" />
           </template>
         </el-table-column>
-        <el-table-column label="角色" width="120">
+        <el-table-column label="角色" min-width="120">
           <template #default="{ row }">
-            <el-tag v-for="role in row.roles" :key="role" size="small" :type="getRoleTagType(role)" style="margin-right: 4px">
+            <el-tag v-for="role in row.roles" :key="role" size="small" :type="getRoleTagType(role)" style="margin-right: 4px; margin-bottom: 4px; white-space: nowrap">
               {{ role }}
             </el-tag>
             <span v-if="!row.roles?.length" class="text-muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" min-width="80">
           <template #default="{ row }">
             <el-tag v-if="row.status === 2" type="info" size="small">已注销</el-tag>
             <el-tag v-else :type="row.status === 1 ? 'success' : 'danger'" size="small">
@@ -71,38 +71,40 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="注册时间" width="160">
+        <el-table-column label="注册时间" min-width="180">
           <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status !== 2">
-              <button 
-                class="action-btn edit-btn" 
-                :class="{ disabled: !canManageUsers }"
-                :disabled="!canManageUsers"
-                @click="handleEdit(row)"
-              >编辑</button>
-              <button 
-                v-if="row.status === 1" 
-                class="action-btn disable-btn"
-                :class="{ disabled: !canManageUsers }"
-                :disabled="!canManageUsers"
-                @click="handleToggleStatus(row)"
-              >禁用</button>
-              <button 
-                v-else 
-                class="action-btn enable-btn"
-                :class="{ disabled: !canManageUsers }"
-                :disabled="!canManageUsers"
-                @click="handleToggleStatus(row)"
-              >启用</button>
-              <button 
-                class="action-btn cancel-btn"
-                :class="{ disabled: !canManageUsers }"
-                :disabled="!canManageUsers"
-                @click="handleCancel(row.id)"
-              >注销</button>
+              <div class="action-cell">
+                <button 
+                  class="user-action-btn user-edit-btn" 
+                  :class="{ disabled: !canManageUsers }"
+                  :disabled="!canManageUsers"
+                  @click="handleEdit(row)"
+                >编辑</button>
+                <button 
+                  v-if="row.status === 1" 
+                  class="user-action-btn user-disable-btn"
+                  :class="{ disabled: !canManageUsers }"
+                  :disabled="!canManageUsers"
+                  @click="handleToggleStatus(row)"
+                >禁用</button>
+                <button 
+                  v-else 
+                  class="user-action-btn user-enable-btn"
+                  :class="{ disabled: !canManageUsers }"
+                  :disabled="!canManageUsers"
+                  @click="handleToggleStatus(row)"
+                >启用</button>
+                <button 
+                  class="user-action-btn user-cancel-btn"
+                  :class="{ disabled: !canManageUsers }"
+                  :disabled="!canManageUsers"
+                  @click="handleCancel(row.id)"
+                >注销</button>
+              </div>
             </template>
             <template v-else>
               <span class="cancelled-text">该用户已注销</span>
@@ -161,7 +163,7 @@ import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, canc
 import { getAllRoles } from '@/api/role'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
-import UserLevelTag from '@/components/UserLevelTag/index.vue'
+import UserLevelBadge from '@/components/UserLevelBadge/index.vue'
 
 const userStore = useUserStore()
 
@@ -359,18 +361,20 @@ onMounted(() => {
 }
 
 /* 操作按钮样式 */
-.action-btn {
+.action-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.user-action-btn {
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
-  margin-right: 8px;
-  
-  &:last-child {
-    margin-right: 0;
-  }
   
   &.disabled {
     opacity: 0.5;
@@ -379,7 +383,7 @@ onMounted(() => {
   }
 }
 
-.edit-btn {
+.user-edit-btn {
   background: rgba(59, 130, 246, 0.2);
   color: #3b82f6;
   
@@ -388,7 +392,7 @@ onMounted(() => {
   }
 }
 
-.disable-btn {
+.user-disable-btn {
   background: rgba(245, 158, 11, 0.2);
   color: #f59e0b;
   
@@ -397,7 +401,7 @@ onMounted(() => {
   }
 }
 
-.enable-btn {
+.user-enable-btn {
   background: rgba(34, 197, 94, 0.2);
   color: #22c55e;
   
@@ -406,16 +410,7 @@ onMounted(() => {
   }
 }
 
-.delete-btn {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  
-  &:hover:not(.disabled) {
-    background: rgba(239, 68, 68, 0.3);
-  }
-}
-
-.cancel-btn {
+.user-cancel-btn {
   background: rgba(107, 114, 128, 0.2);
   color: #6b7280;
   
@@ -431,9 +426,9 @@ onMounted(() => {
 }
 
 :deep(.el-table) {
-  background: transparent;
-  --el-table-bg-color: transparent;
-  --el-table-tr-bg-color: transparent;
+  background: var(--bg-card);
+  --el-table-bg-color: var(--bg-card);
+  --el-table-tr-bg-color: var(--bg-card);
   --el-table-header-bg-color: var(--bg-darker);
   --el-table-row-hover-bg-color: var(--bg-hover);
   --el-table-border-color: var(--border-color);

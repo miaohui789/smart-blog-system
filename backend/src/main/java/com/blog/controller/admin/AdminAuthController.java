@@ -3,22 +3,28 @@ package com.blog.controller.admin;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.Result;
 import com.blog.dto.request.LoginRequest;
+import com.blog.entity.LoginLog;
 import com.blog.entity.User;
 import com.blog.security.JwtTokenProvider;
 import com.blog.security.SecurityUser;
+import com.blog.service.LogService;
 import com.blog.service.UserService;
 import com.blog.service.UserRoleService;
 import com.blog.service.MenuService;
+import com.blog.utils.IpUtils;
+import com.blog.utils.LogRecordUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 
 @Tag(name = "管理端认证接口")
@@ -32,32 +38,42 @@ public class AdminAuthController {
     private final UserService userService;
     private final UserRoleService userRoleService;
     private final MenuService menuService;
+    private final LogService logService;
 
     @Operation(summary = "管理员登录")
     @PostMapping("/login")
-    public Result<?> login(@Validated @RequestBody LoginRequest request) {
+    public Result<?> login(@Validated @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
         // 先检查用户是否存在以及状态
         User existingUser = userService.getByUsername(request.getUsername());
         if (existingUser != null && existingUser.getStatus() != null && existingUser.getStatus() == 2) {
+            saveLoginLog(httpServletRequest, existingUser.getId(), request.getUsername(), 0, "该账号已注销");
             return Result.error("该账号已注销");
         }
-        
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
-        SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
-        User user = securityUser.getUser();
-        
-        // 检查用户是否有管理员权限且角色未被禁用
-        if (!hasValidAdminRole(user.getId())) {
-            return Result.error(ResultCode.NO_PERMISSION_OR_FROZEN);
-        }
-        
-        String token = jwtTokenProvider.generateAdminToken(user.getId(), user.getUsername());
 
-        Map<String, Object> data = new HashMap<>();
-        data.put("token", token);
-        return Result.success(data);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+            SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+            User user = securityUser.getUser();
+
+            // 检查用户是否有管理员权限且角色未被禁用
+            if (!hasValidAdminRole(user.getId())) {
+                saveLoginLog(httpServletRequest, user.getId(), request.getUsername(), 0, ResultCode.NO_PERMISSION_OR_FROZEN.getMessage());
+                return Result.error(ResultCode.NO_PERMISSION_OR_FROZEN);
+            }
+
+            String token = jwtTokenProvider.generateAdminToken(user.getId(), user.getUsername());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("token", token);
+
+            saveLoginLog(httpServletRequest, user.getId(), request.getUsername(), 1, "登录成功");
+            return Result.success(data);
+        } catch (BadCredentialsException e) {
+            saveLoginLog(httpServletRequest, existingUser != null ? existingUser.getId() : null, request.getUsername(), 0, ResultCode.PASSWORD_ERROR.getMessage());
+            throw e;
+        }
     }
     
     /**
@@ -277,5 +293,23 @@ public class AdminAuthController {
             jwtTokenProvider.invalidateToken(token);
         }
         return Result.success("退出成功");
+    }
+
+    private void saveLoginLog(HttpServletRequest request, Long userId, String username, Integer status, String message) {
+        LoginLog loginLog = new LoginLog();
+        loginLog.setUserId(userId);
+        loginLog.setUsername(username);
+        loginLog.setStatus(status);
+        loginLog.setMessage(message);
+
+        String ip = IpUtils.getIpAddress(request);
+        loginLog.setIp(ip);
+        loginLog.setIpSource(LogRecordUtils.getIpSource(ip));
+
+        String userAgent = request.getHeader("User-Agent");
+        loginLog.setBrowser(LogRecordUtils.getBrowser(userAgent));
+        loginLog.setOs(LogRecordUtils.getOs(userAgent));
+
+        logService.saveLoginLog(loginLog);
     }
 }

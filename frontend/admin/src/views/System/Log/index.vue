@@ -1,12 +1,27 @@
 <template>
   <div class="log-page">
-    <h2 class="page-title">操作日志</h2>
+    <div class="page-header">
+      <h2 class="page-title">操作日志</h2>
+      <div class="page-actions">
+        <el-button @click="fetchLogs">刷新</el-button>
+        <el-button type="danger" plain @click="handleClean">清空当前日志</el-button>
+      </div>
+    </div>
 
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="操作日志" name="operation">
         <el-table :data="operationLogs" v-loading="loading">
+          <el-table-column label="操作端" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getLogSource(row.requestUrl) === '管理端' ? 'danger' : 'primary'" size="small">
+                {{ getLogSource(row.requestUrl) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="module" label="模块" width="100" />
           <el-table-column prop="description" label="操作描述" />
+          <el-table-column prop="requestUrl" label="请求地址" min-width="220" show-overflow-tooltip />
           <el-table-column prop="requestMethod" label="请求方式" width="100" />
           <el-table-column prop="ip" label="IP地址" width="130" />
           <el-table-column prop="costTime" label="耗时(ms)" width="100" />
@@ -30,6 +45,7 @@
           <el-table-column prop="ipSource" label="IP来源" />
           <el-table-column prop="browser" label="浏览器" width="120" />
           <el-table-column prop="os" label="操作系统" width="120" />
+          <el-table-column prop="message" label="结果说明" min-width="180" show-overflow-tooltip />
           <el-table-column label="状态" width="80">
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
@@ -56,7 +72,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getOperationLogs, getLoginLogs } from '@/api/log'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getOperationLogs, getLoginLogs, cleanOperationLogs, cleanLoginLogs } from '@/api/log'
 import { formatDateTime } from '@/utils/format'
 
 const activeTab = ref('operation')
@@ -88,6 +105,35 @@ function handleTabChange() {
   fetchLogs()
 }
 
+function getLogSource(requestUrl) {
+  return requestUrl?.startsWith('/api/admin/') ? '管理端' : '用户端'
+}
+
+async function handleClean() {
+  try {
+    const title = activeTab.value === 'operation' ? '操作日志' : '登录日志'
+    await ElMessageBox.confirm(`确定清空当前${title}吗？`, '提示', {
+      type: 'warning'
+    })
+
+    if (activeTab.value === 'operation') {
+      await cleanOperationLogs()
+      operationLogs.value = []
+    } else {
+      await cleanLoginLogs()
+      loginLogs.value = []
+    }
+
+    total.value = 0
+    ElMessage.success('清空成功')
+    fetchLogs()
+  } catch (e) {
+    if (e !== 'cancel') {
+      throw e
+    }
+  }
+}
+
 onMounted(fetchLogs)
 </script>
 
@@ -100,10 +146,23 @@ onMounted(fetchLogs)
   border-radius: $radius-lg;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: $spacing-xl;
+}
+
 .page-title {
   font-size: 20px;
   color: var(--text-primary);
-  margin: 0 0 $spacing-xl 0;
+  margin: 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: 12px;
 }
 
 :deep(.el-tabs__item) {

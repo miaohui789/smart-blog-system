@@ -159,6 +159,12 @@
   border-top: 1rpx solid var(--border-color);
 }
 
+.hot-meta {
+  margin: -8rpx 0 20rpx;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
 .hot-list {
   display: flex;
   flex-direction: column;
@@ -216,6 +222,20 @@
 
 .hot-icon {
   color: var(--text-muted);
+}
+
+.hot-score {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.hot-reset {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.hot-empty {
+  margin-top: 16rpx;
 }
 
 /* 搜索发现 */

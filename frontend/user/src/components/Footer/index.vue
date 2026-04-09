@@ -16,17 +16,94 @@
         <router-link to="/about">关于</router-link>
         <router-link to="/version-history">版本历史</router-link>
         <a href="#">隐私政策</a>
-        <a href="#">联系我们</a>
+        <a href="#" @click.prevent="showContactDialog = true">联系我们</a>
       </div>
     </div>
+
+    <!-- 联系我们弹窗 -->
+    <el-dialog
+      v-model="showContactDialog"
+      title="联系我们"
+      width="500px"
+      center
+      class="contact-dialog"
+    >
+      <div class="contact-content">
+        <div class="developers-section">
+          <div class="developer-card">
+            <h4>原作者</h4>
+            <div class="qr-code-wrapper">
+              <el-image 
+                :src="authorImg" 
+                :preview-src-list="[authorImg]" 
+                :preview-teleported="true"
+                fit="contain"
+                alt="原作者" 
+              />
+            </div>
+          </div>
+          <div class="developer-card">
+            <h4>最大贡献者</h4>
+            <div class="qr-code-wrapper">
+              <el-image 
+                :src="contributorImg" 
+                :preview-src-list="[contributorImg]" 
+                :preview-teleported="true"
+                fit="contain"
+                alt="最大贡献者" 
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div class="support-section">
+          <el-button type="primary" @click="showSupport = !showSupport">
+            支持一下作者 <el-icon class="el-icon--right"><ArrowDown v-if="!showSupport"/><ArrowUp v-else/></el-icon>
+          </el-button>
+          
+          <el-collapse-transition>
+            <div v-show="showSupport" class="support-qrs">
+              <div class="qr-item">
+                <el-image 
+                  :src="support1Img" 
+                  :preview-src-list="[support1Img]" 
+                  :preview-teleported="true"
+                  fit="contain"
+                  alt="支持我们" 
+                />
+              </div>
+              <div class="qr-item">
+                <el-image 
+                  :src="support2Img" 
+                  :preview-src-list="[support2Img]" 
+                  :preview-teleported="true"
+                  fit="contain"
+                  alt="支持我们" 
+                />
+              </div>
+            </div>
+          </el-collapse-transition>
+        </div>
+      </div>
+    </el-dialog>
   </footer>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useConfigStore } from '@/stores/config'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+
+import authorImg from '@/assets/images/contact/author.jpg'
+import contributorImg from '@/assets/images/contact/contributor.jpg'
+import support1Img from '@/assets/images/contact/support1.jpg'
+import support2Img from '@/assets/images/contact/support2.jpg'
 
 const configStore = useConfigStore()
 const currentYear = new Date().getFullYear()
+
+const showContactDialog = ref(false)
+const showSupport = ref(false)
 </script>
 
 <style lang="scss" scoped>
@@ -112,6 +189,80 @@ const currentYear = new Date().getFullYear()
 
     &:hover {
       color: $primary-light;
+    }
+  }
+}
+
+:deep(.contact-dialog) {
+  .el-dialog__body {
+    padding-top: 10px;
+  }
+}
+
+.contact-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 10px;
+
+  .developers-section {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+
+    .developer-card {
+      text-align: center;
+      flex: 1;
+
+      h4 {
+        margin: 0 0 12px;
+        color: var(--text-primary);
+        font-size: 16px;
+      }
+
+      .qr-code-wrapper {
+        width: 100%;
+        max-width: 180px;
+        margin: 0 auto;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border-color);
+
+        :deep(.el-image) {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+      }
+    }
+  }
+
+  .support-section {
+    text-align: center;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 24px;
+
+    .support-qrs {
+      display: flex;
+      justify-content: space-around;
+      gap: 20px;
+      margin-top: 20px;
+
+      .qr-item {
+        flex: 1;
+        max-width: 180px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border-color);
+
+        :deep(.el-image) {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+      }
     }
   }
 }

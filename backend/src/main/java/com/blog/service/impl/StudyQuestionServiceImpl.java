@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.constant.StudyConstants;
+import com.blog.common.constant.ExpConstants;
 import com.blog.common.exception.BusinessException;
 import com.blog.common.result.PageResult;
 import com.blog.config.StudyCacheProperties;
@@ -27,6 +28,7 @@ import com.blog.mapper.StudyQuestionMapper;
 import com.blog.mapper.StudyQuestionVersionMapper;
 import com.blog.mapper.StudyUserQuestionNoteMapper;
 import com.blog.mapper.StudyUserQuestionProgressMapper;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.service.RedisService;
 import com.blog.service.SearchService;
 import com.blog.service.StudyCategoryService;
@@ -39,6 +41,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
@@ -62,6 +65,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
     private final RedisService redisService;
     private final StudyCacheProperties studyCacheProperties;
     private final SearchService searchService;
+    private final UserExpAsyncService userExpAsyncService;
 
     public StudyQuestionServiceImpl(StudyCategoryMapper studyCategoryMapper,
                                     StudyUserQuestionProgressMapper progressMapper,
@@ -71,7 +75,8 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
                                     StudyCheckTaskMapper studyCheckTaskMapper,
                                     RedisService redisService,
                                     StudyCacheProperties studyCacheProperties,
-                                    SearchService searchService) {
+                                    SearchService searchService,
+                                    UserExpAsyncService userExpAsyncService) {
         this.studyCategoryMapper = studyCategoryMapper;
         this.progressMapper = progressMapper;
         this.noteMapper = noteMapper;
@@ -81,6 +86,7 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
         this.redisService = redisService;
         this.studyCacheProperties = studyCacheProperties;
         this.searchService = searchService;
+        this.userExpAsyncService = userExpAsyncService;
     }
 
     @Override
@@ -206,6 +212,14 @@ public class StudyQuestionServiceImpl extends ServiceImpl<StudyQuestionMapper, S
         question.setStudyCount(defaultInt(question.getStudyCount()) + 1);
         updateById(question);
         clearStudyUserCache(userId);
+        redisService.runAfterCommit(() -> userExpAsyncService.publishGrant(
+                userId,
+                ExpConstants.BIZ_STUDY_RECORD,
+                "study:" + questionId + ":" + UUID.randomUUID(),
+                ExpConstants.EXP_STUDY_RECORD,
+                "学习题目获得经验",
+                "StudyQuestionService.recordStudy"
+        ));
     }
 
     @Override

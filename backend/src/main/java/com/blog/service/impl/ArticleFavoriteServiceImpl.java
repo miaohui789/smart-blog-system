@@ -2,12 +2,15 @@ package com.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.blog.common.constant.ExpConstants;
 import com.blog.entity.Article;
 import com.blog.entity.ArticleFavorite;
 import com.blog.mapper.ArticleFavoriteMapper;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.service.ArticleFavoriteService;
 import com.blog.service.ArticleService;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,8 @@ public class ArticleFavoriteServiceImpl extends ServiceImpl<ArticleFavoriteMappe
 
     private final ArticleService articleService;
     private final RedisService redisService;
+    private final UserExpAsyncService userExpAsyncService;
+    private final SearchService searchService;
 
     @Override
     public boolean isFavorited(Long articleId, Long userId) {
@@ -47,6 +52,15 @@ public class ArticleFavoriteServiceImpl extends ServiceImpl<ArticleFavoriteMappe
             // 清除文章详情缓存
             redisService.clearArticleCache(articleId);
         }
+        redisService.runAfterCommit(() -> searchService.syncArticle(articleId));
+        redisService.runAfterCommit(() -> userExpAsyncService.publishGrant(
+                userId,
+                ExpConstants.BIZ_ARTICLE_FAVORITE,
+                "article-favorite:" + articleId + ":" + userId + ":" + System.currentTimeMillis(),
+                ExpConstants.EXP_ARTICLE_FAVORITE,
+                "收藏文章获得经验",
+                "ArticleFavoriteService.favorite"
+        ));
         return true;
     }
 
@@ -67,6 +81,7 @@ public class ArticleFavoriteServiceImpl extends ServiceImpl<ArticleFavoriteMappe
                 // 清除文章详情缓存
                 redisService.clearArticleCache(articleId);
             }
+            redisService.runAfterCommit(() -> searchService.syncArticle(articleId));
         }
         return removed;
     }

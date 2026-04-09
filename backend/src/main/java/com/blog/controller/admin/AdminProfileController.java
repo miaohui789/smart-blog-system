@@ -3,6 +3,7 @@ package com.blog.controller.admin;
 import com.blog.common.result.Result;
 import com.blog.entity.User;
 import com.blog.security.SecurityUser;
+import com.blog.service.SearchService;
 import com.blog.service.UserService;
 import com.blog.service.UserRoleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +27,7 @@ public class AdminProfileController {
     private final UserService userService;
     private final UserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
+    private final SearchService searchService;
 
     @Operation(summary = "获取个人信息")
     @GetMapping
@@ -84,6 +86,8 @@ public class AdminProfileController {
         }
         
         userService.updateById(user);
+        searchService.syncUser(userId);
+        searchService.syncArticlesByUserId(userId);
         return Result.success("更新成功");
     }
 

@@ -34,6 +34,9 @@ public class User {
     private Integer vipLevel;
     private LocalDateTime vipExpireTime;
     private Integer userLevel;
+    private Integer currentExp;
+    private Integer totalExp;
+    private LocalDateTime expUpdateTime;
     
     // 社交统计字段
     private Integer followCount;

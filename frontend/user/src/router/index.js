@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
+import { getToken } from '@/utils/auth'
 
 const routes = [
   {
@@ -276,6 +277,13 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 我的博客` : '我的博客'
+  if (to.matched.some(record => record.meta.requiresAuth) && !getToken()) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
   next()
 })
 

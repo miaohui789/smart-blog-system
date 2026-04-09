@@ -46,13 +46,13 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   // 应用主题
-  function applyTheme() {
+  function applyTheme(options = {}) {
+    const { syncServer = true } = options
     document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
     localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
     checkCustomBackground()
     
-    // 如果用户已登录，保存主题模式到服务器
-    if (getToken()) {
+    if (syncServer && getToken()) {
       saveThemeMode()
     }
   }
@@ -155,7 +155,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   // 初始化时应用主题
-  applyTheme()
+  applyTheme({ syncServer: false })
 
   return { isDark, hasCustomBackground, toggleTheme, applyTheme, checkCustomBackground }
 })

@@ -1,0 +1,18 @@
+0 verbose cli E:\Program Files\nodejs\node.exe E:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.4
+2 info using node@v22.21.1
+3 silly config load:file:E:\develop\nvm\v22.21.1\node_modules\npm\npmrc
+4 silly config load:file:E:\1111xiangmu\Smart-Blog-System\new\smart-blog-system\frontend\user\.npmrc
+5 silly config load:file:C:\Users\86188\.npmrc
+6 silly config load:file:G:\node\nodejs\node_global\etc\npmrc
+7 verbose title npm run build --logLevel error
+8 verbose argv "run" "build" "--" "--logLevel" "error"
+9 verbose logfile logs-max:10 dir:E:\1111xiangmu\Smart-Blog-System\new\smart-blog-system\frontend\user\.npm-cache\_logs\2026-03-31T12_04_39_915Z-
+10 verbose logfile E:\1111xiangmu\Smart-Blog-System\new\smart-blog-system\frontend\user\.npm-cache\_logs\2026-03-31T12_04_39_915Z-debug-0.log
+11 silly logfile done cleaning log files
+12 verbose cwd E:\1111xiangmu\Smart-Blog-System\new\smart-blog-system\frontend\user
+13 verbose os Windows_NT 10.0.22631
+14 verbose node v22.21.1
+15 verbose npm  v10.9.4
+16 verbose exit 0
+17 info ok

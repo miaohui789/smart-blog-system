@@ -21,6 +21,22 @@ public class IpUtils {
         if (ip != null && ip.contains(",")) {
             ip = ip.split(",")[0].trim();
         }
+        return normalizeIp(ip);
+    }
+
+    private static String normalizeIp(String ip) {
+        if (ip == null || ip.isBlank()) {
+            return ip;
+        }
+        if ("::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)) {
+            return "127.0.0.1";
+        }
+        if (ip.startsWith("0:0:0:0:0:ffff:")) {
+            return ip.substring("0:0:0:0:0:ffff:".length());
+        }
+        if (ip.startsWith("::ffff:")) {
+            return ip.substring("::ffff:".length());
+        }
         return ip;
     }
 }

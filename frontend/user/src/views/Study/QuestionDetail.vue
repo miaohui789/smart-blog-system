@@ -221,6 +221,7 @@ function ensureLogin() {
 async function handleRecordStudy() {
   if (!ensureLogin()) return
   await recordStudy(route.params.id)
+  userStore.refreshExpSummaryWithRetry()
   ElMessage.success('已记录本次学习')
   await fetchDetail()
 }

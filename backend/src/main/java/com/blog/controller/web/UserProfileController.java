@@ -13,7 +13,10 @@ import com.blog.entity.UserFollow;
 import com.blog.security.SecurityUser;
 import com.blog.service.ArticleService;
 import com.blog.service.CategoryService;
+import com.blog.service.TagService;
 import com.blog.service.NotificationService;
+import com.blog.service.UserExpService;
+import com.blog.dto.response.UserExpSummaryVO;
 import com.blog.service.UserFollowService;
 import com.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,10 +37,12 @@ import java.util.stream.Collectors;
 public class UserProfileController {
 
     private final UserService userService;
-    private final UserFollowService userFollowService;
+ private final UserFollowService userFollowService;
     private final ArticleService articleService;
     private final CategoryService categoryService;
+    private final TagService tagService;
     private final NotificationService notificationService;
+    private final UserExpService userExpService;
 
     @Operation(summary = "获取用户详情")
     @GetMapping("/{userId}/profile")
@@ -55,6 +60,14 @@ public class UserProfileController {
         vo.setIntro(user.getIntro());
         vo.setWebsite(user.getWebsite());
         vo.setUserLevel(user.getUserLevel());
+        vo.setCurrentExp(user.getCurrentExp() != null ? user.getCurrentExp() : 0);
+        vo.setTotalExp(user.getTotalExp() != null ? user.getTotalExp() : 0);
+        
+        UserExpSummaryVO expSummary = userExpService.getUserExpSummary(userId);
+        if (expSummary != null) {
+            vo.setNextLevelNeedExp(expSummary.getNextLevelNeedExp());
+        }
+        
         vo.setVipLevel(user.getVipLevel());
         vo.setVipExpireTime(user.getVipExpireTime());
         vo.setStatus(user.getStatus());

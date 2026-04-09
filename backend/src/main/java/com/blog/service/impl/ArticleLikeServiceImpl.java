@@ -2,12 +2,15 @@ package com.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.blog.common.constant.ExpConstants;
 import com.blog.entity.Article;
 import com.blog.entity.ArticleLike;
 import com.blog.mapper.ArticleLikeMapper;
+import com.blog.mq.UserExpAsyncService;
 import com.blog.service.ArticleLikeService;
 import com.blog.service.ArticleService;
 import com.blog.service.RedisService;
+import com.blog.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,8 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
 
     private final ArticleService articleService;
     private final RedisService redisService;
+    private final UserExpAsyncService userExpAsyncService;
+    private final SearchService searchService;
 
     @Override
     public boolean isLiked(Long articleId, Long userId) {
@@ -47,6 +52,15 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
             // 清除文章详情缓存
             redisService.clearArticleCache(articleId);
         }
+        redisService.runAfterCommit(() -> searchService.syncArticle(articleId));
+        redisService.runAfterCommit(() -> userExpAsyncService.publishGrant(
+                userId,
+                ExpConstants.BIZ_ARTICLE_LIKE,
+                "article-like:" + articleId + ":" + userId + ":" + System.currentTimeMillis(),
+                ExpConstants.EXP_ARTICLE_LIKE,
+                "点赞文章获得经验",
+                "ArticleLikeService.like"
+        ));
         return true;
     }
 
@@ -67,6 +81,7 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
                 // 清除文章详情缓存
                 redisService.clearArticleCache(articleId);
             }
+            redisService.runAfterCommit(() -> searchService.syncArticle(articleId));
         }
         return removed;
     }

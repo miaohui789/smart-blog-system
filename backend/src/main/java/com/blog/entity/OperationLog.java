@@ -10,6 +10,8 @@ public class OperationLog {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    @TableField(exist = false)
+    private String username;
     private String module;
     private String description;
     private String requestUrl;

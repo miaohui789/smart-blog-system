@@ -220,9 +220,11 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { finishStudyTask, getStudyCheckTask, markStudyAnswerViewed, submitStudyAnswer } from '@/api/study'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -518,6 +520,7 @@ async function handleSubmitAnswer() {
 
 async function handleFinishTask() {
   await finishStudyTask(route.params.taskId)
+  userStore.refreshExpSummaryWithRetry()
   ElMessage.success('任务已完成')
   navigateAfterFinish()
 }

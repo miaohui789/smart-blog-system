@@ -10,6 +10,7 @@ export const useUserStore = defineStore('user', () => {
   const menus = ref([])
   const permissions = ref([])
   const roles = ref([])
+  let userInfoPromise = null
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -21,14 +22,25 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function fetchUserInfo() {
-    const res = await getAdminInfo()
-    userInfo.value = res.data
-    roles.value = res.data.roles || []
-    permissions.value = res.data.permissions || []
-    // 获取用户信息后建立WebSocket连接
-    if (userInfo.value?.id) {
-      initWebSocket(userInfo.value.id)
+    if (userInfoPromise) {
+      return userInfoPromise
     }
+
+    userInfoPromise = getAdminInfo()
+      .then(res => {
+        userInfo.value = res.data
+        roles.value = res.data.roles || []
+        permissions.value = res.data.permissions || []
+        if (userInfo.value?.id) {
+          initWebSocket(userInfo.value.id)
+        }
+        return res.data
+      })
+      .finally(() => {
+        userInfoPromise = null
+      })
+
+    return userInfoPromise
   }
 
   async function fetchMenus() {
@@ -48,13 +60,19 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  function logout() {
+  function resetState() {
     closeWebSocket()
     token.value = ''
     userInfo.value = null
     menus.value = []
+    permissions.value = []
+    roles.value = []
     removeToken()
   }
 
-  return { token, userInfo, menus, permissions, roles, isLoggedIn, login, fetchUserInfo, fetchMenus, updateAvatar, updateNickname, logout }
+  function logout() {
+    resetState()
+  }
+
+  return { token, userInfo, menus, permissions, roles, isLoggedIn, login, fetchUserInfo, fetchMenus, updateAvatar, updateNickname, logout, resetState }
 })

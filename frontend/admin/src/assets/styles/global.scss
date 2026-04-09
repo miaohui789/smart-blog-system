@@ -231,6 +231,34 @@ a {
   --el-table-header-text-color: var(--text-primary);
 }
 
+.el-table .el-table__fixed,
+.el-table .el-table__fixed-right,
+.el-table .el-table__fixed-left {
+  background: var(--bg-card) !important;
+}
+
+.el-table .el-table__fixed .el-table__cell,
+.el-table .el-table__fixed-right .el-table__cell,
+.el-table .el-table__fixed-left .el-table__cell {
+  background: var(--bg-card) !important;
+}
+
+.el-table .el-table__fixed-header-wrapper .el-table__cell,
+.el-table .el-table__fixed-right .el-table__fixed-header-wrapper .el-table__cell,
+.el-table .el-table__fixed-left .el-table__fixed-header-wrapper .el-table__cell {
+  background: var(--bg-darker) !important;
+}
+
+.el-table .el-table-fixed-column--right,
+.el-table .el-table-fixed-column--left {
+  background: var(--bg-card) !important;
+}
+
+.el-table .el-table-fixed-column--right.is-leaf,
+.el-table .el-table-fixed-column--left.is-leaf {
+  background: var(--bg-darker) !important;
+}
+
 .el-pagination {
   --el-pagination-bg-color: transparent;
   --el-pagination-button-bg-color: var(--bg-card);
