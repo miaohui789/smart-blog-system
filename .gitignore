@@ -6,6 +6,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+.kiro/
 
 # Logs
 *.log
@@ -40,6 +41,9 @@ temp/
 
 # Local deploy / platform
 .vercel/
+deploy/
+docs/
+sql/
 
 # Runtime uploads and generated files
 uploads/
@@ -48,4 +52,3 @@ uploads/
 miniprogram/node_modules/
 miniprogram/dist/
 project.private.config.json
-

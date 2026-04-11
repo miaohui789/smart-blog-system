@@ -132,9 +132,6 @@ smart-blog-system/
 │   ├── user/                # 用户端，默认端口 5173
 │   └── admin/               # 管理端，默认端口 5174
 ├── miniprogram/             # 微信小程序
-├── docs/                    # 项目文档与数据库脚本
-├── deploy/                  # Docker / Nginx / 宝塔部署相关配置
-├── sql/                     # SQL 相关资源
 ├── uploads/                 # 上传文件目录
 └── README.md
 ```
@@ -186,17 +183,7 @@ smart-blog-system/
 
 ### 1. 初始化数据库
 
-数据库脚本路径：
-
-```bash
-docs/database/blog_db.sql
-```
-
-导入示例：
-
-```bash
-mysql -uroot -p123456 < docs/database/blog_db.sql
-```
+公开仓库不包含数据库脚本与私有初始化资源。使用前请自行准备数据库结构，或基于你本地私有环境中的脚本导入。
 
 ### 2. 配置后端
 
@@ -277,11 +264,7 @@ cd miniprogram
 
 ## 部署说明
 
-仓库内已经提供部署相关目录，可按你的环境继续完善：
-
-- `deploy/`：Docker、Nginx、宝塔部署配置
-- `docs/`：文档与数据库脚本
-- `uploads/`：运行期上传文件目录
+出于安全考虑，公开仓库不包含部署脚本、数据库脚本和部分内部文档。当前公开仓库保留应用主体代码，部署时请按你的私有环境自行补齐相关资源。
 
 生产环境部署时，建议至少补充以下内容：
 
