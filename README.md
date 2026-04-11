@@ -259,3 +259,16 @@ cd miniprogram
 
 当前仓库未显式提供 `LICENSE` 文件，如需开源发布，建议补充合适的许可证后再公开分发。
 
+## 开发者
+
+<p align="center">
+  <img src="./开发者图片/21879343f454a89b3f758c0fb60b2509.jpg" alt="开发者图片 1" width="280" />
+  <img src="./开发者图片/cdf7e2495ac20a04b05d2fe3bdfc806b.jpg" alt="开发者图片 2" width="280" />
+</p>
+
+## 支持一下我们
+
+<p align="center">
+  <img src="./支持一下我们/0976424e79d88918b0df51dc9fbdf6d6.jpg" alt="支持一下我们 1" width="280" />
+  <img src="./支持一下我们/43e4194638ff3d2076594f8df58faf69.jpg" alt="支持一下我们 2" width="280" />
+</p>
