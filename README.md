@@ -1,166 +1,120 @@
+<!--
+Description: Smart Blog System 是一个基于 Spring Boot、Vue 3 与微信小程序的前后端分离智能博客系统，内置博客内容管理、学习中心、会员体系、AI 助手、私信通知和后台管理能力。
+Keywords: smart blog system, Spring Boot blog, Vue 3 blog, 微信小程序博客, AI 博客系统, 博客后台管理系统
+author: HuiMiao
+-->
+
 # Smart Blog System
 
-一个基于前后端分离架构的智能博客系统，包含 `backend` 后端、`frontend/user` 用户端、`frontend/admin` 管理端，以及 `miniprogram` 微信小程序端。
+一个面向内容创作、学习成长和社区互动的智能博客系统，采用前后端分离架构，包含 `backend` 后端、`frontend/user` 用户端、`frontend/admin` 管理端以及 `miniprogram` 微信小程序端。
 
-当前仓库已经不只是基础博客，代码里还包含了学习中心、经验等级、签到、VIP、AI、私信通知、操作日志、搜索扩展等模块。
+[![GitHub Repo](https://img.shields.io/badge/GitHub-miaohui789%2Fsmart--blog--system-181717?logo=github)](https://github.com/miaohui789/smart-blog-system)
+[![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)](#技术栈)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7.15-6DB33F?logo=springboot&logoColor=white)](#技术栈)
+[![Vue](https://img.shields.io/badge/Vue-3.3.4-4FC08D?logo=vuedotjs&logoColor=white)](#技术栈)
+[![Element Plus](https://img.shields.io/badge/Element%20Plus-2.4.4-409EFF)](#技术栈)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)](#技术栈)
 
-## 项目概览
+## 项目简介
+
+这个仓库并不只是一个基础博客模板，它已经扩展出完整的内容平台能力：
+
+- 博客文章、分类、标签、归档、评论、点赞、收藏、发布与编辑
+- 用户注册登录、邮箱验证码、找回密码、个人中心、关注粉丝
+- 学习中心、题库练习、抽查任务、经验等级、每日签到
+- VIP 会员中心、密钥激活、加热记录、会员统计
+- AI 助手、私信、通知、WebSocket 实时消息
+- 后台仪表盘、系统配置、角色菜单、操作日志、AI 配置
+- 微信小程序端内容浏览与核心互动能力
+
+如果你要做一个带博客内容管理、用户体系、学习模块和 AI 扩展的完整项目，这个仓库可以直接作为基础工程继续开发。
+
+## 功能总览
 
 ### 用户端
-- 文章首页、文章详情、分类、标签、归档、关于页、版本历史
-- 用户注册、账号密码登录、邮箱验证码登录、找回密码
-- 文章评论、点赞、收藏、发布、编辑
-- 用户主页、个人中心、我的文章、我的收藏、关注/粉丝
-- 私信、通知、用户资料维护
-- 学习中心、题库学习、抽查任务、抽查历史
-- 经验等级、经验流水、每日签到、升级弹窗
-- VIP 激活与 VIP 中心
-- AI 助手
+
+- 首页推荐、文章详情、分类、标签、归档、关于页、版本历史
+- 注册、密码登录、邮箱验证码登录、找回密码
+- 评论、点赞、收藏、写文章、编辑文章
+- 用户主页、我的文章、我的收藏、关注与粉丝
+- 私信中心、通知中心、资料维护
+- 学习中心、题库练习、抽查历史、经验成长体系
+- VIP 激活、VIP 中心、AI 助手
 
 ### 管理端
-- 仪表盘数据统计
+
+- 仪表盘统计
 - 文章、分类、标签、评论管理
 - 学习分类、学习题库、抽查记录管理
-- 用户管理
+- 用户管理、关注管理、私信管理、通知管理
 - 角色、菜单、系统配置、版本管理、操作日志
-- 关注、私信、通知管理
-- VIP 会员、密钥、加热记录、统计管理
+- VIP 会员、会员密钥、加热记录、统计分析
 - AI 模型配置、Logo 管理
 
 ### 微信小程序
-- 文章浏览与基础用户中心能力
+
+- 文章浏览与用户中心能力
 - AI、VIP 等分包页面
-- 基于 `@vant/weapp` 的移动端交互
+- 基于 `@vant/weapp` 的移动端交互体验
 
 ## 技术栈
 
-### 后端
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Java | 17 | 开发语言 |
-| Spring Boot | 2.7.15 | 核心框架 |
-| Spring Security | - | 认证鉴权 |
-| MyBatis Plus | 3.5.4 | 数据访问 |
-| MySQL | 8.0+ | 主数据库 |
-| Redis | 7.0+ | 缓存 |
-| RabbitMQ | - | 异步消息处理 |
-| JWT | 0.11.5 | Token 认证 |
-| WebSocket | - | 私信/通知实时能力 |
-| Knife4j + SpringDoc | 4.3.0 | API 文档 |
-| OkHttp | 4.12.0 | AI 接口调用 |
-
-### 前端
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Vue | 3.3.4 | 前端框架 |
-| Vue Router | 4.2.4 | 路由管理 |
-| Pinia | 2.1.4 | 状态管理 |
-| Element Plus | 2.4.4 | UI 组件库 |
-| Vite | 4.4.9 | 构建工具 |
-| Axios | 1.5.0 | 请求库 |
-| ECharts | 5.4.3 | 管理端图表 |
-| md-editor-v3 | 4.0.0 | Markdown 编辑器 |
-| Sass | 1.66.1 | 样式预处理 |
-| marked / highlight.js | - | 富文本渲染与代码高亮 |
-
-### 微信小程序
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| 原生微信小程序 | - | 小程序主体 |
-| @vant/weapp | 1.11.6 | 小程序 UI 组件 |
+| 分类 | 技术 |
+|------|------|
+| 后端 | Java 17、Spring Boot 2.7.15、Spring Security、MyBatis Plus 3.5.4、JWT、Redis、RabbitMQ、WebSocket、Knife4j |
+| 用户端 | Vue 3.3.4、Vue Router 4、Pinia、Element Plus、Vite、Axios、md-editor-v3、marked、highlight.js |
+| 管理端 | Vue 3.3.4、Element Plus、Pinia、ECharts、Vite、Axios |
+| 小程序 | 原生微信小程序、`@vant/weapp` |
+| 数据与中间件 | MySQL 8.0+、Redis 7.0+、RabbitMQ、可选 Elasticsearch |
 
 ## 项目结构
 
 ```text
 smart-blog-system/
-├── backend/                         # Spring Boot 后端，默认端口 8080
-│   ├── src/main/java/com/blog/
-│   │   ├── controller/admin/        # 管理端接口
-│   │   ├── controller/web/          # 用户端接口
-│   │   ├── service/                 # 业务层
-│   │   ├── mapper/                  # MyBatis Plus / Mapper
-│   │   ├── entity/                  # 实体类
-│   │   ├── config/                  # 配置类
-│   │   ├── mq/                      # RabbitMQ 消息处理
-│   │   └── websocket/               # WebSocket 相关
-│   └── src/main/resources/          # application.yml / application-dev.yml 等
+├── backend/                 # Spring Boot 后端，默认端口 8080
 ├── frontend/
-│   ├── user/                        # 用户端，默认端口 5173
-│   │   └── src/
-│   │       ├── api/
-│   │       ├── components/
-│   │       ├── layouts/
-│   │       ├── router/
-│   │       ├── stores/
-│   │       └── views/
-│   └── admin/                       # 管理端，默认端口 5174，生产基础路径 /admin/
-│       └── src/
-│           ├── api/
-│           ├── layouts/
-│           ├── router/
-│           ├── stores/
-│           └── views/
-├── miniprogram/                     # 微信小程序
-│   ├── pages/
-│   ├── packageAI/
-│   ├── packageVip/
-│   ├── api/
-│   └── components/
-├── docs/
-│   └── database/
-│       └── blog_db.sql              # 当前数据库脚本
-├── deploy/                          # Docker / Nginx / 宝塔部署相关
-├── uploads/                         # 上传文件目录
+│   ├── user/                # 用户端，默认端口 5173
+│   └── admin/               # 管理端，默认端口 5174
+├── miniprogram/             # 微信小程序
+├── docs/                    # 项目文档与数据库脚本
+├── deploy/                  # Docker / Nginx / 宝塔部署相关配置
+├── sql/                     # SQL 相关资源
+├── uploads/                 # 上传文件目录
 └── README.md
 ```
 
-## 核心模块说明
+## 核心模块
 
-### 后端接口模块
+### 后端接口
+
 `backend/src/main/java/com/blog/controller/web`
-- `ArticleController` 文章与详情
-- `CommentController` 评论
-- `SearchController` 搜索
-- `StudyController` 学习中心
-- `UserController` 用户认证与用户信息
-- `UserExpController` 经验、等级、签到
-- `MessageController` 私信
-- `NotificationController` 通知
-- `VipController` VIP
-- `AiChatController` AI 对话
+
+- `ArticleController`：文章列表、详情与内容浏览
+- `CommentController`：评论交互
+- `SearchController`：搜索能力
+- `StudyController`：学习中心
+- `UserController`：认证与用户资料
+- `UserExpController`：经验、等级、签到
+- `MessageController`：私信消息
+- `NotificationController`：通知消息
+- `VipController`：VIP 业务
+- `AiChatController`：AI 对话能力
 
 `backend/src/main/java/com/blog/controller/admin`
-- `DashboardController` 仪表盘
-- `AdminArticleController` 内容管理
-- `AdminStudyCategoryController` / `AdminStudyQuestionController` / `AdminStudyCheckController` 学习后台
-- `AdminUserController` 用户管理
-- `AdminRoleController` / `AdminMenuController` / `AdminConfigController` 系统管理
-- `AdminLogController` 操作日志
-- `AdminVipController` VIP 管理
-- `AdminAiConfigController` / `AdminAiLogoController` AI 管理
 
-### 用户端页面模块
-- 公共内容页：`Home`、`Article`、`Category`、`Tag`、`Archive`、`About`
-- 用户体系：`Auth`、`User/*`
-- 内容创作：`Write`
-- 社交消息：`Message`、`Notification`
-- 搜索与 AI：`Search`、`AI`
-- 学习体系：`Study/*`
-- 会员体系：`Vip/*`
-
-### 管理端页面模块
-- `Dashboard`
-- `Article`、`Category`、`Tag`、`Comment`
-- `Study`
-- `User`
-- `System`
-- `Vip`
-- `AI`
-- `Follow`、`Message`、`Notification`
+- `DashboardController`：后台首页统计
+- `AdminArticleController`：内容管理
+- `AdminStudyCategoryController`、`AdminStudyQuestionController`、`AdminStudyCheckController`：学习模块后台
+- `AdminUserController`：用户管理
+- `AdminRoleController`、`AdminMenuController`、`AdminConfigController`：系统管理
+- `AdminLogController`：操作日志
+- `AdminVipController`：会员管理
+- `AdminAiConfigController`、`AdminAiLogoController`：AI 配置管理
 
 ## 运行环境
 
 ### 基础依赖
+
 - JDK 17
 - Maven 3.8+
 - Node.js 16+
@@ -168,16 +122,15 @@ smart-blog-system/
 - Redis 7.0+
 
 ### 建议依赖
-- RabbitMQ
-  用于异步消息、经验等级联动等扩展能力
-- Elasticsearch
-  当前配置中默认关闭，启用后可用于搜索增强
+
+- RabbitMQ：用于异步消息、经验联动、通知扩展
+- Elasticsearch：默认可关闭，启用后可增强搜索能力
 
 ## 快速开始
 
 ### 1. 初始化数据库
 
-当前仓库内的数据库脚本路径是：
+数据库脚本路径：
 
 ```bash
 docs/database/blog_db.sql
@@ -191,12 +144,12 @@ mysql -uroot -p123456 < docs/database/blog_db.sql
 
 ### 2. 配置后端
 
-后端默认启用 `dev` 环境，核心配置文件：
+核心配置文件：
 
 - `backend/src/main/resources/application.yml`
 - `backend/src/main/resources/application-dev.yml`
 
-开发环境默认数据库与 Redis 配置如下：
+默认开发环境配置：
 
 ```yaml
 spring:
@@ -212,9 +165,10 @@ spring:
 
 如果你要启用完整功能，还需要按实际环境补齐：
 
-- `spring.mail` 邮件配置
-- `spring.rabbitmq` RabbitMQ 配置
-- `blog.search.elasticsearch` 搜索配置
+- `spring.mail`
+- `spring.rabbitmq`
+- `blog.search.elasticsearch`
+- AI 相关接口配置
 
 ### 3. 启动后端
 
@@ -223,7 +177,7 @@ cd backend
 mvn clean spring-boot:run
 ```
 
-后端默认端口：
+访问：
 
 ```text
 http://localhost:8080
@@ -237,7 +191,7 @@ npm install
 npm run dev
 ```
 
-访问地址：
+访问：
 
 ```text
 http://localhost:5173
@@ -251,129 +205,57 @@ npm install
 npm run dev
 ```
 
-管理端路由基路径是 `/admin/`，开发访问地址建议使用：
+访问：
 
 ```text
-http://localhost:5174/admin/
+http://localhost:5174
 ```
 
-### 6. 微信小程序
+### 6. 启动微信小程序
 
 ```bash
 cd miniprogram
-npm install
 ```
 
-然后使用微信开发者工具导入 `miniprogram` 目录，并执行“小程序构建 npm”。
-
-仓库里已经提供了一些小程序说明文档，可直接参考：
-
-- `miniprogram/⚠️必读-构建npm步骤.txt`
-- `miniprogram/开发环境配置指南.md`
-- `miniprogram/QUICKSTART.md`
-
-## 访问地址
-
-| 服务 | 地址 |
-|------|------|
-| 用户端 | http://localhost:5173 |
-| 管理端 | http://localhost:5174/admin/ |
-| 后端 API | http://localhost:8080 |
-| Knife4j 文档 | http://localhost:8080/doc.html |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
+然后使用微信开发者工具打开 `miniprogram` 目录即可。
 
 ## 部署说明
 
-`deploy/` 目录下已经包含：
+仓库内已经提供部署相关目录，可按你的环境继续完善：
 
-- `docker-compose.yml`
-- `nginx.conf`
-- `nginx-baota.conf`
-- `deploy.sh`
-- `宝塔Docker部署指南.md`
+- `deploy/`：Docker、Nginx、宝塔部署配置
+- `docs/`：文档与数据库脚本
+- `uploads/`：运行期上传文件目录
 
-当前 `docker-compose.yml` 主要覆盖：
+生产环境部署时，建议至少补充以下内容：
 
-- MySQL
-- Redis
-- 后端服务
+- 独立的生产数据库与 Redis
+- HTTPS 与反向代理配置
+- 上传目录持久化挂载
+- 邮件、消息队列、AI 接口密钥等敏感配置改为环境变量或私有配置文件
 
-前端静态资源部署需要结合 Nginx 或你自己的静态资源托管方案。
+## 适用场景
 
-### 部署前注意
+- 个人博客与社区平台
+- 带后台管理的内容系统
+- 带会员体系和成长体系的知识平台
+- 带 AI 能力扩展的内容产品
+- 带微信小程序入口的前后端分离项目
 
-`deploy/docker-compose.yml` 当前挂载了 `./init.sql`：
+## 开发建议
 
-```yaml
-- ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-```
+- 提交代码前先检查 `backend`、`frontend/user`、`frontend/admin` 的本地配置
+- 将敏感配置写入本地私有配置文件，不要直接提交到仓库
+- 将运行期产物、IDE 文件、日志文件和缓存目录加入 `.gitignore`
 
-但仓库里的数据库脚本实际位于：
+## 路线规划
 
-```text
-docs/database/blog_db.sql
-```
-
-所以在正式使用 Docker Compose 前，你需要二选一：
-
-1. 把 `docs/database/blog_db.sql` 复制到 `deploy/init.sql`
-2. 或者直接修改 `deploy/docker-compose.yml` 的挂载路径
-
-## 开发说明
-
-### 前端代理
-
-用户端和管理端 Vite 都已配置代理：
-
-- `/api` -> `http://localhost:8080`
-- `/uploads` -> `http://localhost:8080`
-
-### 管理端基础路径
-
-管理端 `vite.config.js` 设置了：
-
-```js
-base: '/admin/'
-```
-
-同时路由使用：
-
-```js
-createWebHistory('/admin/')
-```
-
-所以本地开发、静态部署和 Nginx 转发时，都需要考虑 `/admin/` 前缀。
-
-### 搜索能力
-
-`application.yml` 中存在 Elasticsearch 配置，但默认：
-
-```yaml
-blog:
-  search:
-    elasticsearch:
-      enabled: false
-```
-
-这意味着项目当前可以先以普通模式运行，若要启用搜索增强，再补齐 Elasticsearch 服务与配置。
-
-## 当前文档基于的真实代码信息
-
-本 README 已按以下实际文件核对后更新：
-
-- `backend/pom.xml`
-- `backend/src/main/resources/application.yml`
-- `backend/src/main/resources/application-dev.yml`
-- `frontend/user/package.json`
-- `frontend/admin/package.json`
-- `frontend/user/src/router/index.js`
-- `frontend/admin/src/router/index.js`
-- `backend/src/main/java/com/blog/controller/admin`
-- `backend/src/main/java/com/blog/controller/web`
-- `docs/database/blog_db.sql`
-- `deploy/docker-compose.yml`
-- `miniprogram/package.json`
+- 补充单元测试与集成测试
+- 完善 Docker 一键部署能力
+- 增强 AI 能力与多模型接入
+- 继续完善搜索、推荐与数据统计
 
 ## License
 
-MIT
+当前仓库未显式提供 `LICENSE` 文件，如需开源发布，建议补充合适的许可证后再公开分发。
+

@@ -1,0 +1,51 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java / Maven
+backend/target/
+*/target/
+*.class
+
+# Node / Frontend
+node_modules/
+dist/
+.npm/
+.pnpm-store/
+.npm-cache/
+.vite/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+
+# Build / Temp
+tmp/
+temp/
+*.tmp
+
+# Local deploy / platform
+.vercel/
+
+# Runtime uploads and generated files
+uploads/
+
+# Miniprogram local files
+miniprogram/node_modules/
+miniprogram/dist/
+project.private.config.json
+
