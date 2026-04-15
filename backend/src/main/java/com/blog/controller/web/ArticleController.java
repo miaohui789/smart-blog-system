@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.constant.ExpConstants;
+import com.blog.common.enums.ArticleStatus;
 import com.blog.common.enums.ResultCode;
 import com.blog.common.result.PageResult;
 import com.blog.common.result.Result;
@@ -184,6 +185,12 @@ public class ArticleController {
         if (article == null) {
             return Result.error(ResultCode.NOT_FOUND);
         }
+
+        Long userId = getCurrentUserId();
+        boolean isOwner = userId != null && userId.equals(article.getUserId());
+        if (!ArticleStatus.PUBLISHED.getCode().equals(article.getStatus()) && !isOwner) {
+            return Result.error(ResultCode.NOT_FOUND);
+        }
         
         // 获取客户端IP，用于防刷
         String clientIp = IpUtils.getIpAddress(request);
@@ -217,9 +224,6 @@ public class ArticleController {
             redisService.delete(RedisService.CACHE_RECOMMEND_ARTICLES);
             searchService.syncArticle(id);
         }
-        
-        // 获取当前用户ID
-        Long userId = getCurrentUserId();
         
         // 直接使用数据库中的阅览量
         int currentViewCount = article.getViewCount() != null ? article.getViewCount() : 0;
@@ -629,6 +633,39 @@ public class ArticleController {
         return Result.success("删除成功");
     }
 
+    @Operation(summary = "更新我的文章状态")
+    @PutMapping("/{id}/status")
+    public Result<?> updateMyArticleStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            return Result.error(ResultCode.UNAUTHORIZED);
+        }
+
+        Article article = articleService.getById(id);
+        if (article == null) {
+            return Result.error(ResultCode.NOT_FOUND);
+        }
+        if (!article.getUserId().equals(userId)) {
+            return Result.error(ResultCode.FORBIDDEN, "无权修改此文章");
+        }
+
+        Integer status = body == null ? null : body.get("status");
+        if (!isValidArticleStatus(status)) {
+            return Result.error("文章状态不合法");
+        }
+
+        article.setStatus(status);
+        if (ArticleStatus.PUBLISHED.getCode().equals(status) && article.getPublishTime() == null) {
+            article.setPublishTime(LocalDateTime.now());
+        }
+        articleService.updateById(article);
+
+        redisService.clearArticleCache(id);
+        searchService.syncArticle(id);
+
+        return Result.success("状态更新成功");
+    }
+
     @Operation(summary = "获取用户的文章列表")
     @GetMapping("/my")
     public Result<?> myArticles(
@@ -713,5 +750,11 @@ public class ArticleController {
         authorVO.setUserLevel(author.getUserLevel());
         authorVO.setVipLevel(author.getVipLevel());
         authorVO.setStatus(author.getStatus());
+    }
+
+    private boolean isValidArticleStatus(Integer status) {
+        return ArticleStatus.DRAFT.getCode().equals(status)
+                || ArticleStatus.PUBLISHED.getCode().equals(status)
+                || ArticleStatus.OFFLINE.getCode().equals(status);
     }
 }

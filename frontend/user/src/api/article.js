@@ -60,6 +60,11 @@ export function updateArticle(id, data) {
   return request({ url: `/articles/${id}`, method: 'put', data })
 }
 
+// 更新我的文章状态
+export function updateMyArticleStatus(id, status) {
+  return request({ url: `/articles/${id}/status`, method: 'put', data: { status } })
+}
+
 // 删除文章
 export function deleteArticle(id) {
   return request({ url: `/articles/${id}`, method: 'delete' })
