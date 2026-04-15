@@ -18,6 +18,7 @@
         <el-radio-button :label="null">全部</el-radio-button>
         <el-radio-button :label="1">已发布</el-radio-button>
         <el-radio-button :label="0">草稿</el-radio-button>
+        <el-radio-button :label="2">已取消发布</el-radio-button>
       </el-radio-group>
     </div>
 
@@ -34,11 +35,11 @@
               <router-link :to="`/article/${article.id}`" class="article-title">
                 {{ article.title }}
               </router-link>
-              <el-tag 
-                :type="article.status === 1 ? 'success' : 'info'" 
+              <el-tag
+                :type="getStatusTagType(article.status)"
                 size="small"
               >
-                {{ article.status === 1 ? '已发布' : '草稿' }}
+                {{ getStatusText(article.status) }}
               </el-tag>
             </div>
             <p class="article-summary">{{ article.summary || '暂无摘要' }}</p>
@@ -57,11 +58,24 @@
               </span>
             </div>
             <div class="article-actions">
-              <el-button text type="primary" @click="handleEdit(article.id)">
+              <el-button class="action-btn edit-btn" text type="primary" @click="handleEdit(article.id)">
                 <el-icon><Edit /></el-icon>
                 编辑
               </el-button>
-              <el-button text type="danger" @click="handleDelete(article)">
+              <el-button
+                v-if="article.status === 1 || article.status === 2"
+                class="action-btn status-btn"
+                text
+                :type="article.status === 1 ? 'warning' : 'success'"
+                @click="handleStatusChange(article)"
+              >
+                <el-icon>
+                  <CloseBold v-if="article.status === 1" />
+                  <Promotion v-else />
+                </el-icon>
+                {{ article.status === 1 ? '取消发布' : '重新发布' }}
+              </el-button>
+              <el-button class="action-btn delete-btn" text type="danger" @click="handleDelete(article)">
                 <el-icon><Delete /></el-icon>
                 删除
               </el-button>
@@ -92,8 +106,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Edit, Delete, Calendar, View, ChatDotRound } from '@element-plus/icons-vue'
-import { getMyArticles, deleteArticle } from '@/api/article'
+import { Document, Edit, Delete, Calendar, View, ChatDotRound, CloseBold, Promotion } from '@element-plus/icons-vue'
+import { getMyArticles, deleteArticle, updateMyArticleStatus } from '@/api/article'
 import { formatDate } from '@/utils/format'
 import Loading from '@/components/Loading/index.vue'
 
@@ -131,6 +145,53 @@ function handleEdit(id) {
   router.push(`/write/${id}`)
 }
 
+function getStatusText(status) {
+  if (status === 1) {
+    return '已发布'
+  }
+  if (status === 2) {
+    return '已取消发布'
+  }
+  return '草稿'
+}
+
+function getStatusTagType(status) {
+  if (status === 1) {
+    return 'success'
+  }
+  if (status === 2) {
+    return 'warning'
+  }
+  return 'info'
+}
+
+async function handleStatusChange(article) {
+  const isPublished = article.status === 1
+  const targetStatus = isPublished ? 2 : 1
+  const actionText = isPublished ? '取消发布' : '重新发布'
+  const successText = isPublished ? '文章已取消发布，仅自己可见' : '文章已重新发布'
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要${actionText}文章「${article.title}」吗？`,
+      `${actionText}确认`,
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: isPublished ? 'warning' : 'info'
+      }
+    )
+
+    await updateMyArticleStatus(article.id, targetStatus)
+    ElMessage.success(successText)
+    fetchArticles()
+  } catch (error) {
+    if (!['cancel', 'close'].includes(error)) {
+      ElMessage.error(`${actionText}失败`)
+    }
+  }
+}
+
 async function handleDelete(article) {
   try {
     await ElMessageBox.confirm(
@@ -147,7 +208,7 @@ async function handleDelete(article) {
     ElMessage.success('删除成功')
     fetchArticles()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error('删除失败')
     }
   }
@@ -295,7 +356,76 @@ onMounted(fetchArticles)
 .article-actions {
   margin-top: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: $spacing-sm;
+}
+
+.article-actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+.article-actions :deep(.action-btn) {
+  --action-accent: #{$primary-color};
+  --action-accent-bg: rgba(59, 130, 246, 0.12);
+  --action-accent-shadow: rgba(59, 130, 246, 0.18);
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--action-accent) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--action-accent-bg) 55%, rgba(var(--bg-card-rgb), 0.92));
+  color: var(--action-accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 24px -18px var(--action-accent-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease,
+    background-color 0.2s ease, color 0.2s ease;
+
+  .el-icon {
+    font-size: 14px;
+    margin-right: 4px;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--action-accent) 45%, var(--border-color));
+    background: color-mix(in srgb, var(--action-accent-bg) 80%, rgba(var(--bg-card-rgb), 0.98));
+    box-shadow: 0 14px 30px -18px var(--action-accent-shadow);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px -16px var(--action-accent-shadow);
+  }
+}
+
+.article-actions :deep(.edit-btn) {
+  --action-accent: #{$primary-color};
+  --action-accent-bg: rgba(59, 130, 246, 0.12);
+  --action-accent-shadow: rgba(59, 130, 246, 0.22);
+}
+
+.article-actions :deep(.status-btn.el-button--warning) {
+  --action-accent: #{$warning-color};
+  --action-accent-bg: rgba(245, 158, 11, 0.14);
+  --action-accent-shadow: rgba(245, 158, 11, 0.24);
+}
+
+.article-actions :deep(.status-btn.el-button--success) {
+  --action-accent: #{$success-color};
+  --action-accent-bg: rgba(34, 197, 94, 0.14);
+  --action-accent-shadow: rgba(34, 197, 94, 0.24);
+}
+
+.article-actions :deep(.delete-btn) {
+  --action-accent: #{$error-color};
+  --action-accent-bg: rgba(239, 68, 68, 0.14);
+  --action-accent-shadow: rgba(239, 68, 68, 0.22);
+}
+
+:root[data-theme="light"] .article-actions :deep(.action-btn) {
+  background: color-mix(in srgb, var(--action-accent-bg) 92%, #ffffff);
+  box-shadow: 0 10px 24px -20px var(--action-accent-shadow);
 }
 
 :deep(.el-pagination) {

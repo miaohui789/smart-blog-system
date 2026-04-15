@@ -6,12 +6,29 @@
         placeholder="请输入文章标题..." 
         class="title-input"
         maxlength="100"
-        show-word-limit
       />
+      <span class="title-count">{{ form.title.length }} / 100</span>
       <div class="header-actions">
+        <input
+          ref="markdownInputRef"
+          type="file"
+          webkitdirectory
+          directory
+          multiple
+          class="markdown-file-input"
+          @change="handleMarkdownImport"
+        />
+        <el-button @click="triggerMarkdownImport" :loading="importingMarkdown">
+          <el-icon><Upload /></el-icon>
+          导入 Markdown 包
+        </el-button>
         <el-button @click="handleSave(0)" :loading="saving">
           <el-icon><Document /></el-icon>
           保存草稿
+        </el-button>
+        <el-button @click="handleReset" :disabled="saving || importingMarkdown">
+          <el-icon><RefreshLeft /></el-icon>
+          重置
         </el-button>
         <button class="publish-btn" @click="handleSave(1)" :disabled="saving">
           <div class="svg-wrapper-1">
@@ -38,6 +55,7 @@
           :theme="editorTheme"
           :preview-theme="'github'"
           :code-theme="'atom'"
+          :transform-img-url="transformMarkdownImageUrl"
           @onUploadImg="handleUploadImg"
         />
       </div>
@@ -130,6 +148,7 @@
             :preview-theme="'github'"
             :code-theme="'atom'"
             class="fullscreen-editor"
+            :transform-img-url="transformMarkdownImageUrl"
             @onUploadImg="handleUploadImg"
           />
         </div>
@@ -139,10 +158,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Setting, Plus, FullScreen, Close } from '@element-plus/icons-vue'
+import { Document, Setting, Plus, FullScreen, Close, Upload, RefreshLeft } from '@element-plus/icons-vue'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
@@ -159,8 +178,11 @@ const themeStore = useThemeStore()
 const categories = ref([])
 const tags = ref([])
 const saving = ref(false)
+const importingMarkdown = ref(false)
 const isFullscreen = ref(false)
+const markdownInputRef = ref(null)
 const isEdit = computed(() => !!route.params.id)
+let markdownImportContext = createEmptyMarkdownImportContext()
 
 // 编辑器主题
 const editorTheme = computed(() => themeStore.isDark ? 'dark' : 'light')
@@ -170,20 +192,571 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value
 }
 
-const form = ref({
-  title: '',
-  categoryId: null,
-  tagIds: [],
-  cover: '',
-  summary: '',
-  content: ''
-})
+function createEmptyForm() {
+  return {
+    title: '',
+    categoryId: null,
+    tagIds: [],
+    cover: '',
+    summary: '',
+    content: ''
+  }
+}
+
+const form = ref(createEmptyForm())
 
 // 上传配置
 const uploadUrl = '/api/upload/image'
 const uploadHeaders = computed(() => ({
   Authorization: userStore.token ? `Bearer ${userStore.token}` : ''
 }))
+
+function triggerMarkdownImport() {
+  markdownInputRef.value?.click()
+}
+
+function isMarkdownFile(file) {
+  return /\.(md|markdown)$/i.test(file.name || '')
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result || '')
+    reader.onerror = () => reject(new Error('读取文件失败'))
+    reader.readAsText(file, 'utf-8')
+  })
+}
+
+function normalizeMarkdownContent(content) {
+  return String(content || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+}
+
+function splitMarkdownFrontmatter(content) {
+  if (!content.startsWith('---\n')) {
+    return { frontmatter: '', body: content }
+  }
+
+  const endIndex = content.indexOf('\n---\n', 4)
+  if (endIndex === -1) {
+    return { frontmatter: '', body: content }
+  }
+
+  return {
+    frontmatter: content.slice(0, endIndex + 5),
+    body: content.slice(endIndex + 5).replace(/^\n+/, '')
+  }
+}
+
+function extractMarkdownTitle(content, fallbackTitle) {
+  const { body } = splitMarkdownFrontmatter(content)
+  const bodyContent = body.replace(/^\n+/, '')
+  const headingMatch = bodyContent.match(/^#\s+(.+)$/m)
+  if (headingMatch?.[1]) {
+    return headingMatch[1].trim()
+  }
+  return fallbackTitle
+}
+
+function getFileNameWithoutExtension(fileName) {
+  return (fileName || '未命名文章').replace(/\.[^/.]+$/, '')
+}
+
+function createEmptyMarkdownImportContext() {
+  return {
+    markdownPaths: [],
+    markdownDirs: [],
+    assets: new Map(),
+    previewAssets: new Map(),
+    missingImagePaths: [],
+    resolvedImageCount: 0,
+    previewContent: ''
+  }
+}
+
+function resetMarkdownImportContext() {
+  const releasedAssets = new Set(markdownImportContext.assets.values())
+  for (const asset of releasedAssets) {
+    if (asset.previewUrl) {
+      URL.revokeObjectURL(asset.previewUrl)
+    }
+  }
+  markdownImportContext = createEmptyMarkdownImportContext()
+}
+
+function safeDecodePath(path) {
+  try {
+    return decodeURI(path)
+  } catch (error) {
+    return path
+  }
+}
+
+function normalizeImportPath(inputPath) {
+  const rawPath = safeDecodePath(String(inputPath || '').trim())
+    .replace(/\\/g, '/')
+    .replace(/^\.\/+/, '')
+
+  const normalizedSegments = []
+  for (const segment of rawPath.split('/')) {
+    if (!segment || segment === '.') {
+      continue
+    }
+    if (segment === '..') {
+      normalizedSegments.pop()
+      continue
+    }
+    normalizedSegments.push(segment)
+  }
+
+  return normalizedSegments.join('/')
+}
+
+function stripLeadingPathSegment(filePath) {
+  const normalizedPath = normalizeImportPath(filePath)
+  if (!normalizedPath) {
+    return ''
+  }
+
+  const segments = normalizedPath.split('/').filter(Boolean)
+  if (segments.length <= 1) {
+    return normalizedPath
+  }
+
+  return normalizeImportPath(segments.slice(1).join('/'))
+}
+
+function getImportPathCandidates(file) {
+  const rawPath = String(file?.webkitRelativePath || file?.name || '').replace(/\\/g, '/')
+  if (!rawPath) {
+    return []
+  }
+
+  const normalizedPath = normalizeImportPath(rawPath)
+  const strippedPath = stripLeadingPathSegment(normalizedPath)
+  const candidates = []
+
+  for (const candidate of [normalizedPath, strippedPath]) {
+    if (candidate && !candidates.includes(candidate)) {
+      candidates.push(candidate)
+    }
+  }
+
+  return candidates
+}
+
+function getDirectoryPath(filePath) {
+  const normalizedPath = normalizeImportPath(filePath)
+  const lastSlashIndex = normalizedPath.lastIndexOf('/')
+  return lastSlashIndex === -1 ? '' : normalizedPath.slice(0, lastSlashIndex)
+}
+
+function getPathDepth(filePath) {
+  const normalizedPath = normalizeImportPath(filePath)
+  return normalizedPath ? normalizedPath.split('/').length : 0
+}
+
+function compareImportFilePath(fileA, fileB) {
+  const pathA = getImportPathCandidates(fileA)[0] || ''
+  const pathB = getImportPathCandidates(fileB)[0] || ''
+  const depthDiff = getPathDepth(pathA) - getPathDepth(pathB)
+  if (depthDiff !== 0) {
+    return depthDiff
+  }
+  return pathA.localeCompare(pathB, 'zh-CN')
+}
+
+function isHttpLikePath(path) {
+  return /^(https?:)?\/\//i.test(path)
+}
+
+function isWindowsAbsolutePath(path) {
+  return /^[a-zA-Z]:[\\/]/.test(path)
+}
+
+function isLocalMarkdownPath(path) {
+  const targetPath = String(path || '').trim()
+  if (!targetPath) {
+    return false
+  }
+
+  return !isHttpLikePath(targetPath)
+    && !/^data:/i.test(targetPath)
+    && !/^blob:/i.test(targetPath)
+    && !/^file:/i.test(targetPath)
+    && !targetPath.startsWith('/')
+    && !targetPath.startsWith('#')
+    && !isWindowsAbsolutePath(targetPath)
+}
+
+function splitPathSuffix(path) {
+  const hashIndex = path.indexOf('#')
+  const queryIndex = path.indexOf('?')
+  const indexes = [hashIndex, queryIndex].filter(index => index !== -1)
+  const splitIndex = indexes.length ? Math.min(...indexes) : -1
+
+  if (splitIndex === -1) {
+    return { pathname: path, suffix: '' }
+  }
+
+  return {
+    pathname: path.slice(0, splitIndex),
+    suffix: path.slice(splitIndex)
+  }
+}
+
+function resolveImportPathCandidates(markdownDirs, imgUrl) {
+  const { pathname } = splitPathSuffix(String(imgUrl || '').trim())
+  if (!isLocalMarkdownPath(pathname)) {
+    return []
+  }
+
+  const normalizedPath = normalizeImportPath(pathname)
+  if (!normalizedPath) {
+    return []
+  }
+
+  const candidates = []
+  const addCandidate = (candidate) => {
+    const normalizedCandidate = normalizeImportPath(candidate)
+    if (normalizedCandidate && !candidates.includes(normalizedCandidate)) {
+      candidates.push(normalizedCandidate)
+    }
+  }
+
+  addCandidate(normalizedPath)
+  addCandidate(stripLeadingPathSegment(normalizedPath))
+
+  for (const markdownDir of markdownDirs || []) {
+    if (!markdownDir) {
+      continue
+    }
+    addCandidate(`${markdownDir}/${normalizedPath}`)
+    addCandidate(stripLeadingPathSegment(`${markdownDir}/${normalizedPath}`))
+  }
+
+  return candidates
+}
+
+function resolveMarkdownAsset(imgUrl) {
+  const targetUrl = String(imgUrl || '').trim()
+  if (!targetUrl) {
+    return null
+  }
+
+  if (/^blob:/i.test(targetUrl)) {
+    return markdownImportContext.previewAssets.get(targetUrl) || null
+  }
+
+  const candidates = resolveImportPathCandidates(markdownImportContext.markdownDirs, imgUrl)
+  for (const candidate of candidates) {
+    const asset = markdownImportContext.assets.get(candidate)
+    if (asset) {
+      return asset
+    }
+  }
+  return null
+}
+
+function collectMarkdownImageUrls(content) {
+  const urls = []
+  const markdownImageRegex = /!\[[^\]]*]\((?:<([^>\n]+)>|([^) \t\n]+))(?:\s+[^)\n]+)?\)/g
+  const htmlImageRegex = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi
+
+  for (const match of content.matchAll(markdownImageRegex)) {
+    const imageUrl = (match[1] || match[2] || '').trim()
+    if (imageUrl) {
+      urls.push(imageUrl)
+    }
+  }
+
+  for (const match of content.matchAll(htmlImageRegex)) {
+    const imageUrl = (match[1] || '').trim()
+    if (imageUrl) {
+      urls.push(imageUrl)
+    }
+  }
+
+  return urls
+}
+
+function transformMarkdownImageUrl(imgUrl) {
+  const asset = resolveMarkdownAsset(imgUrl)
+  if (!asset) {
+    return imgUrl
+  }
+  return asset?.previewUrl || imgUrl
+}
+
+function replaceMarkdownImageUrls(content, resolveUrl) {
+  const markdownImageRegex = /!\[([^\]]*)\]\((?:<([^>\n]+)>|([^) \t\n]+))((?:\s+[^)\n]+)?)\)/g
+  const htmlImageRegex = /(<img\b[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi
+
+  let nextContent = String(content || '').replace(markdownImageRegex, (match, altText, angleUrl, plainUrl, suffix = '') => {
+    const originalUrl = (angleUrl || plainUrl || '').trim()
+    const nextUrl = resolveUrl(originalUrl)
+
+    if (!nextUrl || nextUrl === originalUrl) {
+      return match
+    }
+
+    const wrappedUrl = angleUrl ? `<${nextUrl}>` : nextUrl
+    return `![${altText}](${wrappedUrl}${suffix || ''})`
+  })
+
+  nextContent = nextContent.replace(htmlImageRegex, (match, prefix, originalUrl, suffix) => {
+    const nextUrl = resolveUrl(String(originalUrl || '').trim())
+
+    if (!nextUrl || nextUrl === originalUrl) {
+      return match
+    }
+
+    return `${prefix}${nextUrl}${suffix}`
+  })
+
+  return nextContent
+}
+
+async function buildMarkdownImportContext(markdownFile, files) {
+  const markdownPaths = getImportPathCandidates(markdownFile)
+  const markdownDirs = Array.from(new Set(markdownPaths.map(getDirectoryPath).filter(Boolean)))
+  const assets = new Map()
+  const previewAssets = new Map()
+
+  for (const file of files) {
+    const isImageFile = file.type?.startsWith('image/')
+      || /\.(png|jpe?g|gif|bmp|webp|svg|avif)$/i.test(file.name || '')
+
+    if (!isImageFile) {
+      continue
+    }
+
+    const filePaths = getImportPathCandidates(file)
+    if (!filePaths.length) {
+      continue
+    }
+
+    const asset = {
+      file,
+      canonicalPath: filePaths[0],
+      previewUrl: URL.createObjectURL(file),
+      uploadedUrl: ''
+    }
+
+    for (const filePath of filePaths) {
+      assets.set(filePath, asset)
+    }
+    previewAssets.set(asset.previewUrl, asset)
+  }
+
+  const rawContent = await readFileAsText(markdownFile)
+  const content = normalizeMarkdownContent(rawContent)
+  const referencedImagePaths = Array.from(new Set(
+    collectMarkdownImageUrls(content)
+      .map(imgUrl => resolveImportPathCandidates(markdownDirs, imgUrl))
+      .flat()
+  ))
+  const missingImagePaths = collectMarkdownImageUrls(content).filter(imgUrl => {
+    return isLocalMarkdownPath(splitPathSuffix(imgUrl).pathname) && !resolveImportPathCandidates(markdownDirs, imgUrl).some(assetPath => assets.has(assetPath))
+  })
+  const resolvedImageCount = Array.from(new Set(
+    referencedImagePaths
+      .map(assetPath => assets.get(assetPath)?.canonicalPath)
+      .filter(Boolean)
+  )).length
+  const previewContent = replaceMarkdownImageUrls(content, (originalUrl) => {
+    const candidates = resolveImportPathCandidates(markdownDirs, originalUrl)
+    for (const candidate of candidates) {
+      const asset = assets.get(candidate)
+      if (asset?.previewUrl) {
+        return asset.previewUrl
+      }
+    }
+    return originalUrl
+  })
+
+  return {
+    markdownPaths,
+    markdownDirs,
+    assets,
+    previewAssets,
+    missingImagePaths,
+    resolvedImageCount,
+    content,
+    previewContent
+  }
+}
+
+async function uploadImageFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/upload/image', {
+    method: 'POST',
+    headers: {
+      Authorization: userStore.token ? `Bearer ${userStore.token}` : ''
+    },
+    body: formData
+  })
+
+  const result = await response.json()
+  if (result.code !== 200) {
+    throw new Error(result.message || '图片上传失败')
+  }
+
+  return result.data
+}
+
+async function replaceLocalImagesBeforeSubmit(content) {
+  if (!markdownImportContext.assets.size) {
+    return content
+  }
+
+  const usedLocalAssets = Array.from(new Set(
+    collectMarkdownImageUrls(content)
+      .map(resolveMarkdownAsset)
+      .filter(Boolean)
+  ))
+
+  const missingLocalImages = collectMarkdownImageUrls(content).filter(imgUrl => {
+    return isLocalMarkdownPath(splitPathSuffix(imgUrl).pathname) && !resolveMarkdownAsset(imgUrl)
+  })
+  if (missingLocalImages.length) {
+    throw new Error('检测到未导入的本地图片，请重新选择包含 Markdown 和图片资源的文件夹')
+  }
+
+  const uploadTasks = usedLocalAssets.map(async (asset) => {
+    if (!asset || asset.uploadedUrl) {
+      return
+    }
+    asset.uploadedUrl = await uploadImageFile(asset.file)
+  })
+  await Promise.all(uploadTasks)
+
+  return replaceMarkdownImageUrls(content, (originalUrl) => {
+    const asset = resolveMarkdownAsset(originalUrl)
+    return asset?.uploadedUrl || originalUrl
+  })
+}
+
+function syncMarkdownHeading(content, title) {
+  const normalizedTitle = (title || '').trim()
+  const { frontmatter, body } = splitMarkdownFrontmatter(content)
+  const bodyContent = body.replace(/^\n+/, '')
+  const headingLine = `# ${normalizedTitle}`
+
+  let nextBody = ''
+  if (!bodyContent) {
+    nextBody = headingLine
+  } else if (/^#\s+.+$/m.test(bodyContent) && bodyContent.match(/^#\s+.+$/m)?.index === 0) {
+    nextBody = bodyContent.replace(/^#\s+.+$/, headingLine)
+  } else {
+    nextBody = `${headingLine}\n\n${bodyContent}`
+  }
+
+  return frontmatter ? `${frontmatter}\n\n${nextBody}` : nextBody
+}
+
+async function handleMarkdownImport(event) {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) {
+    return
+  }
+
+  try {
+    const markdownFiles = files.filter(isMarkdownFile).sort(compareImportFilePath)
+    const markdownFile = markdownFiles[0]
+
+    if (!markdownFile) {
+      ElMessage.warning('请选择包含 Markdown 文件的文件夹')
+      return
+    }
+
+    if (form.value.content.trim()) {
+      await ElMessageBox.confirm(
+        '导入 Markdown 会覆盖当前正文内容，是否继续？',
+        '导入确认',
+        {
+          confirmButtonText: '继续导入',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    }
+
+    importingMarkdown.value = true
+    resetMarkdownImportContext()
+    markdownImportContext = await buildMarkdownImportContext(markdownFile, files)
+
+    const fallbackTitle = getFileNameWithoutExtension(markdownFile.name)
+    const articleTitle = form.value.title.trim() || extractMarkdownTitle(markdownImportContext.content, fallbackTitle)
+
+    form.value.title = articleTitle
+    form.value.content = syncMarkdownHeading(markdownImportContext.previewContent || markdownImportContext.content, articleTitle)
+
+    if (markdownFiles.length > 1) {
+      ElMessage.warning(`检测到多个 Markdown 文件，已导入 ${markdownFile.name}`)
+    }
+
+    if (markdownImportContext.missingImagePaths.length) {
+      ElMessage.warning(`Markdown 已导入，未找到 ${markdownImportContext.missingImagePaths.length} 张本地图片，请确认选择的是包含 .assets 目录的文件夹`)
+    } else if (markdownImportContext.resolvedImageCount) {
+      ElMessage.success(`Markdown 已导入，已解析 ${markdownImportContext.resolvedImageCount} 张本地图片`)
+    } else {
+      ElMessage.success('Markdown 内容已导入')
+    }
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error.message || 'Markdown 导入失败')
+    }
+  } finally {
+    importingMarkdown.value = false
+    if (event.target) {
+      event.target.value = ''
+    }
+  }
+}
+
+function hasFormContent() {
+  return Boolean(
+    form.value.title.trim()
+    || form.value.categoryId
+    || form.value.tagIds.length
+    || form.value.cover
+    || form.value.summary.trim()
+    || form.value.content.trim()
+  )
+}
+
+async function handleReset() {
+  if (!hasFormContent()) {
+    resetMarkdownImportContext()
+    form.value = createEmptyForm()
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      '重置后将清空当前表单的标题、正文、分类、标签、封面和摘要，是否继续？',
+      '重置确认',
+      {
+        confirmButtonText: '确认重置',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    resetMarkdownImportContext()
+    form.value = createEmptyForm()
+    ElMessage.success('表单内容已清空')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error('重置失败')
+    }
+  }
+}
 
 // 上传封面成功
 function handleCoverSuccess(response) {
@@ -216,25 +789,10 @@ async function handleUploadImg(files, callback) {
   const results = []
   
   for (const file of files) {
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
-      const response = await fetch('/api/upload/image', {
-        method: 'POST',
-        headers: {
-          Authorization: userStore.token ? `Bearer ${userStore.token}` : ''
-        },
-        body: formData
-      })
-      const result = await response.json()
-      if (result.code === 200) {
-        results.push(result.data)
-      } else {
-        ElMessage.error(result.message || '图片上传失败')
-      }
+      results.push(await uploadImageFile(file))
     } catch (error) {
-      ElMessage.error('图片上传失败')
+      ElMessage.error(error.message || '图片上传失败')
     }
   }
   
@@ -258,8 +816,10 @@ async function handleSave(status) {
 
   saving.value = true
   try {
+    const content = await replaceLocalImagesBeforeSubmit(form.value.content)
     const data = {
       ...form.value,
+      content,
       status
     }
 
@@ -319,6 +879,10 @@ onMounted(async () => {
   // 编辑模式加载文章
   await loadArticle()
 })
+
+onUnmounted(() => {
+  resetMarkdownImportContext()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -328,22 +892,33 @@ onMounted(async () => {
   min-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
+  padding: $spacing-lg;
+  gap: $spacing-lg;
 }
 
 .write-header {
   display: flex;
   align-items: center;
-  gap: $spacing-lg;
+  gap: $spacing-md;
   padding: $spacing-lg;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-color);
+  background: rgba(var(--bg-card-rgb), 0.86);
+  border: 1px solid var(--border-color);
+  border-radius: 26px;
+  box-shadow: $shadow-md;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   position: sticky;
-  top: 0;
+  top: $spacing-lg;
   z-index: 100;
-  transition: background-color 0.3s, border-color 0.3s;
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+
+  &:hover {
+    box-shadow: $shadow-lg;
+  }
   
   .title-input {
     flex: 1;
+    min-width: 0;
   }
   
   .header-actions {
@@ -352,7 +927,7 @@ onMounted(async () => {
 }
 
 .title-input {
-  flex: 1;
+  flex: 1 1 0;
   
   :deep(.el-input__wrapper) {
     background: transparent !important;
@@ -362,7 +937,7 @@ onMounted(async () => {
   }
   
   :deep(.el-input__inner) {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--text-primary);
     
@@ -372,17 +947,39 @@ onMounted(async () => {
   }
 }
 
+.title-count {
+  flex-shrink: 0;
+  min-width: 56px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: right;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+
+  :deep(.el-button) {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+}
+
+.markdown-file-input {
+  display: none;
 }
 
 /* 发布文章按钮 - 和写文章按钮一样的样式 */
 .publish-btn {
   display: flex;
   align-items: center;
-  padding: 0.6em 1em;
+  height: 40px;
+  padding: 0 16px;
   padding-left: 0.8em;
   background: $primary-color;
   border-radius: 12px;
@@ -458,7 +1055,6 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   gap: $spacing-lg;
-  padding: $spacing-lg;
 }
 
 .editor-container {
@@ -704,23 +1300,27 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .write-page {
+    padding: 12px;
+    gap: 12px;
+  }
+
   .write-header {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
     padding: 12px;
+    border-radius: 20px;
+    top: 12px;
     
     .header-actions {
       justify-content: flex-end;
+      flex-wrap: wrap;
     }
   }
   
-  .write-body {
-    padding: 12px;
-  }
-  
   .title-input :deep(.el-input__inner) {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
 </style>
