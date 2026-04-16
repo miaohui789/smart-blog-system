@@ -113,9 +113,14 @@ public interface AiChatService {
      */
     interface AiStreamCallback {
         void onStart();
+        void onKnowledge(String knowledgeJson);
         void onThinking(String thinkingToken);
         void onToken(String token);
         void onComplete(String fullResponse);
         void onError(String error);
+
+        default boolean isCancelled() {
+            return false;
+        }
     }
 }

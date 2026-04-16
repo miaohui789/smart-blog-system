@@ -107,6 +107,14 @@ knife4j:
     language: zh_cn
 
 blog:
+  ai:
+    knowledge:
+      enabled: true
+      article-limit: 3
+      study-question-limit: 3
+      article-content-max-length: 800
+      question-stem-max-length: 400
+      question-answer-max-length: 1000
   cache:
     study:
       category-tree-minutes: 120

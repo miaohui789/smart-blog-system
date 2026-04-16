@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Tag(name = "AI聊天")
 @Slf4j
@@ -180,6 +181,10 @@ public class AiChatController {
     public SseEmitter chat(@AuthenticationPrincipal SecurityUser user,
                            @RequestBody Map<String, Object> body) {
         SseEmitter emitter = new SseEmitter(120000L); // 2分钟超时
+        AtomicBoolean completed = new AtomicBoolean(false);
+        emitter.onCompletion(() -> completed.set(true));
+        emitter.onTimeout(() -> completed.set(true));
+        emitter.onError(error -> completed.set(true));
         
         if (user == null) {
             try {
@@ -206,55 +211,94 @@ public class AiChatController {
         
         Long userId = user.getUser().getId();
         aiChatService.chat(userId, conversationId, message.trim(), new AiChatService.AiStreamCallback() {
+            private boolean isCompleted() {
+                return completed.get();
+            }
+
             @Override
             public void onStart() {
+                if (isCompleted()) {
+                    return;
+                }
                 try {
                     emitter.send(SseEmitter.event().name("start").data(""));
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("SSE发送start失败", e);
+                    completed.set(true);
+                }
+            }
+
+            @Override
+            public void onKnowledge(String knowledgeJson) {
+                if (isCompleted()) {
+                    return;
+                }
+                try {
+                    emitter.send(SseEmitter.event().name("knowledge").data(knowledgeJson == null ? "" : knowledgeJson));
+                } catch (Exception e) {
+                    log.error("SSE发送knowledge失败", e);
+                    completed.set(true);
                 }
             }
             
             @Override
             public void onThinking(String thinkingToken) {
+                if (isCompleted()) {
+                    return;
+                }
                 try {
                     String escapedToken = thinkingToken.replace("\n", "\\n").replace("\t", "\\t");
                     emitter.send(SseEmitter.event().name("thinking").data(escapedToken));
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("SSE发送thinking失败", e);
+                    completed.set(true);
                 }
             }
             
             @Override
             public void onToken(String token) {
+                if (isCompleted()) {
+                    return;
+                }
                 try {
                     // 转义换行符，防止 SSE 解析问题
                     String escapedToken = token.replace("\n", "\\n").replace("\t", "\\t");
                     emitter.send(SseEmitter.event().name("token").data(escapedToken));
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("SSE发送token失败", e);
+                    completed.set(true);
                 }
             }
             
             @Override
             public void onComplete(String fullResponse) {
+                if (!completed.compareAndSet(false, true)) {
+                    return;
+                }
                 try {
                     emitter.send(SseEmitter.event().name("done").data(""));
                     emitter.complete();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("SSE发送complete失败", e);
                 }
             }
             
             @Override
             public void onError(String error) {
+                if (!completed.compareAndSet(false, true)) {
+                    return;
+                }
                 try {
                     emitter.send(SseEmitter.event().name("error").data(error));
                     emitter.complete();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("SSE发送error失败", e);
-                    emitter.completeWithError(e);
                 }
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return isCompleted();
             }
         });
         

@@ -119,6 +119,49 @@
               </div>
             </div>
             <div class="message-content" :class="{ 'assistant-selectable': msg.role === 'assistant' }" v-html="msg.renderedContent"></div>
+            <div class="knowledge-sources" v-if="msg.role === 'assistant' && msg.knowledgeSources?.length">
+              <div class="knowledge-sources-header">
+                <span class="knowledge-sources-kicker">回答参考</span>
+                <h4>项目知识来源</h4>
+                <p>已结合站内文章与面试题库内容生成当前回答</p>
+              </div>
+              <div class="knowledge-source-list">
+                <button
+                  v-for="source in msg.knowledgeSources"
+                  :key="`${source.sourceType}-${source.sourceId}`"
+                  class="knowledge-source-card"
+                  :class="[`type-${source.sourceType}`]"
+                  @click="openKnowledgeSource(source)"
+                >
+                  <div class="knowledge-source-top">
+                    <span class="knowledge-source-type">{{ source.sourceType === 'study_question' ? '面试题' : '文章' }}</span>
+                    <span class="knowledge-source-category">{{ source.categoryName || '未分类' }}</span>
+                  </div>
+                  <div class="knowledge-source-title">{{ source.title }}</div>
+                  <div class="knowledge-source-summary">{{ source.summary || '暂无摘要' }}</div>
+                  <div class="knowledge-source-meta">
+                    <span v-if="source.difficultyLabel">{{ source.difficultyLabel }}</span>
+                    <span v-if="source.studyStatusLabel">{{ source.studyStatusLabel }}</span>
+                    <span v-if="source.publishTime">{{ source.publishTime }}</span>
+                  </div>
+                  <div class="knowledge-source-stats">
+                    <span v-if="source.sourceType === 'study_question'">学习 {{ source.studyCount || 0 }}</span>
+                    <span v-if="source.sourceType === 'study_question' && source.isFavorite === 1">已收藏</span>
+                    <span v-if="source.sourceType === 'study_question' && source.isWrongQuestion === 1">错题</span>
+                    <span v-if="source.sourceType === 'article'">浏览 {{ source.viewCount || 0 }}</span>
+                    <span v-if="source.sourceType === 'article'">点赞 {{ source.likeCount || 0 }}</span>
+                    <span v-if="source.sourceType === 'article'">收藏 {{ source.favoriteCount || 0 }}</span>
+                  </div>
+                  <div class="knowledge-source-action">
+                    <span>查看详情</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 17 17 7"/>
+                      <path d="M8 7h9v9"/>
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
             <div class="message-actions" v-if="msg.role === 'assistant'">
               <span class="think-duration" v-if="msg.thinkDuration != null">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -295,6 +338,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { Plus, Fold, Expand, Delete, Edit, QuestionFilled, MagicStick, Loading, HomeFilled, DocumentCopy, VideoPause, Menu } from '@element-plus/icons-vue'
@@ -306,7 +350,11 @@ import hljs from 'highlight.js'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
+const route = useRoute()
+const router = useRouter()
 const QUOTED_MESSAGE_PATTERN = /^\[引用内容\]\n([\s\S]*?)\n\[\/引用内容\]\n\n([\s\S]*)$/
+const KNOWLEDGE_META_PATTERN = /<!--AI_KNOWLEDGE_META_START-->([\s\S]*?)<!--AI_KNOWLEDGE_META_END-->/
+const AI_ACTIVE_CONVERSATION_STORAGE_KEY = 'ai_active_conversation_id'
 const MAX_QUOTE_LENGTH = 6000
 const MAX_QUOTE_PREVIEW_LENGTH = 160
 const MIN_INPUT_AREA_HEIGHT = 64
@@ -337,6 +385,7 @@ const messages = ref([])
 const inputText = ref('')
 const isTyping = ref(false)
 const streamingText = ref('')
+const streamingTextBuffer = ref('')
 const messagesRef = ref(null)
 const inputRef = ref(null)
 const streamingThinkingContentRef = ref(null)
@@ -353,11 +402,14 @@ let lockedSelectionQuoteText = ''
 
 // 深度思考相关
 const streamingThinkingText = ref('')
+const streamingThinkingBuffer = ref('')
 const isThinkingPhase = ref(false)
 const thinkingStreamCollapsed = ref(false)
 
 // 用于停止生成的 AbortController
 let abortController = null
+let textTypingTimer = null
+let thinkingTypingTimer = null
 
 // 模型选择
 const availableModels = ref([])
@@ -395,6 +447,119 @@ const inputAreaHeight = ref(MIN_INPUT_AREA_HEIGHT)
 const composerPanelHeight = computed(() => {
   return inputAreaHeight.value + (pendingQuote.value ? QUOTE_PANEL_EXPANDED_HEIGHT : 0)
 })
+
+function getTypewriterDelay(bufferLength) {
+  if (bufferLength > 320) return 0
+  if (bufferLength > 180) return 4
+  if (bufferLength > 80) return 8
+  return 16
+}
+
+function takeLeadingSymbol(text) {
+  if (!text) {
+    return { symbol: '', rest: '' }
+  }
+  const codePoint = text.codePointAt(0)
+  const size = codePoint > 0xFFFF ? 2 : 1
+  return {
+    symbol: text.slice(0, size),
+    rest: text.slice(size)
+  }
+}
+
+function clearTypewriterTimers() {
+  if (textTypingTimer) {
+    clearTimeout(textTypingTimer)
+    textTypingTimer = null
+  }
+  if (thinkingTypingTimer) {
+    clearTimeout(thinkingTypingTimer)
+    thinkingTypingTimer = null
+  }
+}
+
+function scheduleTextTyping() {
+  if (textTypingTimer || !streamingTextBuffer.value) return
+  const pump = () => {
+    if (!streamingTextBuffer.value) {
+      textTypingTimer = null
+      return
+    }
+    const { symbol, rest } = takeLeadingSymbol(streamingTextBuffer.value)
+    streamingText.value += symbol
+    streamingTextBuffer.value = rest
+    scrollToBottom()
+    textTypingTimer = setTimeout(pump, getTypewriterDelay(streamingTextBuffer.value.length))
+  }
+  textTypingTimer = setTimeout(pump, 0)
+}
+
+function scheduleThinkingTyping() {
+  if (thinkingTypingTimer || !streamingThinkingBuffer.value) return
+  const pump = () => {
+    if (!streamingThinkingBuffer.value) {
+      thinkingTypingTimer = null
+      return
+    }
+    const { symbol, rest } = takeLeadingSymbol(streamingThinkingBuffer.value)
+    streamingThinkingText.value += symbol
+    streamingThinkingBuffer.value = rest
+    scrollThinkingContentToBottom(true)
+    thinkingTypingTimer = setTimeout(pump, getTypewriterDelay(streamingThinkingBuffer.value.length))
+  }
+  thinkingTypingTimer = setTimeout(pump, 0)
+}
+
+function appendStreamingText(content) {
+  if (!content) return
+  streamingTextBuffer.value += content
+  scheduleTextTyping()
+}
+
+function appendStreamingThinking(content) {
+  if (!content) return
+  streamingThinkingBuffer.value += content
+  scheduleThinkingTyping()
+}
+
+function flushStreamingBuffers() {
+  clearTypewriterTimers()
+  if (streamingThinkingBuffer.value) {
+    streamingThinkingText.value += streamingThinkingBuffer.value
+    streamingThinkingBuffer.value = ''
+  }
+  if (streamingTextBuffer.value) {
+    streamingText.value += streamingTextBuffer.value
+    streamingTextBuffer.value = ''
+  }
+  scrollThinkingContentToBottom(true)
+  scrollToBottom(true)
+}
+
+function waitForStreamingBuffers(timeout = 12000) {
+  if (!streamingTextBuffer.value && !streamingThinkingBuffer.value) {
+    return Promise.resolve()
+  }
+  return new Promise(resolve => {
+    const startedAt = Date.now()
+    const check = () => {
+      if ((!streamingTextBuffer.value && !streamingThinkingBuffer.value) || Date.now() - startedAt >= timeout) {
+        resolve()
+        return
+      }
+      setTimeout(check, 24)
+    }
+    check()
+  })
+}
+
+function resetStreamingState() {
+  clearTypewriterTimers()
+  streamingText.value = ''
+  streamingTextBuffer.value = ''
+  streamingThinkingText.value = ''
+  streamingThinkingBuffer.value = ''
+}
 
 function startResize(e) {
   e.preventDefault()
@@ -514,6 +679,9 @@ function parseQuotedMessage(content) {
 
 function normalizeMessage(message) {
   const normalized = { ...message }
+  normalized.knowledgeSources = Array.isArray(normalized.knowledgeSources)
+    ? normalized.knowledgeSources.map(normalizeKnowledgeSource).filter(Boolean)
+    : []
   if (normalized.role === 'user') {
     const parsed = parseQuotedMessage(normalized.content)
     if (parsed) {
@@ -522,11 +690,134 @@ function normalizeMessage(message) {
       normalized.referenceText = parsed.quoteText
       normalized.referencePreview = parsed.quotePreview
     }
+  } else if (normalized.role === 'assistant') {
+    const parsedKnowledge = extractKnowledgeMeta(normalized.thinkingContent)
+    normalized.thinkingContent = parsedKnowledge.thinkingContent
+    if (parsedKnowledge.knowledgeSources.length) {
+      normalized.knowledgeSources = parsedKnowledge.knowledgeSources
+    }
   }
   normalized.renderedContent = renderMarkdown(normalized.content)
   normalized.renderedThinkingContent = normalized.thinkingContent ? renderMarkdown(normalized.thinkingContent) : ''
   normalized._renderKey = normalized._renderKey || `msg-render-${messageRenderSeed++}`
   return normalized
+}
+
+function extractKnowledgeMeta(thinkingContent) {
+  if (!thinkingContent || typeof thinkingContent !== 'string') {
+    return {
+      thinkingContent: thinkingContent || '',
+      knowledgeSources: []
+    }
+  }
+
+  const matched = thinkingContent.match(KNOWLEDGE_META_PATTERN)
+  if (!matched) {
+    return {
+      thinkingContent,
+      knowledgeSources: []
+    }
+  }
+
+  let knowledgeSources = []
+  try {
+    const parsed = JSON.parse(matched[1])
+    knowledgeSources = Array.isArray(parsed) ? parsed.map(normalizeKnowledgeSource).filter(Boolean) : []
+  } catch (e) {
+    knowledgeSources = []
+  }
+
+  return {
+    thinkingContent: thinkingContent.replace(KNOWLEDGE_META_PATTERN, '').trim(),
+    knowledgeSources
+  }
+}
+
+function normalizeKnowledgeSource(source) {
+  if (!source || typeof source !== 'object') return null
+  return {
+    sourceType: source.sourceType || '',
+    sourceId: source.sourceId ?? null,
+    title: source.title || '未命名来源',
+    summary: source.summary || '',
+    categoryName: source.categoryName || '',
+    routePath: source.routePath || '',
+    publishTime: source.publishTime || '',
+    difficultyLabel: source.difficultyLabel || '',
+    studyStatusLabel: source.studyStatusLabel || '',
+    isFavorite: source.isFavorite ?? 0,
+    isWrongQuestion: source.isWrongQuestion ?? 0,
+    studyCount: source.studyCount ?? 0,
+    viewCount: source.viewCount ?? 0,
+    likeCount: source.likeCount ?? 0,
+    favoriteCount: source.favoriteCount ?? 0
+  }
+}
+
+function normalizeConversationId(value) {
+  if (value === undefined || value === null || value === '') return ''
+  return String(value)
+}
+
+function persistActiveConversationId(conversationId) {
+  const normalizedId = normalizeConversationId(conversationId)
+  if (!normalizedId) {
+    sessionStorage.removeItem(AI_ACTIVE_CONVERSATION_STORAGE_KEY)
+    return
+  }
+  sessionStorage.setItem(AI_ACTIVE_CONVERSATION_STORAGE_KEY, normalizedId)
+}
+
+function getPreferredConversationId() {
+  return normalizeConversationId(route.query.conversationId) || sessionStorage.getItem(AI_ACTIVE_CONVERSATION_STORAGE_KEY) || ''
+}
+
+function buildAiReturnQuery() {
+  const query = { from: 'ai' }
+  if (currentConversation.value?.id) {
+    query.conversationId = normalizeConversationId(currentConversation.value.id)
+  }
+  return query
+}
+
+async function syncConversationRoute(conversationId) {
+  const normalizedId = normalizeConversationId(conversationId)
+  const nextQuery = { ...route.query }
+  delete nextQuery.from
+  if (normalizedId) {
+    nextQuery.conversationId = normalizedId
+  } else {
+    delete nextQuery.conversationId
+  }
+  persistActiveConversationId(normalizedId)
+  if (!Object.keys(nextQuery).length) {
+    await router.replace({ path: '/ai' })
+    return
+  }
+  await router.replace({ path: '/ai', query: nextQuery })
+}
+
+async function restoreConversationFromRoute() {
+  const conversationId = getPreferredConversationId()
+  if (!conversationId) return
+
+  const matched = conversations.value.find(conv => normalizeConversationId(conv.id) === conversationId)
+  if (!matched) return
+  if (normalizeConversationId(currentConversation.value?.id) === conversationId) return
+
+  await selectConversation(matched, { syncRoute: false })
+}
+
+function openKnowledgeSource(source) {
+  const normalized = normalizeKnowledgeSource(source)
+  if (!normalized?.routePath) {
+    ElMessage.info('该来源暂时无法跳转')
+    return
+  }
+  router.push({
+    path: normalized.routePath,
+    query: buildAiReturnQuery()
+  })
 }
 
 function buildOutgoingMessage(question, quoteText) {
@@ -760,10 +1051,14 @@ async function fetchAiStatus() {
 async function fetchConversations() {
   try {
     const res = await getConversations()
-    if (res.code === 200) conversations.value = res.data || []
+    if (res.code === 200) {
+      conversations.value = res.data || []
+      return conversations.value
+    }
   } catch (e) {
     console.error('获取会话列表失败', e)
   }
+  return conversations.value
 }
 
 async function fetchAvailableModels() {
@@ -805,16 +1100,22 @@ async function createNewChat() {
   currentConversation.value = null
   messages.value = []
   resetQuoteState()
+  await syncConversationRoute(null)
   
   if (window.innerWidth <= 768) {
     sidebarCollapsed.value = true
   }
 }
 
-async function selectConversation(conv) {
+async function selectConversation(conv, options = {}) {
+  const { syncRoute = true } = options
   currentConversation.value = conv
+  persistActiveConversationId(conv?.id)
   messages.value = []
   resetQuoteState()
+  if (syncRoute) {
+    await syncConversationRoute(conv?.id)
+  }
   
   // 移动端自动收起侧边栏
   if (window.innerWidth <= 768) {
@@ -841,9 +1142,10 @@ async function deleteChat(id) {
     })
     await deleteConversation(id)
     conversations.value = conversations.value.filter(c => c.id !== id)
-    if (currentConversation.value?.id === id) {
+    if (normalizeConversationId(currentConversation.value?.id) === normalizeConversationId(id)) {
       currentConversation.value = null
       messages.value = []
+      persistActiveConversationId(null)
     }
     ElMessage.success('已删除')
   } catch (e) {
@@ -857,6 +1159,27 @@ function extractTitleFromResponse(text) {
   if (lines.length === 0) return '新对话'
   let title = lines[0].replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '')
   return title.length > 25 ? title.substring(0, 25) + '...' : title || '新对话'
+}
+
+function buildStoppedAssistantMessage(fullText, fullThinking, knowledgeSources) {
+  const content = (fullText || streamingText.value || '').trimEnd()
+  const thinkingContent = (fullThinking || streamingThinkingText.value || '').trimEnd()
+  if (!content && !thinkingContent) {
+    return null
+  }
+  const stoppedMsg = {
+    role: 'assistant',
+    content: content ? content + '\n\n*[生成已停止]*' : '*[生成已停止]*',
+    thinkDuration: thinkingSeconds.value
+  }
+  if (thinkingContent) {
+    stoppedMsg.thinkingContent = thinkingContent
+    stoppedMsg.thinkingCollapsed = true
+  }
+  if (Array.isArray(knowledgeSources) && knowledgeSources.length) {
+    stoppedMsg.knowledgeSources = knowledgeSources
+  }
+  return stoppedMsg
 }
 
 async function sendMessage() {
@@ -873,6 +1196,7 @@ async function sendMessage() {
       if (res.code === 200) {
         conversations.value.unshift(res.data)
         currentConversation.value = res.data
+        await syncConversationRoute(res.data.id)
         isNewConversation = true
       } else {
         ElMessage.error('创建对话失败')
@@ -894,8 +1218,7 @@ async function sendMessage() {
   scrollToBottom(true)  // 强制滚动到底部
   
   isTyping.value = true
-  streamingText.value = ''
-  streamingThinkingText.value = ''
+  resetStreamingState()
   isThinkingPhase.value = false
   thinkingStreamCollapsed.value = false
   thinkingSeconds.value = 0
@@ -905,6 +1228,9 @@ async function sendMessage() {
   
   // 创建 AbortController 用于停止生成
   abortController = new AbortController()
+  let fullText = ''
+  let fullThinking = ''
+  let knowledgeSources = []
   
   try {
     const response = await fetch('/api/ai/chat', {
@@ -922,8 +1248,6 @@ async function sendMessage() {
     
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
-    let fullText = ''
-    let fullThinking = ''
     let buffer = ''
     let currentEventType = ''
     
@@ -952,8 +1276,16 @@ async function sendMessage() {
                 isThinkingPhase.value = true
               }
               fullThinking += content
-              streamingThinkingText.value = fullThinking
-              scrollToBottom()
+              appendStreamingThinking(content)
+            } else if (currentEventType === 'knowledge') {
+              try {
+                const parsed = JSON.parse(content)
+                knowledgeSources = Array.isArray(parsed)
+                  ? parsed.map(normalizeKnowledgeSource).filter(Boolean)
+                  : []
+              } catch (e) {
+                knowledgeSources = []
+              }
             } else if (currentEventType === 'token') {
               // 正常回复内容 — 收到第一个token时结束思考阶段
               if (isThinkingPhase.value) {
@@ -961,8 +1293,7 @@ async function sendMessage() {
                 thinkingStreamCollapsed.value = true  // 思考完成后自动折叠
               }
               fullText += content
-              streamingText.value = fullText
-              scrollToBottom()
+              appendStreamingText(content)
             }
           }
           currentEventType = '' // 每个data处理完后重置事件类型
@@ -971,12 +1302,16 @@ async function sendMessage() {
     }
     
     if (fullText) {
+      await waitForStreamingBuffers()
       const _duration = thinkingSeconds.value
       const msgData = { role: 'assistant', content: fullText, thinkDuration: _duration }
       // 保存思考内容
       if (fullThinking) {
         msgData.thinkingContent = fullThinking
         msgData.thinkingCollapsed = true  // 默认折叠
+      }
+      if (knowledgeSources.length) {
+        msgData.knowledgeSources = knowledgeSources
       }
       messages.value.push(normalizeMessage(msgData))
       
@@ -998,13 +1333,9 @@ async function sendMessage() {
     // 如果是用户主动停止，不显示错误
     if (e.name === 'AbortError') {
       console.log('用户停止了生成')
-      // 保存已生成的内容
-      if (streamingText.value) {
-        const stoppedMsg = { role: 'assistant', content: streamingText.value + '\n\n*[生成已停止]*', thinkDuration: thinkingSeconds.value }
-        if (streamingThinkingText.value) {
-          stoppedMsg.thinkingContent = streamingThinkingText.value
-          stoppedMsg.thinkingCollapsed = true
-        }
+      flushStreamingBuffers()
+      const stoppedMsg = buildStoppedAssistantMessage(fullText, fullThinking, knowledgeSources)
+      if (stoppedMsg) {
         messages.value.push(normalizeMessage(stoppedMsg))
       }
     } else {
@@ -1013,8 +1344,7 @@ async function sendMessage() {
     }
   } finally {
     isTyping.value = false
-    streamingText.value = ''
-    streamingThinkingText.value = ''
+    resetStreamingState()
     isThinkingPhase.value = false
     abortController = null
     if (thinkingTimer) { clearInterval(thinkingTimer); thinkingTimer = null }
@@ -1124,7 +1454,9 @@ function handleScroll() {
 onMounted(() => {
   fetchAiStatus()
   if (userStore.isLoggedIn) {
-    fetchConversations()
+    fetchConversations().then(() => {
+      restoreConversationFromRoute()
+    })
     fetchAvailableModels()
   }
   // 事件委托：代码块折叠 + 复制
@@ -1175,6 +1507,7 @@ function handleClickOutsideModelMenu(e) {
 }
 
 onUnmounted(() => {
+  clearTypewriterTimers()
   clearSelectionUpdateTimer()
   document.removeEventListener('click', handleCodeBlockClick)
   document.removeEventListener('click', handleClickOutsideModelMenu)
@@ -1186,7 +1519,9 @@ onUnmounted(() => {
 
 watch(() => userStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
-    fetchConversations()
+    fetchConversations().then(() => {
+      restoreConversationFromRoute()
+    })
     fetchAiStatus()
     fetchAvailableModels()
   } else {
@@ -1194,8 +1529,16 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     currentConversation.value = null
     messages.value = []
     availableModels.value = []
+    persistActiveConversationId(null)
     resetQuoteState()
   }
+})
+
+watch(() => route.query.conversationId, () => {
+  if (!userStore.isLoggedIn || !conversations.value.length) {
+    return
+  }
+  restoreConversationFromRoute()
 })
 
 watch(streamingThinkingText, (value) => {
@@ -1850,6 +2193,156 @@ watch(thinkingStreamCollapsed, (collapsed) => {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+
+.knowledge-sources {
+  margin-top: 18px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(var(--bg-card-rgb), 0.92) 0%, rgba(var(--bg-card-rgb), 0.82) 100%);
+  box-shadow: 0 12px 30px var(--shadow-color);
+}
+
+.knowledge-sources-header {
+  margin-bottom: 14px;
+
+  h4 {
+    margin: 4px 0 2px;
+    font-size: 16px;
+    line-height: 1.2;
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+}
+
+.knowledge-sources-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+}
+
+.knowledge-source-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.knowledge-source-card {
+  width: 100%;
+  text-align: left;
+  padding: 15px 16px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: rgba(var(--bg-card-rgb), 0.7);
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.28);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.08);
+  }
+
+  &.type-study_question .knowledge-source-type {
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+  }
+
+  &.type-article .knowledge-source-type {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+  }
+}
+
+.knowledge-source-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.knowledge-source-type {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.knowledge-source-category {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.knowledge-source-title {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.knowledge-source-summary {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  min-height: 40px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.knowledge-source-meta,
+.knowledge-source-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-card-hover);
+  }
+}
+
+.knowledge-source-action {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-color);
 }
 
 // 思考中文字流光效果
@@ -2577,6 +3070,15 @@ watch(thinkingStreamCollapsed, (collapsed) => {
   .message-row.user .message-content {
     max-width: 90%;
   }
+
+  .knowledge-sources {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .knowledge-source-list {
+    grid-template-columns: 1fr;
+  }
   
   .quick-prompts {
     flex-direction: column;
@@ -2798,6 +3300,17 @@ watch(thinkingStreamCollapsed, (collapsed) => {
   color: rgba(37, 99, 235, 0.92);
 }
 
+:root[data-theme="light"] .knowledge-sources {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 249, 252, 0.96) 100%);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .knowledge-source-card {
+  background: rgba(248, 250, 252, 0.88);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
 :root[data-theme="dark"] .input-reference-inline {
   background: linear-gradient(180deg, rgba(50, 54, 62, 0.94) 0%, rgba(39, 42, 48, 0.94) 100%);
   border-color: rgba(96, 165, 250, 0.18);
@@ -2842,5 +3355,16 @@ watch(thinkingStreamCollapsed, (collapsed) => {
 
 :root[data-theme="dark"] .message-reference-label {
   color: rgba(147, 197, 253, 0.94);
+}
+
+:root[data-theme="dark"] .knowledge-sources {
+  background: linear-gradient(180deg, rgba(31, 36, 44, 0.96) 0%, rgba(24, 28, 35, 0.96) 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="dark"] .knowledge-source-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 </style>

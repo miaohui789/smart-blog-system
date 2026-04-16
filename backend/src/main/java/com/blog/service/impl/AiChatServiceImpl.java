@@ -12,7 +12,9 @@ import com.blog.mapper.AiMessageMapper;
 import com.blog.mapper.AiUsageMapper;
 import com.blog.mapper.AiUserModelMapper;
 import com.blog.service.AiChatService;
+import com.blog.service.AiKnowledgeService;
 import com.blog.service.RedisService;
+import com.blog.dto.response.AiKnowledgePayloadVO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +24,14 @@ import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -35,12 +39,16 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class AiChatServiceImpl implements AiChatService {
 
+    private static final String KNOWLEDGE_META_START = "\n<!--AI_KNOWLEDGE_META_START-->";
+    private static final String KNOWLEDGE_META_END = "<!--AI_KNOWLEDGE_META_END-->";
+
     private final AiConfigMapper configMapper;
     private final AiConversationMapper conversationMapper;
     private final AiMessageMapper messageMapper;
     private final AiUsageMapper usageMapper;
     private final AiUserModelMapper userModelMapper;
     private final RedisService redisService;
+    private final AiKnowledgeService aiKnowledgeService;
     private final ObjectMapper objectMapper;
 
     private static final String CACHE_AI_CONFIG = "blog:ai:config";
@@ -485,12 +493,15 @@ public class AiChatServiceImpl implements AiChatService {
         
         // 获取历史消息构建上下文
         List<AiMessage> history = getMessages(conversationId, userId);
+        AiKnowledgePayloadVO knowledgePayload = aiKnowledgeService.buildKnowledgeContext(userId, message);
+        String knowledgeContext = knowledgePayload != null ? knowledgePayload.getPromptContext() : null;
+        String knowledgeJson = buildKnowledgeJson(knowledgePayload);
         
         // 调用AI API
-        callAiApi(config, history, callback, conversationId, userId);
+        callAiApi(config, history, knowledgeContext, knowledgeJson, callback, conversationId, userId);
     }
     
-    private void callAiApi(AiConfig config, List<AiMessage> history, AiStreamCallback callback, 
+    private void callAiApi(AiConfig config, List<AiMessage> history, String knowledgeContext, String knowledgeJson, AiStreamCallback callback,
                           Long conversationId, Long userId) {
         try {
             // 构建消息列表
@@ -502,6 +513,12 @@ public class AiChatServiceImpl implements AiChatService {
                 systemMsg.put("role", "system");
                 systemMsg.put("content", config.getSystemPrompt());
                 messages.add(systemMsg);
+            }
+            if (StringUtils.hasText(knowledgeContext)) {
+                Map<String, String> knowledgeMsg = new HashMap<>();
+                knowledgeMsg.put("role", "system");
+                knowledgeMsg.put("content", knowledgeContext);
+                messages.add(knowledgeMsg);
             }
             
             // 历史消息（最多保留最近10轮对话）
@@ -544,9 +561,13 @@ public class AiChatServiceImpl implements AiChatService {
                     .build();
             
             callback.onStart();
+            if (StringUtils.hasText(knowledgeJson)) {
+                callback.onKnowledge(knowledgeJson);
+            }
             
             StringBuilder fullResponse = new StringBuilder();
             StringBuilder fullThinking = new StringBuilder();
+            AtomicBoolean streamFinished = new AtomicBoolean(false);
             // 判断该模型是否支持深度思考
             boolean thinkingEnabled = config.getSupportThinking() != null && config.getSupportThinking() == 1;
             
@@ -554,11 +575,23 @@ public class AiChatServiceImpl implements AiChatService {
             factory.newEventSource(request, new EventSourceListener() {
                 @Override
                 public void onEvent(EventSource eventSource, String id, String type, String data) {
+                    if (streamFinished.get()) {
+                        return;
+                    }
+                    if (handleCancelledStream(eventSource, streamFinished, callback, conversationId, userId,
+                            fullResponse, fullThinking, knowledgeJson)) {
+                        return;
+                    }
                     if ("[DONE]".equals(data)) {
+                        if (!streamFinished.compareAndSet(false, true)) {
+                            return;
+                        }
                         // 保存AI回复（包含思考内容）
                         saveAiResponse(conversationId, userId, fullResponse.toString(), 
-                                fullThinking.length() > 0 ? fullThinking.toString() : null);
+                                fullThinking.length() > 0 ? fullThinking.toString() : null,
+                                knowledgeJson);
                         callback.onComplete(fullResponse.toString());
+                        eventSource.cancel();
                         return;
                     }
                     
@@ -594,6 +627,14 @@ public class AiChatServiceImpl implements AiChatService {
                 
                 @Override
                 public void onFailure(EventSource eventSource, Throwable t, Response response) {
+                    if (!streamFinished.compareAndSet(false, true)) {
+                        return;
+                    }
+                    if (callback.isCancelled()) {
+                        savePartialAiResponse(conversationId, userId, fullResponse, fullThinking, knowledgeJson);
+                        eventSource.cancel();
+                        return;
+                    }
                     String error = "AI服务请求失败";
                     if (response != null) {
                         int code = response.code();
@@ -610,6 +651,7 @@ public class AiChatServiceImpl implements AiChatService {
                         log.error("AI API调用异常", t);
                     }
                     callback.onError(error);
+                    eventSource.cancel();
                 }
             });
             
@@ -618,18 +660,71 @@ public class AiChatServiceImpl implements AiChatService {
             callback.onError("AI服务异常: " + e.getMessage());
         }
     }
+
+    private boolean handleCancelledStream(EventSource eventSource,
+                                          AtomicBoolean streamFinished,
+                                          AiStreamCallback callback,
+                                          Long conversationId,
+                                          Long userId,
+                                          StringBuilder fullResponse,
+                                          StringBuilder fullThinking,
+                                          String knowledgeJson) {
+        if (!callback.isCancelled()) {
+            return false;
+        }
+        if (!streamFinished.compareAndSet(false, true)) {
+            return true;
+        }
+        savePartialAiResponse(conversationId, userId, fullResponse, fullThinking, knowledgeJson);
+        log.info("检测到客户端已取消AI生成，终止上游流式请求，conversationId={}", conversationId);
+        eventSource.cancel();
+        return true;
+    }
+
+    private void savePartialAiResponse(Long conversationId,
+                                       Long userId,
+                                       StringBuilder fullResponse,
+                                       StringBuilder fullThinking,
+                                       String knowledgeJson) {
+        String content = fullResponse == null ? "" : fullResponse.toString();
+        String thinkingContent = fullThinking == null || fullThinking.length() == 0 ? null : fullThinking.toString();
+        if (!StringUtils.hasText(content) && !StringUtils.hasText(thinkingContent)) {
+            return;
+        }
+        saveAiResponse(conversationId, userId, content, thinkingContent, knowledgeJson);
+    }
     
-    private void saveAiResponse(Long conversationId, Long userId, String content, String thinkingContent) {
+    private void saveAiResponse(Long conversationId, Long userId, String content, String thinkingContent, String knowledgeJson) {
         AiMessage aiMessage = new AiMessage();
         aiMessage.setConversationId(conversationId);
         aiMessage.setUserId(userId);
         aiMessage.setRole("assistant");
         aiMessage.setContent(content);
-        aiMessage.setThinkingContent(thinkingContent);
+        aiMessage.setThinkingContent(packThinkingContent(thinkingContent, knowledgeJson));
         aiMessage.setTokens(content.length() / 4); // 粗略估算token数
         messageMapper.insert(aiMessage);
         
         // 更新使用统计
         usageMapper.incrementUsage(userId, LocalDate.now(), aiMessage.getTokens());
+    }
+
+    private String buildKnowledgeJson(AiKnowledgePayloadVO knowledgePayload) {
+        if (knowledgePayload == null || knowledgePayload.getSources() == null || knowledgePayload.getSources().isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(knowledgePayload.getSources());
+        } catch (Exception e) {
+            log.warn("序列化AI知识来源失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String packThinkingContent(String thinkingContent, String knowledgeJson) {
+        if (!StringUtils.hasText(knowledgeJson)) {
+            return thinkingContent;
+        }
+        String safeThinkingContent = thinkingContent == null ? "" : thinkingContent;
+        return safeThinkingContent + KNOWLEDGE_META_START + knowledgeJson + KNOWLEDGE_META_END;
     }
 }

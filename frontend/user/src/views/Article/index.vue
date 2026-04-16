@@ -530,6 +530,14 @@ function scrollToComment() {
 
 // 返回上一页
 function goBack() {
+  if (route.query.from === 'ai') {
+    const query = {}
+    if (route.query.conversationId) {
+      query.conversationId = route.query.conversationId
+    }
+    router.replace({ path: '/ai', query })
+    return
+  }
   if (window.history.length > 1) {
     router.back()
   } else {
